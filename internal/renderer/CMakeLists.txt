@@ -18,6 +18,9 @@ target_sources(${component}
 
     scene.hpp
     scene.cpp
+
+    light.hpp
+    light.cpp
 )
 
 target_link_libraries(${component}
