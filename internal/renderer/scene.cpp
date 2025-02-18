@@ -1,3 +1,4 @@
+#include "light.hpp"
 #include "mesh.hpp"
 #include "texture.hpp"
 
@@ -20,6 +21,14 @@ Scene::Scene(const std::weak_ptr<Device> device)
     mesh->setTexture(tb.build());
 
     m_objects.push_back(mesh);
+
+    std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
+    light->position = glm::vec3(-1.0, 0.0, 0.0);
+	light->diffuseColor = glm::vec3(0.4, 1.0, 0.2);
+	light->diffusePower =  1.0;
+	light->specularColor = glm::vec3(1.0);
+	light->specularPower = 1.0;
+    m_lights.push_back(light);
 
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},

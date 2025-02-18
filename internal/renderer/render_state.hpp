@@ -9,12 +9,29 @@ class Pipeline;
 class Device;
 class Buffer;
 class Camera;
+class PointLight;
 class Mesh;
 class MeshRenderStateBuilder;
 
 class RenderStateABC
 {
   protected:
+    struct LightBufferInfo
+    {
+        public:
+            struct PointLight
+            {
+                alignas(16) glm::vec3 diffuseColor;
+		        alignas(4) float diffusePower;
+		        alignas(16) glm::vec3 specularColor;
+		        alignas(4) float specularPower;
+		        alignas(16) glm::vec3 position;
+            };
+
+            alignas(4) int pointLightCount;
+            PointLight pointLights[1];
+    };
+
     class MVP
     {
       public:
@@ -29,15 +46,18 @@ class RenderStateABC
 
     VkDescriptorPool m_descriptorPool;
     std::vector<VkDescriptorSet> m_descriptorSets;
-    std::vector<std::unique_ptr<Buffer>> m_uniformBuffers;
-    std::vector<void *> m_uniformBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
+    std::vector<void *> m_mvpUniformBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_lightUniformBuffers;
+    std::vector<void *> m_lightUniformBuffersMapped;
+
 
     RenderStateABC() = default;
 
   public:
     virtual ~RenderStateABC();
 
-    virtual void updateUniformBuffers(uint32_t imageIndex, const Camera &camera);
+    virtual void updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight);
 
     virtual void recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex);
     virtual void recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer) = 0;

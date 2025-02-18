@@ -18,28 +18,39 @@ struct PointLight
 	float specularPower;
 };
 
-struct Lighting
+struct LightingResult
 {
 	vec3 ambient;
     vec3 diffuse;
     vec3 specular;
 };
 
-PointLight light0 = PointLight(vec3(-1.0, 0.0, 0.0), vec3(0.4, 1.0, 0.2), 1.0, vec3(1.0), 1.0);
+#define MAX_NUM_TOTAL_LIGHTS 1
+layout(binding = 2) uniform LightArrayUniformBufferObject
+{
+	int pointLightCount;
+	PointLight[MAX_NUM_TOTAL_LIGHTS] pointLights;
+} lights;
+
+void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 normal)
+{
+	fragLighting.ambient = vec3(0.1);
+	vec3 lightDir = normalize(pointLight.position - fragPos);
+	float diff = max(dot(normal, lightDir), 0.0);
+	fragLighting.diffuse = diff * pointLight.diffuseColor * pointLight.diffusePower;
+	fragLighting.specular = vec3(0.0);
+}
 
 void main()
 {
 	vec3 normal = normalize(fragNormal);
 
-	Lighting fragLighting;
+	LightingResult fragLighting;
 
-	fragLighting.ambient = vec3(0.1);
-
-	vec3 lightDir = normalize(light0.position - fragPos);
-	float diff = max(dot(normal, lightDir), 0.0);
-	fragLighting.diffuse = diff * light0.diffuseColor * light0.diffusePower;
-
-	fragLighting.specular = vec3(0.0);
+	for (int lightIdx = 0; lightIdx < lights.pointLightCount; lightIdx++)
+	{
+		applySinglePointLight(fragLighting, lights.pointLights[lightIdx], normal);
+	}
 
 	oColor = texture(texSampler, fragUV);
 	oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);

@@ -55,7 +55,7 @@ class Renderer
 
     uint32_t acquireBackBuffer();
 
-    void recordRenderers(uint32_t imageIndex, const Camera &camera);
+    void recordRenderers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight);
 
     void submitBackBuffer();
     void presentBackBuffer(uint32_t imageIndex);
