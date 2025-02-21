@@ -11,11 +11,12 @@ layout(binding = 1) uniform sampler2D texSampler;
 
 struct PointLight
 {
-	vec3 position;
 	vec3 diffuseColor;
 	float diffusePower;
 	vec3 specularColor;
 	float specularPower;
+	vec3 position;
+	float temp;
 };
 
 struct LightingResult
@@ -25,11 +26,11 @@ struct LightingResult
     vec3 specular;
 };
 
-#define MAX_NUM_TOTAL_LIGHTS 1
+#define MAX_NUM_TOTAL_LIGHTS 2
 layout(binding = 2) uniform LightArrayUniformBufferObject
 {
-	int pointLightCount;
 	PointLight[MAX_NUM_TOTAL_LIGHTS] pointLights;
+	int pointLightCount;
 } lights;
 
 void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 normal)
