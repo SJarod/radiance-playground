@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 
 #include <GLFW/glfw3.h>
-
 #include "graphics/surface.hpp"
 #include "graphics/swapchain.hpp"
 
