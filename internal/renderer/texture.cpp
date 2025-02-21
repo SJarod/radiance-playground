@@ -96,7 +96,7 @@ std::unique_ptr<Texture> TextureBuilder::build()
         .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
         .mipLodBias = 0.f,
-        .anisotropyEnable = devicePtr->getPhysicalDeviceFeatures().samplerAnisotropy,
+        .anisotropyEnable = devicePtr->getPhysicalDeviceFeatures2().features.samplerAnisotropy,
         .maxAnisotropy = devicePtr->getPhysicalDeviceProperties().limits.maxSamplerAnisotropy,
         .compareEnable = VK_FALSE,
         .compareOp = VK_COMPARE_OP_ALWAYS,
