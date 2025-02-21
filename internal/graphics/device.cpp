@@ -131,13 +131,13 @@ std::unique_ptr<Device> DeviceBuilder::build()
     auto contextPtr = m_cx.lock();
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &m_product->m_features,
         .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
         .pQueueCreateInfos = queueCreateInfos.data(),
         .enabledLayerCount = static_cast<uint32_t>(contextPtr->getLayerCount()),
         .ppEnabledLayerNames = contextPtr->getLayers(),
         .enabledExtensionCount = static_cast<uint32_t>(m_deviceExtensions.size()),
         .ppEnabledExtensionNames = m_deviceExtensions.data(),
-        .pEnabledFeatures = &m_product->m_features,
     };
 
     // create device

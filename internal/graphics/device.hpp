@@ -25,7 +25,8 @@ class Device
 
     // physical device
     VkPhysicalDevice m_physicalHandle;
-    VkPhysicalDeviceFeatures m_features;
+    VkPhysicalDeviceFeatures2 m_features;
+    VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
     VkPhysicalDeviceProperties m_props;
 
     // logical device
@@ -70,7 +71,7 @@ class Device
     {
         return m_deviceExtensions.data();
     }
-    [[nodiscard]] inline const VkPhysicalDeviceFeatures &getPhysicalDeviceFeatures()
+    [[nodiscard]] inline const VkPhysicalDeviceFeatures2 &getPhysicalDeviceFeatures2()
     {
         return m_features;
     }
@@ -154,7 +155,17 @@ class DeviceBuilder
     void setPhysicalDevice(VkPhysicalDevice a)
     {
         m_product->m_physicalHandle = a;
-        vkGetPhysicalDeviceFeatures(a, &m_product->m_features);
+
+        m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        };
+
+        m_product->m_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &m_product->m_bufferDeviceAddressFeature
+        };
+
+        vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);
         vkGetPhysicalDeviceProperties(a, &m_product->m_props);
 
         m_product->m_graphicsFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
