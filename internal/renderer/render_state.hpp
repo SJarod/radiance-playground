@@ -21,15 +21,16 @@ class RenderStateABC
         public:
             struct PointLight
             {
-                alignas(16) glm::vec3 diffuseColor;
-		        alignas(4) float diffusePower;
-		        alignas(16) glm::vec3 specularColor;
-		        alignas(4) float specularPower;
-		        alignas(16) glm::vec3 position;
+                glm::vec3 diffuseColor;
+		        float diffusePower;
+		        glm::vec3 specularColor;
+		        float specularPower;
+		        glm::vec3 position;
+                float pad0;
             };
 
-            alignas(4) int pointLightCount;
             PointLight pointLights[1];
+            int pointLightCount;
     };
 
     class MVP

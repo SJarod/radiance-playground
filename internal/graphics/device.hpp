@@ -27,6 +27,7 @@ class Device
     VkPhysicalDevice m_physicalHandle;
     VkPhysicalDeviceFeatures2 m_features;
     VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
+    VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;
     VkPhysicalDeviceProperties m_props;
 
     // logical device
@@ -162,7 +163,7 @@ class DeviceBuilder
 
         m_product->m_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &m_product->m_bufferDeviceAddressFeature
+            .pNext = &m_product->m_bufferDeviceAddressFeature,
         };
 
         vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);

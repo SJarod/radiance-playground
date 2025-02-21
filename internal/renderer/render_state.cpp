@@ -34,7 +34,6 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const Camera &cam
     memcpy(m_mvpUniformBuffersMapped[imageIndex], &mvpData, sizeof(mvpData));
 
     LightBufferInfo lightData = {
-        .pointLightCount = 1,
         .pointLights =
         {
             LightBufferInfo::PointLight {
@@ -44,7 +43,8 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const Camera &cam
 		        .specularPower = pointLight.specularPower,
                 .position = pointLight.position,
             }
-        }
+        },
+        .pointLightCount = 1,
     };
 
     memcpy(m_lightUniformBuffersMapped[imageIndex], &lightData, sizeof(lightData));
@@ -129,11 +129,11 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
         BufferBuilder bb;
         BufferDirector bd;
         bd.createUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
+        bb.setSize(sizeof(RenderStateABC::LightBufferInfo));
         bb.setDevice(m_device);
         m_product->m_lightUniformBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_lightUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
+        vkMapMemory(deviceHandle, m_product->m_lightUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::LightBufferInfo), 0,
                     &m_product->m_lightUniformBuffersMapped[i]);
     }
 
