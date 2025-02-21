@@ -21,7 +21,7 @@ set(SHADER_SOURCES
 )
 
 list(LENGTH SHADER_SOURCES SHADER_COUNT)
-set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/shaders")
+set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 add_custom_command(TARGET ${component}
 	POST_BUILD
 	COMMAND echo Compiling shader sources in ${SHADER_OUTPUT_DIR}...
@@ -29,7 +29,7 @@ add_custom_command(TARGET ${component}
 )
 set(SHADER_I 1)
 foreach(SOURCE ${SHADER_SOURCES})
-	set(SHADER_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}${SOURCE}.spv")
+	set(SHADER_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${SOURCE}.spv")
 	add_custom_command(TARGET ${component}
 		POST_BUILD
 		COMMAND echo [${SHADER_I}/${SHADER_COUNT}] ${SOURCE}...
@@ -42,5 +42,5 @@ endforeach()
 
 add_custom_command(TARGET ${component}
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "${CMAKE_CURRENT_BINARY_DIR}assets/"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "${CMAKE_CURRENT_BINARY_DIR}/assets/"
 )
