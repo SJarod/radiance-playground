@@ -25,3 +25,26 @@ target_sources(stb INTERFACE
     stb/stb_image.h
 )
 target_include_directories(stb INTERFACE ./stb/)
+
+add_library(imgui STATIC)
+target_sources(imgui PUBLIC
+    imgui/imgui.h
+	imgui/imgui.cpp
+	imgui/backends/imgui_impl_glfw.h
+	imgui/backends/imgui_impl_glfw.cpp
+	imgui/backends/imgui_impl_vulkan.h
+	imgui/backends/imgui_impl_vulkan.cpp
+	imgui/imgui_draw.cpp
+	imgui/imgui_tables.cpp
+	imgui/imgui_widgets.cpp
+)
+
+target_include_directories(imgui PUBLIC 
+"${Vulkan_INCLUDE_DIR}"
+./imgui/
+)
+
+target_link_libraries(imgui PUBLIC 
+glfw
+${Vulkan_LIBRARY}
+)

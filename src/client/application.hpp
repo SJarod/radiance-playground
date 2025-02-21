@@ -37,5 +37,6 @@ class Application
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
 
+    void initImgui();
     void runLoop();
 };

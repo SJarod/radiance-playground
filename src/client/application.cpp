@@ -7,6 +7,10 @@
 
 #include "wsi/window.hpp"
 
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_vulkan.h"
+
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
 #include "renderer/render_graph.hpp"
@@ -121,6 +125,8 @@ Application::Application()
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
+
+    initImgui();
 }
 
 Application::~Application()
@@ -134,6 +140,48 @@ Application::~Application()
     m_context.reset();
 
     WindowGLFW::terminate();
+}
+
+void Application::initImgui()
+{
+    VkDevice deviceHandle = m_devices[0]->getHandle();
+
+    ImGuiRenderStateBuilder imguirsb;
+
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+
+    ImGui::CreateContext();
+    if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true)) 
+    {
+        std::cerr << "Failed to initialize ImGui GLFW Implemenation For Vulkan" << std::endl;
+        throw;
+    }
+
+    // this initializes imgui for Vulkan
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_context->getInstanceHandle();
+    init_info.PhysicalDevice = m_devices[0]->getPhysicalHandle();
+    init_info.Device = deviceHandle;
+    init_info.Queue = m_devices[0]->getGraphicsQueue();
+    init_info.DescriptorPool = imguiPool;
+    init_info.MinImageCount = 2;
+    init_info.ImageCount = 2;
+
+    if (!ImGui_ImplVulkan_Init(&init_info)) 
+    {
+        std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
+        throw;
+    }
 }
 
 void Application::runLoop()
@@ -202,6 +250,7 @@ void Application::runLoop()
         m_phongPhase->registerRenderState(mrsb.build());
     }
 
+    initImgui();
     // skybox
     UniformDescriptorBuilder skyboxUdb;
     skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -216,6 +265,7 @@ void Application::runLoop()
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
+
 
     PipelineBuilder skyboxPb;
     PipelineDirector skyboxPd;

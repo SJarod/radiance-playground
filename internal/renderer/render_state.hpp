@@ -15,6 +15,7 @@ class Mesh;
 class Skybox;
 class Light;
 class MeshRenderStateBuilder;
+class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
 class Texture;
 
@@ -163,6 +164,55 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     std::unique_ptr<RenderStateABC> build() override;
 };
 
+class ImGuiRenderState : public RenderStateABC
+{
+    friend ImGuiRenderStateBuilder;
+
+private:
+    std::weak_ptr<Mesh> m_mesh;
+
+public:
+    void recordBackBufferDrawObjectCommands(VkCommandBuffer& commandBuffer) override {}
+};
+
+class ImGuiRenderStateBuilder : public RenderStateBuilderI
+{
+private:
+    std::unique_ptr<ImGuiRenderState> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    std::vector<VkDescriptorPoolSize> m_poolSizes;
+    uint32_t m_frameInFlightCount;
+
+    std::weak_ptr<Texture> m_texture;
+
+public:
+    ImGuiRenderStateBuilder()
+    {
+        restart();
+    }
+
+    void restart() override
+    {
+        m_product = std::unique_ptr<ImGuiRenderState>(new ImGuiRenderState);
+    }
+
+    void setDevice(std::weak_ptr<Device> device) override
+    {
+        m_device = device;
+        m_product->m_device = device;
+    }
+    void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
+    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void setFrameInFlightCount(uint32_t a) override
+    {
+        m_frameInFlightCount = a;
+    }
+
+    void setTexture(std::weak_ptr<Texture> texture) override {}
+
+    std::unique_ptr<RenderStateABC> build() override;
 class SkyboxRenderState : public RenderStateABC
 {
     friend SkyboxRenderStateBuilder;
