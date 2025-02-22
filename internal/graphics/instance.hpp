@@ -81,7 +81,7 @@ class InstanceBuilder
     {
         m_appName = name;
     }
-    void setApplicationVerstion(uint32_t major, uint32_t minor, uint32_t patch)
+    void setApplicationVersion(uint32_t major, uint32_t minor, uint32_t patch)
     {
         m_appVersion = VK_MAKE_API_VERSION(0, major, minor, patch);
     }

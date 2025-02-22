@@ -18,6 +18,11 @@ std::unique_ptr<Context> ContextBuilder::build()
     InstanceBuilder ib;
     ib.setContext(m_product.get());
     ib.setUseReportCallback(false);
+    ib.setApplicationName("RadiancePlayground");
+    ib.setApplicationVersion(0, 0, 0);
+    ib.setEngineName("RadiancePlaygroundEngine");
+    ib.setEngineVersion(0, 0, 0);
+    ib.setApiVersion(1, 3, 296);
     m_product->m_instance = ib.build();
     return std::move(m_product);
 }
