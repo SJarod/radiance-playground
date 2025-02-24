@@ -20,8 +20,10 @@ set(SHADER_SOURCES
 	shaders/phong.frag
 )
 
+set(RUNTIME_OUTPUT_DIR $<TARGET_FILE_DIR:${component}>)
+
 list(LENGTH SHADER_SOURCES SHADER_COUNT)
-set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+set(SHADER_OUTPUT_DIR "${RUNTIME_OUTPUT_DIR}/shaders")
 add_custom_command(TARGET ${component}
 	POST_BUILD
 	COMMAND echo Compiling shader sources in ${SHADER_OUTPUT_DIR}...
@@ -29,7 +31,7 @@ add_custom_command(TARGET ${component}
 )
 set(SHADER_I 1)
 foreach(SOURCE ${SHADER_SOURCES})
-	set(SHADER_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${SOURCE}.spv")
+	set(SHADER_OUTPUT "${RUNTIME_OUTPUT_DIR}/${SOURCE}.spv")
 	add_custom_command(TARGET ${component}
 		POST_BUILD
 		COMMAND echo [${SHADER_I}/${SHADER_COUNT}] ${SOURCE}...
@@ -42,5 +44,5 @@ endforeach()
 
 add_custom_command(TARGET ${component}
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "${CMAKE_CURRENT_BINARY_DIR}/assets/"
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "${RUNTIME_OUTPUT_DIR}/assets/"
 )
