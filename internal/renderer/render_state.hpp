@@ -8,8 +8,7 @@
 class Pipeline;
 class Device;
 class Buffer;
-class Camera;
-class PointLight;
+class CameraABC;
 class Mesh;
 class Light;
 class MeshRenderStateBuilder;
@@ -74,7 +73,7 @@ class RenderStateABC
   public:
     virtual ~RenderStateABC();
 
-    virtual void updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights);
+    virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights);
 
     virtual void recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex);
     virtual void recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer) = 0;

@@ -23,7 +23,7 @@ RenderStateABC::~RenderStateABC()
     m_pipeline.reset();
 }
 
-void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights)
+void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
     MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->proj = camera.getProjectionMatrix();

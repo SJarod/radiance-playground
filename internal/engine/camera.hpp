@@ -4,29 +4,23 @@
 
 #include "transform.hpp"
 
-class Camera
+class CameraABC
 {
-  private:
+  protected:
     Transform m_transform;
 
-    float m_yFov = 45.f;
-    float m_aspectRatio = 16.f / 9.f;
     float m_near = 0.1f;
     float m_far = 1000.f;
 
-    float m_sensitivity = 0.8f;
+    bool m_bYFlip = true;
 
     float m_speed = 1.f;
-
-    bool m_bYFlip = true;
+    float m_sensitivity = 0.8f;
 
   public:
     [[nodiscard]] glm::mat4 getViewMatrix() const;
-    [[nodiscard]] glm::mat4 getProjectionMatrix() const;
-    [[nodiscard]] inline const float &getSensitivity() const
-    {
-        return m_sensitivity;
-    }
+    virtual [[nodiscard]] glm::mat4 getProjectionMatrix() const = 0;
+
     [[nodiscard]] const Transform &getTransform() const
     {
         return m_transform;
@@ -34,6 +28,10 @@ class Camera
     [[nodiscard]] const float &getSpeed() const
     {
         return m_speed;
+    }
+    [[nodiscard]] inline const float &getSensitivity() const
+    {
+        return m_sensitivity;
     }
 
   public:
@@ -45,4 +43,26 @@ class Camera
     {
         m_transform = transform;
     }
+};
+
+class PerspectiveCamera : public CameraABC
+{
+  private:
+    float m_yFov = 45.f;
+    float m_aspectRatio = 16.f / 9.f;
+
+  public:
+    [[nodiscard]] glm::mat4 getProjectionMatrix() const override;
+};
+
+class OrthographicCamera : public CameraABC
+{
+  private:
+    float m_left = -1.f;
+    float m_right = 1.f;
+    float m_bottom = -1.f;
+    float m_top = 1.f;
+
+  public:
+    [[nodiscard]] glm::mat4 getProjectionMatrix() const override;
 };

@@ -11,7 +11,7 @@ class Mesh;
 class Light;
 class Texture;
 class Buffer;
-class Camera;
+class CameraABC;
 class RenderStateABC;
 
 struct BackBufferT
@@ -56,7 +56,7 @@ class Renderer
 
     uint32_t acquireBackBuffer();
 
-    void recordRenderers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights);
+    void recordRenderers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights);
 
     void submitBackBuffer();
     void presentBackBuffer(uint32_t imageIndex);

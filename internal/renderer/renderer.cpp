@@ -60,7 +60,7 @@ uint32_t Renderer::acquireBackBuffer()
     return imageIndex;
 }
 
-void Renderer::recordRenderers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights)
+void Renderer::recordRenderers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
     VkCommandBuffer &commandBuffer = m_backBuffers[m_backBufferIndex].commandBuffer;
 

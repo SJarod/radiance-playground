@@ -12,9 +12,8 @@ foreach (_variableName ${_variableNames})
 endforeach()
 
 add_compile_definitions(GLM_FORCE_RADIANS)
-# OpenGL depth range go from -1.0 to 1.0
-# Vulkan depth range go from 0.0 to 1.0
 add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
+add_compile_definitions(GLM_FORCE_LEFT_HANDED)
 add_subdirectory(glm)
 
 set(ASSIMP_BUILD_TESTS OFF)
