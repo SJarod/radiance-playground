@@ -1,11 +1,15 @@
 #include "light.hpp"
 #include "mesh.hpp"
 #include "texture.hpp"
+#include "engine/camera.hpp"
 
 #include "scene.hpp"
 
 Scene::Scene(const std::weak_ptr<Device> device)
 {
+    m_cameras.emplace_back(std::make_unique<PerspectiveCamera>());
+    m_mainCamera = m_cameras[m_cameras.size() - 1].get();
+    
     MeshBuilder mb;
     MeshDirector md;
     md.createAssimpMeshBuilder(mb);
@@ -48,13 +52,17 @@ Scene::Scene(const std::weak_ptr<Device> device)
         {{0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {0.f, 1.f}},
         {{-0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {1.f, 1.f}},
     };
-    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+    const std::vector<uint16_t> indices = {
+        0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
+    };
     mb.setDevice(device);
     mb.setVertices(vertices);
     mb.setIndices(indices);
     std::shared_ptr<Mesh> mesh2 = mb.build();
 
-    const std::vector<unsigned char> imagePixels = {255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255};
+    const std::vector<unsigned char> imagePixels = {
+        255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
+    };
     td.createSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setImageData(imagePixels);

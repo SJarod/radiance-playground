@@ -136,11 +136,11 @@ void Application::runLoop()
 
     auto& lights = m_scene->getLights();
 
-    std::unique_ptr<CameraABC> camera = std::make_unique<OrthographicCamera>();
-
     std::pair<double, double> mousePos;
     glfwGetCursorPos(m_window->getHandle(), &mousePos.first, &mousePos.second);
     glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    CameraABC* mainCamera = m_scene->getMainCamera();
 
     while (!m_window->shouldClose())
     {
@@ -157,9 +157,9 @@ void Application::runLoop()
 
         m_window->pollEvents();
 
-        float pitch = (float)deltaMousePos.second * camera->getSensitivity() * deltaTime;
-        float yaw = (float)deltaMousePos.first * camera->getSensitivity() * deltaTime;
-        Transform cameraTransform = camera->getTransform();
+        float pitch = (float)deltaMousePos.second * mainCamera->getSensitivity() * deltaTime;
+        float yaw = (float)deltaMousePos.first * mainCamera->getSensitivity() * deltaTime;
+        Transform cameraTransform = mainCamera->getTransform();
 
         cameraTransform.rotation =
             glm::quat(glm::vec3(-pitch, 0.f, 0.f)) * cameraTransform.rotation * glm::quat(glm::vec3(0.f, -yaw, 0.f));
@@ -173,13 +173,13 @@ void Application::runLoop()
         glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * glm::mat3_cast(cameraTransform.rotation);
         if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
             dir = glm::normalize(dir);
-        cameraTransform.position += camera->getSpeed() * dir * deltaTime;
+        cameraTransform.position += mainCamera->getSpeed() * dir * deltaTime;
 
-        camera->setTransform(cameraTransform);
+        mainCamera->setTransform(cameraTransform);
 
         uint32_t imageIndex = m_renderer->acquireBackBuffer();
 
-        m_renderer->recordRenderers(imageIndex, *camera, lights);
+        m_renderer->recordRenderers(imageIndex, *mainCamera, lights);
 
         m_renderer->submitBackBuffer();
         m_renderer->presentBackBuffer(imageIndex);
