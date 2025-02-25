@@ -1,15 +1,17 @@
-#include "light.hpp"
-#include "mesh.hpp"
-#include "texture.hpp"
+#include "graphics/device.hpp"
+
+#include "renderer/mesh.hpp"
+#include "renderer/texture.hpp"
+
 #include "engine/camera.hpp"
 
-#include "scene.hpp"
+#include "sample_scene_2d.hpp"
 
-Scene::Scene(const std::weak_ptr<Device> device)
+SampleScene2D::SampleScene2D(std::weak_ptr<Device> device) : SceneABC()
 {
-    m_cameras.emplace_back(std::make_unique<PerspectiveCamera>());
+    m_cameras.emplace_back(std::make_unique<OrthographicCamera>());
     m_mainCamera = m_cameras[m_cameras.size() - 1].get();
-    
+
     MeshBuilder mb;
     MeshDirector md;
     md.createAssimpMeshBuilder(mb);
@@ -25,22 +27,6 @@ Scene::Scene(const std::weak_ptr<Device> device)
     mesh->setTexture(tb.build());
 
     m_objects.push_back(mesh);
-
-    std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
-    light->position = glm::vec3(-1.0, 0.0, 0.0);
-	light->diffuseColor = glm::vec3(0.4, 1.0, 0.2);
-	light->diffusePower =  1.0;
-	light->specularColor = glm::vec3(1.0);
-	light->specularPower = 1.0;
-    m_lights.push_back(light);
-
-    std::shared_ptr<DirectionalLight> light1 = std::make_shared<DirectionalLight>();
-    light1->direction = glm::vec3(1.0, 0.0, 0.0);
-    light1->diffuseColor = glm::vec3(0.0, 0.0, 1.0);
-    light1->diffusePower = 5.0;
-    light1->specularColor = glm::vec3(1.0);
-    light1->specularPower = 1.0;
-    m_lights.push_back(light1);
 
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},

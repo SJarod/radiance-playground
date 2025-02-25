@@ -10,12 +10,14 @@
 #include "renderer/mesh.hpp"
 #include "renderer/render_state.hpp"
 #include "renderer/renderer.hpp"
-#include "renderer/scene.hpp"
 #include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
 #include "engine/vertex.hpp"
+
+#include "sample_scene.hpp"
+#include "sample_scene_2d.hpp"
 
 #include "application.hpp"
 
@@ -80,7 +82,7 @@ void Application::runLoop()
 
     m_window->makeContextCurrent();
 
-    m_scene = std::make_unique<Scene>(mainDevice);
+    m_scene = std::make_unique<SampleScene>(mainDevice);
     auto objects = m_scene->getObjects();
     for (int i = 0; i < objects.size(); ++i)
     {

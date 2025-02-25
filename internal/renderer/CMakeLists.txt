@@ -17,7 +17,6 @@ target_sources(${component}
     texture.cpp
 
     scene.hpp
-    scene.cpp
 
     light.hpp
     light.cpp

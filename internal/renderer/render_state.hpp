@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <glm/glm.hpp>
+
 class Pipeline;
 class Device;
 class Buffer;
@@ -12,6 +14,7 @@ class CameraABC;
 class Mesh;
 class Light;
 class MeshRenderStateBuilder;
+class Texture;
 
 class RenderStateABC
 {

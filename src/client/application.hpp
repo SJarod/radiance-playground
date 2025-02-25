@@ -9,7 +9,7 @@ class WindowGLFW;
 class Context;
 class Device;
 class Renderer;
-class Scene;
+class SceneABC;
 
 class Application
 {
@@ -21,7 +21,7 @@ class Application
 
     std::shared_ptr<Renderer> m_renderer;
 
-    std::unique_ptr<Scene> m_scene;
+    std::unique_ptr<SceneABC> m_scene;
 
     Time::TimeManager m_timeManager;
 

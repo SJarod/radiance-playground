@@ -7,16 +7,23 @@ class Mesh;
 class CameraABC;
 class Light;
 
-class Scene
+class SceneABC
 {
-  private:
+  protected:
     CameraABC *m_mainCamera;
     std::vector<std::unique_ptr<CameraABC>> m_cameras;
+
     std::vector<std::shared_ptr<Mesh>> m_objects;
     std::vector<std::shared_ptr<Light>> m_lights;
 
   public:
-    Scene(const std::weak_ptr<Device> device);
+    SceneABC() = default;
+    virtual ~SceneABC() = default;
+
+    SceneABC(const SceneABC &) = delete;
+    SceneABC &operator=(const SceneABC &) = delete;
+    SceneABC(SceneABC &&) = delete;
+    SceneABC &operator=(SceneABC &&) = delete;
 
   public:
     [[nodiscard]] const std::vector<std::shared_ptr<Mesh>> &getObjects() const

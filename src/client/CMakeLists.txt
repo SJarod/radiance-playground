@@ -4,8 +4,17 @@ add_library(${component} STATIC "")
 
 target_sources(${component}
     PRIVATE
+    scripts/move_camera.hpp
+
     application.cpp
     application.hpp
+
+    sample_scene.hpp
+    sample_scene.cpp
+    sample_scene_2d.hpp
+    sample_scene_2d.cpp
+
+    scriptable.hpp
 
     time_manager.hpp
 )
