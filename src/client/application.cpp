@@ -139,6 +139,8 @@ void Application::runLoop()
 
     m_window->makeContextCurrent();
 
+    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
+
     // material
     UniformDescriptorBuilder phongUdb;
     phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{

@@ -39,6 +39,14 @@ class CameraABC
     {
         m_bYFlip = bFlip;
     }
+    void setNear(const float near)
+    {
+        m_near = near;
+    }
+    void setFar(const float far)
+    {
+        m_far = far;
+    }
     void setTransform(const Transform &transform)
     {
         m_transform = transform;
@@ -58,8 +66,8 @@ class PerspectiveCamera : public CameraABC
 class OrthographicCamera : public CameraABC
 {
   private:
-    float m_left = -1.f;
-    float m_right = 1.f;
+    float m_left = -16.f / 9.f;
+    float m_right = 16.f / 9.f;
     float m_bottom = -1.f;
     float m_top = 1.f;
 
