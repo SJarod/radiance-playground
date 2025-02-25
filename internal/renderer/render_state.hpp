@@ -33,6 +33,22 @@ class RenderStateABC
         alignas(16) PointLight pointLights[2];
     };
 
+    struct DirectionalLightContainer
+    {
+        struct DirectionalLight
+        {
+            glm::vec3 diffuseColor;
+            float diffusePower;
+            glm::vec3 specularColor;
+            float specularPower;
+            glm::vec3 direction;
+            float pad0[1];
+        };
+
+        int directionalLightCount;
+        alignas(16) DirectionalLight directionalLights[2];
+    };
+
     struct MVP
     {
         glm::mat4 model;
@@ -48,9 +64,10 @@ class RenderStateABC
     std::vector<VkDescriptorSet> m_descriptorSets;
     std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
     std::vector<void *> m_mvpUniformBuffersMapped;
-    std::vector<std::unique_ptr<Buffer>> m_lightStorageBuffers;
-    std::vector<void *> m_lightStorageBuffersMapped;
-
+    std::vector<std::unique_ptr<Buffer>> m_pointLightStorageBuffers;
+    std::vector<void *> m_pointLightStorageBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
+    std::vector<void*> m_directionalLightStorageBuffersMapped;
 
     RenderStateABC() = default;
 

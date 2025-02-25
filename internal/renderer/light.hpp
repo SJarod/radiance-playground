@@ -24,3 +24,8 @@ class PointLight : public Light
 		glm::vec3 position;
 };
 
+class DirectionalLight : public Light
+{
+public:
+	glm::vec3 direction;
+};

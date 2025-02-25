@@ -30,10 +30,10 @@ Scene::Scene(const std::weak_ptr<Device> device)
 	light->specularPower = 1.0;
     m_lights.push_back(light);
 
-    std::shared_ptr<PointLight> light1 = std::make_shared<PointLight>();
-    light1->position = glm::vec3(0.0, 1.0, 1.0);
+    std::shared_ptr<DirectionalLight> light1 = std::make_shared<DirectionalLight>();
+    light1->direction = glm::vec3(1.0, 0.0, 0.0);
     light1->diffuseColor = glm::vec3(0.0, 0.0, 1.0);
-    light1->diffusePower = 1.0;
+    light1->diffusePower = 5.0;
     light1->specularColor = glm::vec3(1.0);
     light1->specularPower = 1.0;
     m_lights.push_back(light1);

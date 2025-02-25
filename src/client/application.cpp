@@ -121,6 +121,12 @@ void Application::runLoop()
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 3,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
         pb.setUniformDescriptorPack(udb.build());
 
         mrsb.setPipeline(pb.build());

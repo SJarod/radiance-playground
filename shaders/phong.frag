@@ -26,10 +26,26 @@ struct PointLight
 	float pad0[1];
 };
 
+struct DirectionalLight
+{
+	vec3 diffuseColor;
+	float diffusePower;
+	vec3 specularColor;
+	float specularPower;
+	vec3 direction;
+	float pad0[1];
+};
+
 layout(std430, binding = 2) readonly buffer PointLightsData
 {
 	int pointLightCount;
 	PointLight pointLights[];
+};
+
+layout(std430, binding = 3) readonly buffer DirectionalLightsData
+{
+	int directionalLightCount;
+	DirectionalLight directionalLights[];
 };
 
 void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 normal)
@@ -37,19 +53,33 @@ void applySinglePointLight(inout LightingResult fragLighting, in PointLight poin
 	fragLighting.ambient = vec3(0.1);
 	vec3 lightDir = normalize(pointLight.position - fragPos);
 	float diff = max(dot(normal, lightDir), 0.0);
-	fragLighting.diffuse = diff * pointLight.diffuseColor * pointLight.diffusePower;
-	fragLighting.specular = vec3(0.0);
+	fragLighting.diffuse += diff * pointLight.diffuseColor * pointLight.diffusePower;
+	fragLighting.specular += vec3(0.0);
+}
+
+void applySingleDirectionalLight(inout LightingResult fragLighting, in DirectionalLight directionalLight, in vec3 normal)
+{
+	fragLighting.ambient = vec3(0.1);
+	vec3 lightDir = normalize(directionalLight.direction);
+	float diff = max(dot(normal, lightDir), 0.0);
+	fragLighting.diffuse += diff * directionalLight.diffuseColor * directionalLight.diffusePower;
+	fragLighting.specular += vec3(0.0);
 }
 
 void main()
 {
 	vec3 normal = normalize(fragNormal);
 
-	LightingResult fragLighting;
+	LightingResult fragLighting = { vec3(0.0), vec3(0.0), vec3(0.0) };
 
 	for (int i = 0; i < pointLightCount; i++)
 	{
 		applySinglePointLight(fragLighting, pointLights[i], normal);
+	}
+
+	for (int i = 0; i < directionalLightCount; i++)
+	{
+		applySingleDirectionalLight(fragLighting, directionalLights[i], normal);
 	}
 
 	oColor = texture(texSampler, fragUV);
