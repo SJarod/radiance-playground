@@ -4,6 +4,8 @@ add_library(${component} STATIC "")
 
 target_sources(${component}
     PRIVATE
+    scriptable.hpp
+    
     uniform.hpp
 
     vertex.hpp

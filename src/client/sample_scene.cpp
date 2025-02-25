@@ -7,12 +7,24 @@
 
 #include "engine/camera.hpp"
 
+#include "scripts/move_camera.hpp"
+
+#include "wsi/window.hpp"
+
 #include "sample_scene.hpp"
 
-SampleScene::SampleScene(std::weak_ptr<Device> device)
+SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
 {
     m_cameras.emplace_back(std::make_unique<PerspectiveCamera>());
     m_mainCamera = m_cameras[m_cameras.size() - 1].get();
+
+    auto moveCameraScript = std::make_unique<MoveCamera>();
+    auto userData = MoveCamera::UserDataT{
+        .window = *window,
+        .camera = *m_mainCamera,
+    };
+    moveCameraScript->init(&userData);
+    m_scripts.emplace_back(std::move(moveCameraScript));
 
     TextureDirector td;
 
@@ -48,10 +60,10 @@ SampleScene::SampleScene(std::weak_ptr<Device> device)
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
     light->position = glm::vec3(-1.0, 0.0, 0.0);
-	light->diffuseColor = glm::vec3(0.4, 1.0, 0.2);
-	light->diffusePower =  1.0;
-	light->specularColor = glm::vec3(1.0);
-	light->specularPower = 1.0;
+    light->diffuseColor = glm::vec3(0.4, 1.0, 0.2);
+    light->diffusePower = 1.0;
+    light->specularColor = glm::vec3(1.0);
+    light->specularPower = 1.0;
     m_lights.push_back(light);
 
     std::shared_ptr<DirectionalLight> light1 = std::make_shared<DirectionalLight>();

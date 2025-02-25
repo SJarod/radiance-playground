@@ -179,7 +179,7 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
-    m_scene = std::make_unique<SampleScene>(mainDevice);
+    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
     auto objects = m_scene->getObjects();
     for (int i = 0; i < objects.size(); ++i)
     {
@@ -244,46 +244,18 @@ void Application::runLoop()
 
     auto &lights = m_scene->getLights();
 
-    std::pair<double, double> mousePos;
-    glfwGetCursorPos(m_window->getHandle(), &mousePos.first, &mousePos.second);
-    glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
+    m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
-        double xpos, ypos;
-        glfwGetCursorPos(m_window->getHandle(), &xpos, &ypos);
-        std::pair<double, double> deltaMousePos;
-        deltaMousePos.first = mousePos.first - xpos;
-        deltaMousePos.second = mousePos.second - ypos;
-        mousePos.first = xpos;
-        mousePos.second = ypos;
-
         m_window->pollEvents();
 
-        float pitch = (float)deltaMousePos.second * mainCamera->getSensitivity() * deltaTime;
-        float yaw = (float)deltaMousePos.first * mainCamera->getSensitivity() * deltaTime;
-        Transform cameraTransform = mainCamera->getTransform();
-
-        cameraTransform.rotation =
-            glm::quat(glm::vec3(-pitch, 0.f, 0.f)) * cameraTransform.rotation * glm::quat(glm::vec3(0.f, -yaw, 0.f));
-
-        float xaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_A) == GLFW_PRESS) -
-                           (glfwGetKey(m_window->getHandle(), GLFW_KEY_D) == GLFW_PRESS);
-        float zaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_W) == GLFW_PRESS) -
-                           (glfwGetKey(m_window->getHandle(), GLFW_KEY_S) == GLFW_PRESS);
-        float yaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_Q) == GLFW_PRESS) -
-                           (glfwGetKey(m_window->getHandle(), GLFW_KEY_E) == GLFW_PRESS);
-        glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * glm::mat3_cast(cameraTransform.rotation);
-        if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
-            dir = glm::normalize(dir);
-        cameraTransform.position += mainCamera->getSpeed() * dir * deltaTime;
-
-        mainCamera->setTransform(cameraTransform);
+        m_scene->updateSimulation(deltaTime);
 
         uint32_t imageIndex = m_renderer->acquireNextSwapChainImage();
 

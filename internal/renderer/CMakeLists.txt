@@ -23,6 +23,7 @@ target_sources(${component}
     texture.cpp
 
     scene.hpp
+    scene.cpp
 
     light.hpp
     light.cpp
@@ -34,6 +35,7 @@ target_link_libraries(${component}
     PUBLIC graphics
     PUBLIC assimp::assimp
     PUBLIC stb
+    PUBLIC engine
 )
 
 
