@@ -95,5 +95,6 @@ class BufferDirector
     void createStagingBufferBuilder(BufferBuilder &builder);
     void createVertexBufferBuilder(BufferBuilder &builder);
     void createIndexBufferBuilder(BufferBuilder &builder);
-    void createUniformBufferBuilder(BufferBuilder &builder);
+    void createUniformBufferBuilder(BufferBuilder& builder);
+    void createStorageBufferBuilder(BufferBuilder &builder);
 };

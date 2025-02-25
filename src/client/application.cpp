@@ -88,7 +88,7 @@ void Application::runLoop()
         mrsb.setFrameInFlightCount(m_window->getSwapChain()->getFrameInFlightCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.setDevice(mainDevice);
         mrsb.setTexture(objects[i]->getTexture());
         mrsb.setMesh(objects[i]);
@@ -117,7 +117,7 @@ void Application::runLoop()
         });
         udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 2,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
@@ -129,7 +129,6 @@ void Application::runLoop()
     }
 
     auto& lights = m_scene->getLights();
-    PointLight* light = static_cast<PointLight*>(lights[0].get());
 
     Camera camera;
 
@@ -174,7 +173,7 @@ void Application::runLoop()
 
         uint32_t imageIndex = m_renderer->acquireBackBuffer();
 
-        m_renderer->recordRenderers(imageIndex, camera, *light);
+        m_renderer->recordRenderers(imageIndex, camera, lights);
 
         m_renderer->submitBackBuffer();
         m_renderer->presentBackBuffer(imageIndex);

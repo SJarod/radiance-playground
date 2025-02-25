@@ -9,16 +9,6 @@ layout(location = 0) out vec4 oColor;
 
 layout(binding = 1) uniform sampler2D texSampler;
 
-struct PointLight
-{
-	vec3 diffuseColor;
-	float diffusePower;
-	vec3 specularColor;
-	float specularPower;
-	vec3 position;
-	float temp;
-};
-
 struct LightingResult
 {
 	vec3 ambient;
@@ -26,12 +16,21 @@ struct LightingResult
     vec3 specular;
 };
 
-#define MAX_NUM_TOTAL_LIGHTS 2
-layout(binding = 2) uniform LightArrayUniformBufferObject
+struct PointLight
 {
-	PointLight[MAX_NUM_TOTAL_LIGHTS] pointLights;
+	vec3 diffuseColor;
+	float diffusePower;
+	vec3 specularColor;
+	float specularPower;
+	vec3 position;
+	float pad0[1];
+};
+
+layout(std430, binding = 2) readonly buffer PointLightsData
+{
 	int pointLightCount;
-} lights;
+	PointLight pointLights[];
+};
 
 void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 normal)
 {
@@ -48,9 +47,9 @@ void main()
 
 	LightingResult fragLighting;
 
-	for (int lightIdx = 0; lightIdx < lights.pointLightCount; lightIdx++)
+	for (int i = 0; i < pointLightCount; i++)
 	{
-		applySinglePointLight(fragLighting, lights.pointLights[lightIdx], normal);
+		applySinglePointLight(fragLighting, pointLights[i], normal);
 	}
 
 	oColor = texture(texSampler, fragUV);

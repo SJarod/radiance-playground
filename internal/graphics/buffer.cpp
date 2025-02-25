@@ -99,3 +99,9 @@ void BufferDirector::createUniformBufferBuilder(BufferBuilder &builder)
     builder.setUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
+
+void BufferDirector::createStorageBufferBuilder(BufferBuilder& builder)
+{
+    builder.setUsage(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+}

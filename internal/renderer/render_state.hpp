@@ -11,31 +11,30 @@ class Buffer;
 class Camera;
 class PointLight;
 class Mesh;
+class Light;
 class MeshRenderStateBuilder;
 
 class RenderStateABC
 {
   protected:
-    struct LightBufferInfo
+    struct PointLightContainer
     {
-        public:
-            struct PointLight
-            {
-                glm::vec3 diffuseColor;
-		        float diffusePower;
-		        glm::vec3 specularColor;
-		        float specularPower;
-		        glm::vec3 position;
-                float pad0;
-            };
+        struct PointLight
+        {
+            glm::vec3 diffuseColor;
+            float diffusePower;
+            glm::vec3 specularColor;
+            float specularPower;
+            glm::vec3 position;
+            float pad0[1];
+        };
 
-            PointLight pointLights[1];
-            int pointLightCount;
+        int pointLightCount;
+        alignas(16) PointLight pointLights[2];
     };
 
-    class MVP
+    struct MVP
     {
-      public:
         glm::mat4 model;
         glm::mat4 view;
         glm::mat4 proj;
@@ -49,8 +48,8 @@ class RenderStateABC
     std::vector<VkDescriptorSet> m_descriptorSets;
     std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
     std::vector<void *> m_mvpUniformBuffersMapped;
-    std::vector<std::unique_ptr<Buffer>> m_lightUniformBuffers;
-    std::vector<void *> m_lightUniformBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_lightStorageBuffers;
+    std::vector<void *> m_lightStorageBuffersMapped;
 
 
     RenderStateABC() = default;
@@ -58,7 +57,7 @@ class RenderStateABC
   public:
     virtual ~RenderStateABC();
 
-    virtual void updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight);
+    virtual void updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights);
 
     virtual void recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex);
     virtual void recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer) = 0;

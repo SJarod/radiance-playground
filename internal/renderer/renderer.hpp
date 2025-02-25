@@ -8,6 +8,7 @@ class Device;
 class SwapChain;
 class Pipeline;
 class Mesh;
+class Light;
 class Texture;
 class Buffer;
 class Camera;
@@ -55,7 +56,7 @@ class Renderer
 
     uint32_t acquireBackBuffer();
 
-    void recordRenderers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight);
+    void recordRenderers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights);
 
     void submitBackBuffer();
     void presentBackBuffer(uint32_t imageIndex);

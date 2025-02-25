@@ -10,6 +10,8 @@
 class Light
 {
 	public:
+		virtual ~Light() = default;
+
 		glm::vec3 diffuseColor;
 		float diffusePower;
 		glm::vec3 specularColor;

@@ -60,7 +60,7 @@ uint32_t Renderer::acquireBackBuffer()
     return imageIndex;
 }
 
-void Renderer::recordRenderers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight)
+void Renderer::recordRenderers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
     VkCommandBuffer &commandBuffer = m_backBuffers[m_backBufferIndex].commandBuffer;
 
@@ -101,7 +101,7 @@ void Renderer::recordRenderers(uint32_t imageIndex, const Camera &camera, const 
 
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
-        m_renderStates[i]->updateUniformBuffers(imageIndex, camera, pointLight);
+        m_renderStates[i]->updateUniformBuffers(imageIndex, camera, lights);
 
         m_renderStates[i]->getPipeline()->recordBind(commandBuffer, imageIndex);
 

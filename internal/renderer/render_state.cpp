@@ -23,31 +23,36 @@ RenderStateABC::~RenderStateABC()
     m_pipeline.reset();
 }
 
-void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const PointLight &pointLight)
+void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const Camera &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
-    MVP mvpData = {
-        .model = glm::identity<glm::mat4>(),
-        .view = camera.getViewMatrix(),
-        .proj = camera.getProjectionMatrix(),
-    };
+    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+    mvpData->proj = camera.getProjectionMatrix();
+    mvpData->model = glm::identity<glm::mat4>();
+    mvpData->view = camera.getViewMatrix();
 
-    memcpy(m_mvpUniformBuffersMapped[imageIndex], &mvpData, sizeof(mvpData));
+    PointLightContainer* lightData = static_cast<PointLightContainer*>(m_lightStorageBuffersMapped[imageIndex]);
 
-    LightBufferInfo lightData = {
-        .pointLights =
+    int pointLightCount = 0;
+    int directionalLightCount = 0;
+    for (int i = 0; i < lights.size(); i++)
+    {
+        const Light* light = lights[i].get();
+        if (const PointLight* pointLight = dynamic_cast<const PointLight*>(light))
         {
-            LightBufferInfo::PointLight {
-                .diffuseColor = pointLight.diffuseColor,
-		        .diffusePower = pointLight.diffusePower,
-		        .specularColor = pointLight.specularColor,
-		        .specularPower = pointLight.specularPower,
-                .position = pointLight.position,
-            }
-        },
-        .pointLightCount = 1,
-    };
+            PointLightContainer::PointLight pointLightData{
+                .diffuseColor = pointLight->diffuseColor,
+                .diffusePower = pointLight->diffusePower,
+                .specularColor = pointLight->specularColor,
+                .specularPower = pointLight->specularPower,
+                .position = pointLight->position,
+            };
 
-    memcpy(m_lightUniformBuffersMapped[imageIndex], &lightData, sizeof(lightData));
+            lightData->pointLights[pointLightCount] = pointLightData;
+            pointLightCount++;
+        }
+    }
+
+    lightData->pointLightCount = pointLightCount;
 }
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex)
@@ -122,19 +127,19 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
                     &m_product->m_mvpUniformBuffersMapped[i]);
     }
 
-    m_product->m_lightUniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_lightUniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_lightUniformBuffers.size(); ++i)
+    m_product->m_lightStorageBuffers.resize(m_frameInFlightCount);
+    m_product->m_lightStorageBuffersMapped.resize(m_frameInFlightCount);
+    for (int i = 0; i < m_product->m_lightStorageBuffers.size(); ++i)
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::LightBufferInfo));
+        bd.createStorageBufferBuilder(bb);
+        bb.setSize(sizeof(RenderStateABC::PointLightContainer));
         bb.setDevice(m_device);
-        m_product->m_lightUniformBuffers[i] = bb.build();
+        m_product->m_lightStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_lightUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::LightBufferInfo), 0,
-                    &m_product->m_lightUniformBuffersMapped[i]);
+        vkMapMemory(deviceHandle, m_product->m_lightStorageBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::PointLightContainer), 0,
+                    &m_product->m_lightStorageBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_descriptorSets.size(); ++i)
@@ -176,9 +181,9 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
         });
 
         VkDescriptorBufferInfo lightBufferInfo = {
-            .buffer = m_product->m_lightUniformBuffers[i]->getHandle(),
+            .buffer = m_product->m_lightStorageBuffers[i]->getHandle(),
             .offset = 0,
-            .range = sizeof(RenderStateABC::LightBufferInfo),
+            .range = sizeof(RenderStateABC::PointLightContainer),
         };
 
         udb.addSetWrites(VkWriteDescriptorSet{
@@ -187,7 +192,7 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
             .dstBinding = 2,
             .dstArrayElement = 0,
             .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .pBufferInfo = &lightBufferInfo,
         });
 
