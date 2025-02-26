@@ -14,6 +14,6 @@ layout(binding = 0) uniform MVPUniformBufferObject
 void main()
 {
     texCoords = aPos;
-	vec4 pos = mvp.proj * mvp.view * vec4(aPos, 1.0);
+	vec4 pos = mvp.proj * mat4(mat3(mvp.view)) * vec4(aPos, 1.0);
     gl_Position = pos.xyww;
 }  

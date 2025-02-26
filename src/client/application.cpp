@@ -178,6 +178,8 @@ void Application::runLoop()
         });
 
     PipelineBuilder skyboxPb;
+    PipelineDirector skyboxPd;
+    skyboxPd.createColorDepthRasterizerBuilder(skyboxPb);
     skyboxPb.setDevice(mainDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
@@ -185,8 +187,6 @@ void Application::runLoop()
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
-    PipelineDirector skyboxPd;
-    skyboxPd.createColorDepthRasterizerBuilder(skyboxPb);
     skyboxPb.setUniformDescriptorPack(skyboxUdb.build());
 
     std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
