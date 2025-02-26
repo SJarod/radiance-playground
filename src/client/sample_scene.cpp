@@ -3,6 +3,7 @@
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
 #include "renderer/texture.hpp"
+#include "renderer/skybox.hpp"
 
 #include "engine/camera.hpp"
 
@@ -13,6 +14,23 @@ SampleScene::SampleScene(std::weak_ptr<Device> device)
     m_cameras.emplace_back(std::make_unique<PerspectiveCamera>());
     m_mainCamera = m_cameras[m_cameras.size() - 1].get();
 
+    TextureDirector td;
+
+    CubemapBuilder ctb;
+    td.createSRGBTextureBuilder(ctb);
+    ctb.setDevice(device);
+    ctb.setRightTextureFilename("assets/skybox/right.jpg");
+    ctb.setLeftTextureFilename("assets/skybox/left.jpg");
+    ctb.setTopTextureFilename("assets/skybox/top.jpg");
+    ctb.setBottomTextureFilename("assets/skybox/bottom.jpg");
+    ctb.setFrontTextureFilename("assets/skybox/front.jpg");
+    ctb.setBackTextureFilename("assets/skybox/back.jpg");
+
+    SkyboxBuilder mainSb;
+    mainSb.setDevice(device);
+    mainSb.setCubemap(ctb.build());
+    m_skybox = mainSb.build();
+
     MeshBuilder mb;
     MeshDirector md;
     md.createAssimpMeshBuilder(mb);
@@ -21,7 +39,6 @@ SampleScene::SampleScene(std::weak_ptr<Device> device)
     std::shared_ptr<Mesh> mesh = mb.build();
 
     TextureBuilder tb;
-    TextureDirector td;
     td.createSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setTextureFilename("assets/viking_room.png");

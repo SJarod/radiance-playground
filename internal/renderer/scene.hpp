@@ -6,6 +6,7 @@
 class Mesh;
 class CameraABC;
 class Light;
+class Skybox;
 
 class SceneABC
 {
@@ -15,6 +16,7 @@ class SceneABC
 
     std::vector<std::shared_ptr<Mesh>> m_objects;
     std::vector<std::shared_ptr<Light>> m_lights;
+    std::shared_ptr<Skybox> m_skybox;
 
   public:
     SceneABC() = default;
@@ -40,4 +42,9 @@ class SceneABC
     {
         return m_mainCamera;
 	}
+
+    [[nodiscard]] const std::shared_ptr<Skybox> getSkybox() const
+    {
+        return m_skybox;
+    }
 };

@@ -18,6 +18,8 @@ set(SHADER_SOURCES
 	shaders/unlit.frag
 	shaders/phong.vert
 	shaders/phong.frag
+	shaders/skybox.vert
+	shaders/skybox.frag
 )
 
 set(RUNTIME_OUTPUT_DIR $<TARGET_FILE_DIR:${component}>)

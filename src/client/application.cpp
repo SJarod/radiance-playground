@@ -8,6 +8,7 @@
 
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
+#include "renderer/skybox.hpp"
 #include "renderer/render_state.hpp"
 #include "renderer/renderer.hpp"
 #include "renderer/texture.hpp"
@@ -57,15 +58,35 @@ Application::Application()
 
     m_window->setSwapChain(std::move(std::make_unique<SwapChain>(mainDevice)));
 
-    RendererBuilder rb;
-    rb.setDevice(mainDevice);
-    rb.setSwapChain(m_window->getSwapChain());
-    m_renderer = rb.build();
+    RenderPassBuilder phongRpb;
+    phongRpb.setDevice(mainDevice);
+    phongRpb.setSwapChain(m_window->getSwapChain());
+    phongRpb.addColorAttachment(m_window->getSwapChain()->getImageFormat());
+    phongRpb.addDepthAttachment(m_window->getSwapChain()->getDepthImageFormat());
+
+    RendererBuilder phongRb;
+    phongRb.setDevice(mainDevice);
+    phongRb.setRenderpass(phongRpb.build());
+    phongRb.setSwapChain(m_window->getSwapChain());
+    m_phongRenderer = phongRb.build();
+
+    RenderPassBuilder skyboxRpb;
+    skyboxRpb.setDevice(mainDevice);
+    skyboxRpb.setSwapChain(m_window->getSwapChain());
+    skyboxRpb.addColorAttachment(m_window->getSwapChain()->getImageFormat());
+    skyboxRpb.addDepthAttachment(m_window->getSwapChain()->getDepthImageFormat());
+
+    RendererBuilder skyboxRb;
+    skyboxRb.setDevice(mainDevice);
+    skyboxRb.setRenderpass(skyboxRpb.build());
+    skyboxRb.setSwapChain(m_window->getSwapChain());
+    m_skyboxRenderer = skyboxRb.build();
 }
 
 Application::~Application()
 {
-    m_renderer.reset();
+    m_phongRenderer.reset();
+    m_skyboxRenderer.reset();
     m_scene.reset();
 
     m_window.reset();
@@ -82,6 +103,46 @@ void Application::runLoop()
 
     m_window->makeContextCurrent();
 
+    // material
+    UniformDescriptorBuilder phongUdb;
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder phongPb;
+    phongPb.setDevice(mainDevice);
+    phongPb.addVertexShaderStage("phong");
+    phongPb.addFragmentShaderStage("phong");
+    phongPb.setRenderPass(m_phongRenderer->getRenderPass());
+    phongPb.setExtent(m_window->getSwapChain()->getExtent());
+
+    PipelineDirector phongPd;
+    phongPd.createColorDepthRasterizerBuilder(phongPb);
+    phongPb.setUniformDescriptorPack(phongUdb.build());
+
+    std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
+
     m_scene = std::make_unique<SampleScene>(mainDevice);
     auto objects = m_scene->getObjects();
     for (int i = 0; i < objects.size(); ++i)
@@ -91,49 +152,58 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.setDevice(mainDevice);
         mrsb.setTexture(objects[i]->getTexture());
         mrsb.setMesh(objects[i]);
 
-        // material
-        PipelineBuilder pb;
-        PipelineDirector pd;
-        pd.createColorDepthRasterizerBuilder(pb);
-        pb.setDevice(mainDevice);
-        pb.addVertexShaderStage("phong");
-        pb.addFragmentShaderStage("phong");
-        pb.setRenderPass(m_renderer->getRenderPass());
-        pb.setExtent(m_window->getSwapChain()->getExtent());
-        UniformDescriptorBuilder udb;
-        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
-        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 2,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 3,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        pb.setUniformDescriptorPack(udb.build());
+        mrsb.setPipeline(phongPipeline);
 
-        mrsb.setPipeline(pb.build());
+        m_phongRenderer->registerRenderState(mrsb.build());
+    }
 
-        m_renderer->registerRenderState(mrsb.build());
+    // skybox
+    UniformDescriptorBuilder skyboxUdb;
+    skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder skyboxPb;
+    skyboxPb.setDevice(mainDevice);
+    skyboxPb.addVertexShaderStage("skybox");
+    skyboxPb.addFragmentShaderStage("skybox");
+    skyboxPb.setRenderPass(m_skyboxRenderer->getRenderPass());
+    skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
+    skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
+
+    PipelineDirector skyboxPd;
+    skyboxPd.createColorDepthRasterizerBuilder(skyboxPb);
+    skyboxPb.setUniformDescriptorPack(skyboxUdb.build());
+
+    std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
+
+    if (std::shared_ptr<Skybox> skybox = m_scene->getSkybox())
+    {
+        SkyboxRenderStateBuilder srsb;
+        srsb.setFrameInFlightCount(m_window->getSwapChain()->getFrameInFlightCount());
+        srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        srsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        srsb.setDevice(mainDevice);
+        srsb.setSkybox(skybox);
+        srsb.setTexture(skybox->getTexture());
+
+        srsb.setPipeline(skyboxPipeline);
+
+        m_skyboxRenderer->registerRenderState(srsb.build());
     }
 
     auto& lights = m_scene->getLights();
@@ -179,14 +249,23 @@ void Application::runLoop()
 
         mainCamera->setTransform(cameraTransform);
 
-        uint32_t imageIndex = m_renderer->acquireBackBuffer();
+        uint32_t phongImageIndex = m_phongRenderer->acquireBackBuffer();
+        
+        m_phongRenderer->recordRenderers(phongImageIndex, *mainCamera, lights);
+        
+        m_phongRenderer->submitBackBuffer();
+        m_phongRenderer->presentBackBuffer(phongImageIndex);
+        
+        m_phongRenderer->swapBuffers();
 
-        m_renderer->recordRenderers(imageIndex, *mainCamera, lights);
+        uint32_t skyboxImageIndex = m_skyboxRenderer->acquireBackBuffer();
 
-        m_renderer->submitBackBuffer();
-        m_renderer->presentBackBuffer(imageIndex);
+        m_skyboxRenderer->recordRenderers(skyboxImageIndex, *mainCamera, lights);
 
-        m_renderer->swapBuffers();
+        m_skyboxRenderer->submitBackBuffer();
+        m_skyboxRenderer->presentBackBuffer(skyboxImageIndex);
+
+        m_skyboxRenderer->swapBuffers();
 
         m_window->swapBuffers();
     }

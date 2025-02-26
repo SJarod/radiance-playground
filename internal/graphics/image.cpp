@@ -27,7 +27,7 @@ void Image::transitionImageLayout(ImageLayoutTransition transition)
     devicePtr->cmdEndOneTimeSubmit(commandBuffer);
 }
 
-void Image::copyBufferToImage(VkBuffer buffer)
+void Image::copyBufferToImage2D(VkBuffer buffer)
 {
     auto devicePtr = m_device.lock();
     VkCommandBuffer commandBuffer = devicePtr->cmdBeginOneTimeSubmit();
@@ -62,7 +62,42 @@ void Image::copyBufferToImage(VkBuffer buffer)
     devicePtr->cmdEndOneTimeSubmit(commandBuffer);
 }
 
-VkImageView Image::createImageView()
+void Image::copyBufferToImageCube(VkBuffer buffer)
+{
+    auto devicePtr = m_device.lock();
+    VkCommandBuffer commandBuffer = devicePtr->cmdBeginOneTimeSubmit();
+
+    VkBufferImageCopy region = {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = m_aspectFlags,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 6,
+            },
+        .imageOffset =
+            {
+                .x = 0,
+                .y = 0,
+                .z = 0,
+            },
+        .imageExtent =
+            {
+                .width = m_width,
+                .height = m_height,
+                .depth = 1,
+            },
+    };
+
+    vkCmdCopyBufferToImage(commandBuffer, buffer, m_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    devicePtr->cmdEndOneTimeSubmit(commandBuffer);
+}
+
+VkImageView Image::createImageView2D()
 {
     auto deviceHandle = m_device.lock()->getHandle();
 
@@ -91,7 +126,41 @@ VkImageView Image::createImageView()
     VkImageView imageView;
     VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &imageView);
     if (res != VK_SUCCESS)
-        std::cerr << "Failed to create image view : " << res << std::endl;
+        std::cerr << "Failed to create 2D image view : " << res << std::endl;
+
+    return imageView;
+}
+
+VkImageView Image::createImageViewCube()
+{
+    auto deviceHandle = m_device.lock()->getHandle();
+
+    VkImageViewCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = m_handle,
+        .viewType = VK_IMAGE_VIEW_TYPE_CUBE,
+        .format = m_format,
+        .components =
+            {
+                .r = VK_COMPONENT_SWIZZLE_R,
+                .g = VK_COMPONENT_SWIZZLE_G,
+                .b = VK_COMPONENT_SWIZZLE_B,
+                .a = VK_COMPONENT_SWIZZLE_A,
+            },
+        .subresourceRange =
+            {
+                .aspectMask = m_aspectFlags,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 6,
+            },
+    };
+
+    VkImageView imageView;
+    VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &imageView);
+    if (res != VK_SUCCESS)
+        std::cerr << "Failed to create 3D image view : " << res << std::endl;
 
     return imageView;
 }
@@ -105,7 +174,7 @@ std::unique_ptr<Image> ImageBuilder::build()
 
     VkImageCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .flags = 0,
+        .flags = m_flags,
         .imageType = m_imageType,
         .format = m_product->m_format,
         .extent =
@@ -154,10 +223,23 @@ std::unique_ptr<Image> ImageBuilder::build()
 
 void ImageDirector::createImage2DBuilder(ImageBuilder &builder)
 {
+    builder.setFlags(0);
     builder.setImageType(VK_IMAGE_TYPE_2D);
     builder.setDepth(1U);
     builder.setMipLevels(1U);
     builder.setArrayLayers(1U);
+    builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
+    builder.setSharingMode(VK_SHARING_MODE_EXCLUSIVE);
+    builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
+}
+
+void ImageDirector::createImageBuilderCube(ImageBuilder &builder)
+{
+    builder.setFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+    builder.setImageType(VK_IMAGE_TYPE_2D);
+    builder.setDepth(1U);
+    builder.setMipLevels(1U);
+    builder.setArrayLayers(6U);
     builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
     builder.setSharingMode(VK_SHARING_MODE_EXCLUSIVE);
     builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
@@ -176,6 +258,14 @@ void ImageDirector::createDepthImage2DBuilder(ImageBuilder &builder)
 void ImageDirector::createSampledImage2DBuilder(ImageBuilder &builder)
 {
     createImage2DBuilder(builder);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+void ImageDirector::createSampledImage3DBuilder(ImageBuilder &builder)
+{
+    createImageBuilderCube(builder);
     builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);

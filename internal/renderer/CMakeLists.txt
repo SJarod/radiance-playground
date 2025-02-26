@@ -20,7 +20,9 @@ target_sources(${component}
 
     light.hpp
     light.cpp
-)
+    
+    skybox.hpp
+    skybox.cpp)
 
 target_link_libraries(${component}
     PUBLIC graphics

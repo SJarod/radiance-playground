@@ -19,7 +19,8 @@ class Application
     std::shared_ptr<Context> m_context;
     std::vector<std::shared_ptr<Device>> m_devices;
 
-    std::shared_ptr<Renderer> m_renderer;
+    std::shared_ptr<Renderer> m_phongRenderer;
+    std::shared_ptr<Renderer> m_skyboxRenderer;
 
     std::unique_ptr<SceneABC> m_scene;
 

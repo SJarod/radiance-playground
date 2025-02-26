@@ -5,6 +5,7 @@
 #include "graphics/render_pass.hpp"
 
 class Device;
+class RenderPass;
 class SwapChain;
 class Pipeline;
 class Mesh;
@@ -94,6 +95,10 @@ class RendererBuilder
     {
         m_device = device;
         m_product->m_device = device;
+    }
+    void setRenderpass(std::unique_ptr<RenderPass> renderPass)
+    {
+        m_product->m_renderPass = std::move(renderPass);
     }
     void setSwapChain(const SwapChain *swapchain)
     {

@@ -126,7 +126,7 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
     iltb.setImage(*m_depthImage);
     m_depthImage->transitionImageLayout(*iltb.build());
 
-    m_depthImageView = m_depthImage->createImageView();
+    m_depthImageView = m_depthImage->createImageView2D();
 }
 
 SwapChain::~SwapChain()

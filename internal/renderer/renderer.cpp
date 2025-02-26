@@ -164,18 +164,12 @@ void Renderer::swapBuffers()
 
 std::unique_ptr<Renderer> RendererBuilder::build()
 {
+    assert(m_product->m_renderPass);
     assert(m_device.lock());
     assert(m_swapchain);
 
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
-
-    RenderPassBuilder rpb;
-    rpb.setDevice(m_device);
-    rpb.setSwapChain(m_swapchain);
-    rpb.addColorAttachment(m_swapchain->getImageFormat());
-    rpb.addDepthAttachment(m_swapchain->getDepthImageFormat());
-    m_product->m_renderPass = rpb.build();
 
     // back buffers
 

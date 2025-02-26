@@ -36,7 +36,6 @@ class Image
     uint32_t m_depth;
 
     VkImageAspectFlags m_aspectFlags;
-
     VkImage m_handle;
     VkDeviceMemory m_memory;
 
@@ -51,9 +50,11 @@ class Image
     Image &operator=(Image &&) = delete;
 
     void transitionImageLayout(ImageLayoutTransition transition);
-    void copyBufferToImage(VkBuffer buffer);
+    void copyBufferToImage2D(VkBuffer buffer);
+    void copyBufferToImageCube(VkBuffer buffer);
 
-    VkImageView createImageView();
+    VkImageView createImageView2D();
+    VkImageView createImageViewCube();
 
   public:
     [[nodiscard]] VkImageAspectFlags getAspectFlags() const
@@ -79,6 +80,7 @@ class ImageBuilder
 
     std::weak_ptr<Device> m_device;
 
+    VkImageCreateFlags m_flags;
     VkImageType m_imageType;
 
     VkImageTiling m_tiling;
@@ -107,6 +109,10 @@ class ImageBuilder
     {
         m_device = a;
         m_product->m_device = a;
+    }
+    void setFlags(VkImageCreateFlags a)
+    {
+        m_flags = a;
     }
     void setImageType(VkImageType a)
     {
@@ -171,14 +177,18 @@ class ImageDirector
 {
   public:
     void createImage2DBuilder(ImageBuilder &builder);
+    void createImageBuilderCube(ImageBuilder &builder);
     void createDepthImage2DBuilder(ImageBuilder &builder);
     void createSampledImage2DBuilder(ImageBuilder &builder);
+    void createSampledImage3DBuilder(ImageBuilder &builder);
 };
 
 class ImageLayoutTransitionBuilder
 {
   private:
     std::unique_ptr<ImageLayoutTransition> m_product;
+
+    uint32_t m_layerCount;
 
     void restart();
 
