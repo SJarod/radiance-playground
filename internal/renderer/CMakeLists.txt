@@ -35,6 +35,7 @@ target_link_libraries(${component}
     PUBLIC graphics
     PUBLIC assimp::assimp
     PUBLIC stb
+    PUBLIC imgui
     PUBLIC engine
 )
 

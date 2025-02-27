@@ -1,4 +1,5 @@
 #include <assimp/Importer.hpp>
+#include <memory>
 
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -35,6 +36,7 @@ Application::Application()
 
     m_window = std::make_unique<WindowGLFW>();
 
+    glfwSetKeyCallback(m_window->getHandle(), InputManager::KeyCallback);
     ContextBuilder cb;
     cb.addLayer("VK_LAYER_KHRONOS_validation");
     cb.addLayer("VK_LAYER_LUNARG_monitor");
@@ -125,12 +127,16 @@ Application::Application()
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
-
-    initImgui();
 }
 
 Application::~Application()
-{
+{   
+    vkDeviceWaitIdle(m_devices[0]->getHandle());
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     m_renderer.reset();
     m_scene.reset();
 
@@ -148,17 +154,9 @@ void Application::initImgui()
 
     ImGuiRenderStateBuilder imguirsb;
 
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER);
+    imguirsb.setDevice(m_devices[0]);
+
     imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
-    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
 
     ImGui::CreateContext();
     if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true)) 
@@ -167,21 +165,26 @@ void Application::initImgui()
         throw;
     }
 
+    std::shared_ptr<RenderStateABC> render_state = imguirsb.build();
+    //m_renderer->registerRenderState(render_state);
+
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = m_context->getInstanceHandle();
     init_info.PhysicalDevice = m_devices[0]->getPhysicalHandle();
     init_info.Device = deviceHandle;
     init_info.Queue = m_devices[0]->getGraphicsQueue();
-    init_info.DescriptorPool = imguiPool;
+    init_info.DescriptorPool = render_state->getDescriptorPool();
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
+    //init_info.RenderPass = m_renderer->getRenderPass()->getHandle();
 
     if (!ImGui_ImplVulkan_Init(&init_info)) 
     {
         std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
         throw;
     }
+
 }
 
 void Application::runLoop()
@@ -189,6 +192,8 @@ void Application::runLoop()
     std::shared_ptr<Device> mainDevice = m_devices[0];
 
     m_window->makeContextCurrent();
+    
+    bool show_demo_window = true;
 
     m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
 
@@ -233,6 +238,7 @@ void Application::runLoop()
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
     auto objects = m_scene->getObjects();
+
     for (int i = 0; i < objects.size(); ++i)
     {
         MeshRenderStateBuilder mrsb;
@@ -250,7 +256,7 @@ void Application::runLoop()
         m_phongPhase->registerRenderState(mrsb.build());
     }
 
-    initImgui();
+    //initImgui();
     // skybox
     UniformDescriptorBuilder skyboxUdb;
     skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -300,12 +306,30 @@ void Application::runLoop()
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
+    bool isUiFocused = false;
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
+        if (InputManager::GetKeyDown(Keycode::ESCAPE))
+        {
+            isUiFocused = !isUiFocused;
+            
+            int inputModeValue = isUiFocused ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+            glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, inputModeValue);
+        }
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (show_demo_window)
+            ImGui::ShowDemoWindow(&show_demo_window);
+
+       
+        m_inputManager.UpdateInputStates();
         m_window->pollEvents();
 
         m_scene->updateSimulation(deltaTime);

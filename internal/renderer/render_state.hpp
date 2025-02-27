@@ -90,6 +90,10 @@ class RenderStateABC
     {
         return m_pipeline;
     }
+    [[nodiscard]] VkDescriptorPool getDescriptorPool() const
+    {
+        return m_descriptorPool;
+    }
 };
 
 class RenderStateBuilderI
@@ -168,11 +172,8 @@ class ImGuiRenderState : public RenderStateABC
 {
     friend ImGuiRenderStateBuilder;
 
-private:
-    std::weak_ptr<Mesh> m_mesh;
-
 public:
-    void recordBackBufferDrawObjectCommands(VkCommandBuffer& commandBuffer) override {}
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
 };
 
 class ImGuiRenderStateBuilder : public RenderStateBuilderI
@@ -213,6 +214,8 @@ public:
     void setTexture(std::weak_ptr<Texture> texture) override {}
 
     std::unique_ptr<RenderStateABC> build() override;
+};
+
 class SkyboxRenderState : public RenderStateABC
 {
     friend SkyboxRenderStateBuilder;

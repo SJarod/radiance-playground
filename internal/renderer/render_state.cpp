@@ -1,6 +1,10 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_vulkan.h"
+
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
 #include "graphics/buffer.hpp"
@@ -26,6 +30,9 @@ RenderStateABC::~RenderStateABC()
 
 void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
+    //if (m_uniformBuffersMapped.size() == 0)
+    //    return;
+
     MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->proj = camera.getProjectionMatrix();
     mvpData->model = glm::identity<glm::mat4>();
@@ -76,6 +83,9 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex)
 {
+    if (m_descriptorSets.size() == 0)
+        return;
+
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0, 1,
                             &m_descriptorSets[imageIndex], 0, nullptr);
 }
@@ -273,90 +283,17 @@ std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = 1000,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets = 1,
         .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
         .pPoolSizes = m_poolSizes.data(),
     };
+
     VkResult res = vkCreateDescriptorPool(deviceHandle, &createInfo, nullptr, &m_product->m_descriptorPool);
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to create descriptor pool : " << res << std::endl;
         return nullptr;
-    }
-
-    // descriptor set
-    std::vector<VkDescriptorSetLayout> setLayouts(m_frameInFlightCount,
-        m_product->m_pipeline->getDescriptorSetLayout());
-    VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = m_product->m_descriptorPool,
-        .descriptorSetCount = m_frameInFlightCount,
-        .pSetLayouts = setLayouts.data(),
-    };
-    m_product->m_descriptorSets.resize(m_frameInFlightCount);
-    res = vkAllocateDescriptorSets(deviceHandle, &descriptorSetAllocInfo, m_product->m_descriptorSets.data());
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to allocate descriptor sets : " << res << std::endl;
-        return nullptr;
-    }
-
-    // uniform buffers
-
-    m_product->m_uniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_uniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_uniformBuffers.size(); ++i)
-    {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
-        bb.setDevice(m_device);
-        m_product->m_uniformBuffers[i] = bb.build();
-
-        vkMapMemory(deviceHandle, m_product->m_uniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-            &m_product->m_uniformBuffersMapped[i]);
-    }
-
-    for (int i = 0; i < m_product->m_descriptorSets.size(); ++i)
-    {
-        VkDescriptorBufferInfo bufferInfo = {
-            .buffer = m_product->m_uniformBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::MVP),
-        };
-        UniformDescriptorBuilder udb;
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &bufferInfo,
-            });
-
-        VkDescriptorImageInfo imageInfo = {
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        if (m_texture.lock())
-        {
-            auto texPtr = m_texture.lock();
-            imageInfo.sampler = texPtr->getSampler();
-            imageInfo.imageView = texPtr->getImageView();
-        }
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 1,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &imageInfo,
-            });
-
-        std::vector<VkWriteDescriptorSet> writes = udb.build()->getSetWrites();
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
     auto result = std::move(m_product);
@@ -371,9 +308,18 @@ void ImGuiRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
-        .descriptorCount = 1000,
+        .descriptorCount = 1,
         });
 }
+
+void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) 
+{
+    ImGui::Render();
+    ImDrawData* draw_data = ImGui::GetDrawData();
+
+    ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+}
+
 void SkyboxRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
@@ -502,3 +448,4 @@ void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }
+

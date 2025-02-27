@@ -16,7 +16,10 @@ target_sources(${component}
     sample_scene_2d.cpp
 
     time_manager.hpp
-)
+	
+	input_manager.hpp
+	input_manager.cpp
+) 
 
 target_link_libraries(${component}
     PUBLIC wsi

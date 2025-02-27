@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "time_manager.hpp"
+#include "input_manager.hpp"
 
 class WindowGLFW;
 class Context;
@@ -27,6 +28,7 @@ class Application
     std::unique_ptr<SceneABC> m_scene;
 
     Time::TimeManager m_timeManager;
+    InputManager m_inputManager;
 
   public:
     Application();
