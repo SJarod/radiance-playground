@@ -107,6 +107,28 @@ package Graphics
             + unique_ptr<Sampler> sampler
         }
 
+        package renderpass << Rectangle >>
+        {
+            class RenderPass #pink ##[bold]red
+            {
+                - vector<unique_ptr<Framebuffer>> m_framebuffer
+            }
+            note bottom : as much framebuffers as there are images in the swapchain\n(number of command buffers, buffering type)
+            interface FramebufferI
+            RenderPass *-- FramebufferI
+            class ImageFramebuffer
+            {
+                - shared_ptr<ImageView> m_imageView
+                - shared_ptr<RenderPass> m_renderPass
+            }
+            note bottom : image view from swap chain or\nwhatever image handling system
+            FramebufferI <|-- ImageFramebuffer
+            ImageFramebuffer *-- ImageView
+            class ImageLessFramebuffer
+            note bottom : VK_KHR_imageless_framebuffer extension
+            FramebufferI <|-- ImageLessFramebuffer
+        }
+
         package pipeline << Rectangle >>
         {
             class Pipeline #pink ##[bold]red
@@ -118,6 +140,8 @@ package Graphics
 
                 + recordBind(CommandBuffer commandBuffer, uint32_t imageIndex)
             }
+            Pipeline o-up- RenderPass
+
             class Shader
             Pipeline *-- Shader
             class PipelineLayout
@@ -146,6 +170,7 @@ package Graphics
         {
             abstract RendererABC #pink ##[bold]red
             {
+                # const SwapChain* m_swapchain
                 # vector<BackBuffer> m_backBuffers
                 # BufferingTypeE m_bufferingType
                 # vector<shared_ptr<RenderStateABC>> m_renderStates
@@ -172,27 +197,7 @@ package Graphics
             }
             note right : with render passes
             RendererABC <|-- LegacyRenderer
-
-            class RenderPass #pink ##[bold]red
-            {
-                - vector<unique_ptr<Framebuffer>> m_framebuffer
-            }
-            note bottom : as much framebuffers as there are images in the swapchain\n(number of command buffers, buffering type)
             LegacyRenderer *-- RenderPass
-            Pipeline o-up- RenderPass
-            interface FramebufferI
-            RenderPass *-- FramebufferI
-            class ImageFramebuffer
-            {
-                - shared_ptr<ImageView> m_imageView
-                - shared_ptr<RenderPass> m_renderPass
-            }
-            note bottom : image view from swap chain or\nwhatever image handling system
-            FramebufferI <|-- ImageFramebuffer
-            ImageFramebuffer *-- ImageView
-            class ImageLessFramebuffer
-            note bottom : VK_KHR_imageless_framebuffer extension
-            FramebufferI <|-- ImageLessFramebuffer
 
             class BackBuffer
             {
@@ -214,6 +219,15 @@ package Graphics
             RendererABC *-- RenderGraph
 
             abstract RenderPhaseABC
+            {
+                - unique_ptr<RenderPass> m_renderPass
+
+                - vector<shared_ptr<RenderStateABC>> m_renderStates
+
+                - int m_backBufferIndex
+                - vector<BackBufferT> m_backBuffers
+            }
+            RenderPhaseABC *-right- RenderPass
             RenderGraph *-- RenderPhaseABC
             class Opaque
             RenderPhaseABC <|-- Opaque
@@ -221,6 +235,10 @@ package Graphics
             RenderPhaseABC <|-- Transparent
             class ShadowMapping
             RenderPhaseABC <|-- ShadowMapping
+            class Skybox
+            RenderPhaseABC <|-- Skybox
+            class UI
+            RenderPhaseABC <|-- UI
         }
 
         package renderstate << Rectangle >>
@@ -240,12 +258,14 @@ package Graphics
                 + void recordDrawObjectCommands()
             }
             note top : updated at the end of the Game Thread simulation
-            RendererABC *-right- RenderStateABC
+            RenderPhaseABC *-- RenderStateABC
             class MeshRenderState << MeshRenderer >>
             {
                 - shared_ptr<Mesh> m_mesh
             }
             RenderStateABC <|-- MeshRenderState
+            class UIRenderState
+            RenderStateABC <|-- UIRenderState
         }
         class Material
         {
