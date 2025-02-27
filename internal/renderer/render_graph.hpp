@@ -16,6 +16,7 @@ class Light;
 class RenderGraph
 {
   private:
+  // TODO : better way to retrieve each phase to register new render states
     std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
 
   public:
