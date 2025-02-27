@@ -243,7 +243,7 @@ void Application::runLoop()
 
         srsb.setPipeline(skyboxPipeline);
 
-        m_phongPhase->registerRenderState(srsb.build());
+        m_skyboxPhase->registerRenderState(srsb.build());
     }
 
     auto &lights = m_scene->getLights();
