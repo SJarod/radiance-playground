@@ -177,7 +177,7 @@ package Graphics
             {
                 - vector<unique_ptr<Framebuffer>> m_framebuffer
             }
-            note bottom : as much framebuffers as there are frames in flight\n(number of command buffers, buffering type)
+            note bottom : as much framebuffers as there are images in the swapchain\n(number of command buffers, buffering type)
             LegacyRenderer *-- RenderPass
             Pipeline o-up- RenderPass
             interface FramebufferI
