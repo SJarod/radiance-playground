@@ -181,7 +181,6 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
-    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
     auto objects = m_scene->getObjects();
     for (int i = 0; i < objects.size(); ++i)
     {

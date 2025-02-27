@@ -40,7 +40,7 @@ void MoveCamera::update(float deltaTime)
                        (glfwGetKey(m_window->getHandle(), GLFW_KEY_S) == GLFW_PRESS);
     float yaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_Q) == GLFW_PRESS) -
                        (glfwGetKey(m_window->getHandle(), GLFW_KEY_E) == GLFW_PRESS);
-    glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * glm::mat3_cast(cameraTransform.rotation);
+    glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * cameraTransform.rotation;
     if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
         dir = glm::normalize(dir);
     cameraTransform.position += m_mainCamera->getSpeed() * dir * deltaTime;
