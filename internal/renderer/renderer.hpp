@@ -30,12 +30,18 @@ class Renderer
 
     Renderer() = default;
 
-    uint32_t acquireNextSwapChainImage();
-    void presentBackBuffer(uint32_t imageIndex);
+    VkResult acquireNextSwapChainImage(uint32_t &nextImageIndex);
+    VkResult presentBackBuffer(uint32_t imageIndex);
 
   public:
-    void renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
-                     const std::vector<std::shared_ptr<Light>> &lights);
+    VkResult renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
+                         const std::vector<std::shared_ptr<Light>> &lights);
+
+  public:
+    void setSwapChain(const SwapChain *swapchain)
+    {
+        m_swapchain = swapchain;
+    }
 };
 
 class RendererBuilder

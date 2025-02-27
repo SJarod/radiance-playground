@@ -2,6 +2,7 @@
 
 #include <window.hpp>
 
+#include "graphics/device.hpp"
 #include "graphics/surface.hpp"
 #include "graphics/swapchain.hpp"
 
@@ -64,4 +65,18 @@ VkResult WindowGLFW::createSurfacePredicate(VkInstance instance, void *windowHan
 {
     VkResult res = glfwCreateWindowSurface(instance, (GLFWwindow *)windowHandle, allocator, surface);
     return res;
+}
+
+void WindowGLFW::recreateSwapChain()
+{
+    vkDeviceWaitIdle(m_swapchain->getDevice().lock()->getHandle());
+
+    SwapChainBuilder scb;
+    scb.setDevice(m_swapchain->getDevice());
+    int width, height;
+    glfwGetWindowSize(m_handle, &width, &height);
+    scb.setWidth(width);
+    scb.setHeight(height);
+    m_swapchain.reset();
+    m_swapchain = scb.build();
 }

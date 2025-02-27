@@ -10,7 +10,7 @@
 
 #include "renderer.hpp"
 
-uint32_t Renderer::acquireNextSwapChainImage()
+VkResult Renderer::acquireNextSwapChainImage(uint32_t &nextImageIndex)
 {
     auto deviceHandle = m_device.lock()->getHandle();
 
@@ -19,19 +19,15 @@ uint32_t Renderer::acquireNextSwapChainImage()
     vkResetFences(deviceHandle, static_cast<uint32_t>(fences.size()), fences.data());
 
     auto acquireSemaphore = m_renderGraph->getFirstPhaseCurrentAcquireSemaphore();
-    uint32_t imageIndex;
     VkResult res = vkAcquireNextImageKHR(deviceHandle, m_swapchain->getHandle(), UINT64_MAX, acquireSemaphore,
-                                         VK_NULL_HANDLE, &imageIndex);
+                                         VK_NULL_HANDLE, &nextImageIndex);
     if (res != VK_SUCCESS)
-    {
         std::cerr << "Failed to acquire next image : " << res << std::endl;
-        return -1;
-    }
 
-    return imageIndex;
+    return res;
 }
 
-void Renderer::presentBackBuffer(uint32_t imageIndex)
+VkResult Renderer::presentBackBuffer(uint32_t imageIndex)
 {
     VkSwapchainKHR swapchains[] = {m_swapchain->getHandle()};
     auto renderSemaphore = m_renderGraph->getLastPhaseCurrentRenderSemaphore();
@@ -49,17 +45,26 @@ void Renderer::presentBackBuffer(uint32_t imageIndex)
     VkResult res = vkQueuePresentKHR(m_device.lock()->getPresentQueue(), &presentInfo);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to present : " << res << std::endl;
+
+    return res;
 }
 
-void Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
-                           const std::vector<std::shared_ptr<Light>> &lights)
+VkResult Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
+                               const std::vector<std::shared_ptr<Light>> &lights)
 {
-    uint32_t imageIndex = acquireNextSwapChainImage();
+    uint32_t imageIndex;
+    VkResult res = acquireNextSwapChainImage(imageIndex);
+    if (res != VK_SUCCESS)
+        return res;
 
     m_renderGraph->processRendering(imageIndex, renderArea, mainCamera, lights);
-    presentBackBuffer(imageIndex);
+    res = presentBackBuffer(imageIndex);
+    if (res != VK_SUCCESS)
+        return res;
 
     m_renderGraph->swapAllRenderPhasesBackBuffers();
+
+    return res;
 }
 
 std::unique_ptr<Renderer> RendererBuilder::build()

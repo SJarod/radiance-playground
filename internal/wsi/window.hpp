@@ -55,6 +55,8 @@ class WindowGLFW : public WindowI
     static VkResult createSurfacePredicate(VkInstance instance, void *windowHandle, VkAllocationCallbacks *allocator,
                                            VkSurfaceKHR *surface);
 
+    void recreateSwapChain();
+
   public:
     [[nodiscard]] inline GLFWwindow *getHandle() const
     {

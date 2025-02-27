@@ -67,9 +67,14 @@ class SwapChain
         return m_extent;
     }
 
-    [[nodiscard]] inline const uint32_t getFrameInFlightCount() const
+    [[nodiscard]] inline const uint32_t getSwapChainImageCount() const
     {
         return m_swapChainImageCount;
+    }
+
+    [[nodiscard]] inline std::weak_ptr<Device> getDevice() const
+    {
+        return m_device;
     }
 };
 

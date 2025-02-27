@@ -188,7 +188,7 @@ void Application::runLoop()
     for (int i = 0; i < objects.size(); ++i)
     {
         MeshRenderStateBuilder mrsb;
-        mrsb.setFrameInFlightCount(m_window->getSwapChain()->getFrameInFlightCount());
+        mrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -234,7 +234,7 @@ void Application::runLoop()
     if (std::shared_ptr<Skybox> skybox = m_scene->getSkybox())
     {
         SkyboxRenderStateBuilder srsb;
-        srsb.setFrameInFlightCount(m_window->getSwapChain()->getFrameInFlightCount());
+        srsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         srsb.setDevice(mainDevice);
@@ -260,12 +260,18 @@ void Application::runLoop()
 
         m_scene->updateSimulation(deltaTime);
 
-        m_renderer->renderFrame(
+        VkResult res = m_renderer->renderFrame(
             VkRect2D{
                 .offset = {0, 0},
                 .extent = m_window->getSwapChain()->getExtent(),
             },
             *mainCamera, lights);
+        if (res == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            // TODO : recreate framebuffers
+            m_window->recreateSwapChain();
+            m_renderer->setSwapChain(m_window->getSwapChain());
+        }
 
         m_window->swapBuffers();
     }
