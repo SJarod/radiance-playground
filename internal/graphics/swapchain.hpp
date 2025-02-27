@@ -5,11 +5,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include "image.hpp"
+
 class Device;
-class Image;
+
+class SwapChainBuilder;
 
 class SwapChain
 {
+    friend SwapChainBuilder;
+
   private:
     std::weak_ptr<Device> m_device;
 
@@ -24,11 +29,11 @@ class SwapChain
     std::unique_ptr<Image> m_depthImage;
     VkImageView m_depthImageView;
 
-    // TODO : rename (swapchain image count)
-    uint32_t m_frameInFlightCount;
+    uint32_t m_swapChainImageCount;
+
+    SwapChain() = default;
 
   public:
-    SwapChain(std::weak_ptr<Device> device);
     ~SwapChain();
 
     SwapChain(const SwapChain &) = delete;
@@ -64,6 +69,38 @@ class SwapChain
 
     [[nodiscard]] inline const uint32_t getFrameInFlightCount() const
     {
-        return m_frameInFlightCount;
+        return m_swapChainImageCount;
     }
+};
+
+class SwapChainBuilder
+{
+  private:
+    std::unique_ptr<SwapChain> m_product;
+
+    void restart()
+    {
+        m_product = std::unique_ptr<SwapChain>(new SwapChain);
+    }
+
+  public:
+    SwapChainBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        m_product->m_device = device;
+    }
+    void setWidth(uint32_t width)
+    {
+        m_product->m_extent.width = width;
+    }
+    void setHeight(uint32_t height)
+    {
+        m_product->m_extent.height = height;
+    }
+
+    std::unique_ptr<SwapChain> build();
 };

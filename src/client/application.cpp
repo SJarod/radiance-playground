@@ -59,7 +59,11 @@ Application::Application()
 
     std::weak_ptr<Device> mainDevice = m_devices[0];
 
-    m_window->setSwapChain(std::move(std::make_unique<SwapChain>(mainDevice)));
+    SwapChainBuilder scb;
+    scb.setDevice(mainDevice);
+    scb.setWidth(1366);
+    scb.setHeight(768);
+    m_window->setSwapChain(scb.build());
 
     RenderPassBuilder phongRpb;
     phongRpb.setDevice(mainDevice);

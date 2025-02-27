@@ -5,9 +5,29 @@
 
 #include "swapchain.hpp"
 
-SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
+SwapChain::~SwapChain()
 {
-    auto devicePtr = m_device.lock();
+    auto deviceHandle = m_device.lock()->getHandle();
+
+    vkDestroyImageView(deviceHandle, m_depthImageView, nullptr);
+    m_depthImage.reset();
+    for (VkImageView &imageView : m_imageViews)
+    {
+        vkDestroyImageView(deviceHandle, imageView, nullptr);
+    }
+    vkDestroySwapchainKHR(deviceHandle, m_handle, nullptr);
+}
+
+const VkFormat SwapChain::getDepthImageFormat() const
+{
+    return m_depthImage->getFormat();
+}
+
+std::unique_ptr<SwapChain> SwapChainBuilder::build()
+{
+    assert(m_product->m_device.lock());
+
+    auto devicePtr = m_product->m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 
     VkPhysicalDevice physicalHandle = devicePtr->getPhysicalHandle();
@@ -28,7 +48,6 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
 
     VkSurfaceFormatKHR surfaceFormat = formats[0];
     VkPresentModeKHR presentMode = presentModes[0];
-    VkExtent2D extent = {1366, 768};
 
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount)
@@ -40,7 +59,7 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,
-        .imageExtent = extent,
+        .imageExtent = m_product->m_extent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .preTransform = capabilities.currentTransform,
@@ -66,30 +85,29 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
         createInfo.pQueueFamilyIndices = nullptr;
     }
 
-    if (vkCreateSwapchainKHR(deviceHandle, &createInfo, nullptr, &m_handle) != VK_SUCCESS)
+    if (vkCreateSwapchainKHR(deviceHandle, &createInfo, nullptr, &m_product->m_handle) != VK_SUCCESS)
         throw std::exception("Failed to create swapchain");
 
-    m_imageFormat = surfaceFormat.format;
-    m_extent = extent;
+    m_product->m_imageFormat = surfaceFormat.format;
 
     // swapchain images
-    vkGetSwapchainImagesKHR(deviceHandle, m_handle, &imageCount, nullptr);
-    m_images.resize(imageCount);
-    vkGetSwapchainImagesKHR(deviceHandle, m_handle, &imageCount, m_images.data());
+    vkGetSwapchainImagesKHR(deviceHandle, m_product->m_handle, &imageCount, nullptr);
+    m_product->m_images.resize(imageCount);
+    vkGetSwapchainImagesKHR(deviceHandle, m_product->m_handle, &imageCount, m_product->m_images.data());
 
-    m_frameInFlightCount = m_images.size();
+    m_product->m_swapChainImageCount = m_product->m_images.size();
 
     // image views
 
-    m_imageViews.resize(imageCount);
+    m_product->m_imageViews.resize(imageCount);
 
     for (size_t i = 0; i < imageCount; ++i)
     {
         VkImageViewCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = m_images[i],
+            .image = m_product->m_images[i],
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = m_imageFormat,
+            .format = m_product->m_imageFormat,
             .components =
                 {
                     .r = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -107,7 +125,7 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
                 },
         };
 
-        VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &m_imageViews[i]);
+        VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &m_product->m_imageViews[i]);
         if (res != VK_SUCCESS)
             std::cerr << "Failed to create an image view : " << res << std::endl;
     }
@@ -115,34 +133,18 @@ SwapChain::SwapChain(std::weak_ptr<Device> device) : m_device(device)
     ImageBuilder ib;
     ImageDirector id;
     id.createDepthImage2DBuilder(ib);
-    ib.setDevice(device);
-    ib.setWidth(extent.width);
-    ib.setHeight(extent.height);
-    m_depthImage = ib.build();
+    ib.setDevice(m_product->m_device);
+    ib.setWidth(m_product->m_extent.width);
+    ib.setHeight(m_product->m_extent.height);
+    m_product->m_depthImage = ib.build();
 
     ImageLayoutTransitionBuilder iltb;
     ImageLayoutTransitionDirector iltd;
     iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(iltb);
-    iltb.setImage(*m_depthImage);
-    m_depthImage->transitionImageLayout(*iltb.build());
+    iltb.setImage(*m_product->m_depthImage);
+    m_product->m_depthImage->transitionImageLayout(*iltb.build());
 
-    m_depthImageView = m_depthImage->createImageView2D();
-}
+    m_product->m_depthImageView = m_product->m_depthImage->createImageView2D();
 
-SwapChain::~SwapChain()
-{
-    auto deviceHandle = m_device.lock()->getHandle();
-
-    vkDestroyImageView(deviceHandle, m_depthImageView, nullptr);
-    m_depthImage.reset();
-    for (VkImageView &imageView : m_imageViews)
-    {
-        vkDestroyImageView(deviceHandle, imageView, nullptr);
-    }
-    vkDestroySwapchainKHR(deviceHandle, m_handle, nullptr);
-}
-
-const VkFormat SwapChain::getDepthImageFormat() const
-{
-    return m_depthImage->getFormat();
+    return std::move(m_product);
 }
