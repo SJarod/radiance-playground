@@ -72,34 +72,8 @@ class RenderPassBuilder
         restart();
     }
 
-    void addColorAttachment(VkAttachmentDescription attachment)
-    {
-        VkAttachmentReference colorAttachmentRef = {
-            .attachment = static_cast<uint32_t>(m_attachments.size()),
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        };
-
-        m_attachments.emplace_back(attachment);
-        m_colorAttachmentReferences.emplace_back(colorAttachmentRef);
-
-        m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        m_subpassDependency.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-    void addDepthAttachment(VkAttachmentDescription attachment)
-    {
-        VkAttachmentReference depthAttachmentRef = {
-            .attachment = static_cast<uint32_t>(m_attachments.size()),
-            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        };
-
-        m_attachments.emplace_back(attachment);
-        m_depthAttachmentReferences.emplace_back(depthAttachmentRef);
-
-        m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-        m_subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    }
+    void addColorAttachment(VkAttachmentDescription attachment);
+    void addDepthAttachment(VkAttachmentDescription attachment);
 
     void setDevice(std::weak_ptr<Device> device)
     {
@@ -179,64 +153,7 @@ class RenderPassAttachmentBuilder
 class RenderPassAttachmentDirector
 {
   public:
-    void configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)
-    {
-        builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
-        builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-        builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
-        builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-        builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
-        builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
-    }
-    void configureAttachmentClearBuilder(RenderPassAttachmentBuilder &builder)
-    {
-        builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
-        builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
-        builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
-        builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-        builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
-        builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
-        // TODO : final layout PRESENT ? or COLOR_ATTACHMENT_OPTIMAL
-    }
-    void configureAttachmentLoadBuilder(RenderPassAttachmentBuilder &builder)
-    {
-        builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
-        builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_LOAD);
-        builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
-        builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
-        builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
-    }
+    void configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder);
+    void configureAttachmentClearBuilder(RenderPassAttachmentBuilder &builder);
+    void configureAttachmentLoadBuilder(RenderPassAttachmentBuilder &builder);
 };
-
-// class RenderPassDirector
-// {
-//   public:
-//     void configureClearAllRenderPassBuilder(RenderPassBuilder &builder)
-//     {
-//         RenderPassAttachmentBuilder rpab;
-
-//         VkAttachmentDescription colorAttachment = {
-//             .format = imageFormat,
-//             .samples = VK_SAMPLE_COUNT_1_BIT,
-//             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-//             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-//             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-//             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-//             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-//             .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-//         };
-//     }
-//     void configureLoadAllRenderPassBuilder(RenderPassBuilder &builder)
-//     {
-//         VkAttachmentDescription depthAttachment = {
-//             .format = depthImageFormat,
-//             .samples = VK_SAMPLE_COUNT_1_BIT,
-//             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-//             .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-//             .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-//             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-//             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-//             .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-//         };
-//     }
-// };

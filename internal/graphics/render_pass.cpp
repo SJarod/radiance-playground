@@ -73,6 +73,61 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
             std::cerr << "Failed to create framebuffer : " << res << std::endl;
     }
 
-    auto result = std::move(m_product);
-    return result;
+    return std::move(m_product);
+}
+
+void RenderPassBuilder::addColorAttachment(VkAttachmentDescription attachment)
+{
+    VkAttachmentReference colorAttachmentRef = {
+        .attachment = static_cast<uint32_t>(m_attachments.size()),
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+
+    m_attachments.emplace_back(attachment);
+    m_colorAttachmentReferences.emplace_back(colorAttachmentRef);
+
+    m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    m_subpassDependency.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+}
+void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
+{
+    VkAttachmentReference depthAttachmentRef = {
+        .attachment = static_cast<uint32_t>(m_attachments.size()),
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
+    m_attachments.emplace_back(attachment);
+    m_depthAttachmentReferences.emplace_back(depthAttachmentRef);
+
+    m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    m_subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+}
+
+void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)
+{
+    builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
+    builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
+    builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
+    builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
+}
+void RenderPassAttachmentDirector::configureAttachmentClearBuilder(RenderPassAttachmentBuilder &builder)
+{
+    builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
+    builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
+    builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
+    builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
+    builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
+}
+void RenderPassAttachmentDirector::configureAttachmentLoadBuilder(RenderPassAttachmentBuilder &builder)
+{
+    builder.setSamples(VK_SAMPLE_COUNT_1_BIT);
+    builder.setLoadOp(VK_ATTACHMENT_LOAD_OP_LOAD);
+    builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
+    builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
 }

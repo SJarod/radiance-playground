@@ -6,6 +6,7 @@
 #include "graphics/swapchain.hpp"
 
 #include "render_graph.hpp"
+#include "render_phase.hpp"
 
 #include "renderer.hpp"
 
@@ -48,4 +49,20 @@ void Renderer::presentBackBuffer(uint32_t imageIndex)
     VkResult res = vkQueuePresentKHR(m_device.lock()->getPresentQueue(), &presentInfo);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to present : " << res << std::endl;
+}
+
+void Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
+                           const std::vector<std::shared_ptr<Light>> &lights)
+{
+    uint32_t imageIndex = acquireNextSwapChainImage();
+
+    m_renderGraph->processRendering(imageIndex, renderArea, mainCamera, lights);
+    presentBackBuffer(imageIndex);
+
+    m_renderGraph->swapAllRenderPhasesBackBuffers();
+}
+
+std::unique_ptr<Renderer> RendererBuilder::build()
+{
+    return std::move(m_product);
 }

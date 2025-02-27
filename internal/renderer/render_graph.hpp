@@ -15,15 +15,18 @@ class Light;
  */
 class RenderGraph
 {
-  public:
+  private:
     std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
 
   public:
+    void addRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
+
     void processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
                           const std::vector<std::shared_ptr<Light>> &lights);
 
     void swapAllRenderPhasesBackBuffers();
 
+  public:
     [[nodiscard]] VkSemaphore getFirstPhaseCurrentAcquireSemaphore() const;
     [[nodiscard]] VkSemaphore getLastPhaseCurrentRenderSemaphore() const;
     [[nodiscard]] std::vector<VkFence> getAllCurrentFences() const;

@@ -6,6 +6,11 @@
 
 #include "render_graph.hpp"
 
+void RenderGraph::addRenderPhase(std::unique_ptr<RenderPhase> renderPhase)
+{
+    m_renderPhases.push_back(std::move(renderPhase));
+}
+
 void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
                                    const std::vector<std::shared_ptr<Light>> &lights)
 {

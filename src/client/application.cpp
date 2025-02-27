@@ -90,7 +90,6 @@ Application::Application()
     skyboxRpb.setDevice(mainDevice);
     skyboxRpb.setSwapChain(m_window->getSwapChain());
 
-    // TODO : test load/load and dontcare/dontcare
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -110,14 +109,14 @@ Application::Application()
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
-    // TODO : renderer builder
-    m_renderer = std::make_unique<Renderer>();
-    m_renderer->m_device = mainDevice;
-    m_renderer->m_swapchain = m_window->getSwapChain();
-    // TODO : render graph builder
-    m_renderer->m_renderGraph = std::make_unique<RenderGraph>();
-    m_renderer->m_renderGraph->m_renderPhases.push_back(std::move(phongPhase));
-    m_renderer->m_renderGraph->m_renderPhases.push_back(std::move(skyboxPhase));
+    RendererBuilder rb;
+    rb.setDevice(mainDevice);
+    rb.setSwapChain(m_window->getSwapChain());
+    std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
+    renderGraph->addRenderPhase(std::move(phongPhase));
+    renderGraph->addRenderPhase(std::move(skyboxPhase));
+    rb.setRenderGraph(std::move(renderGraph));
+    m_renderer = rb.build();
 }
 
 Application::~Application()
@@ -245,7 +244,6 @@ void Application::runLoop()
 
     auto &lights = m_scene->getLights();
 
-
     CameraABC *mainCamera = m_scene->getMainCamera();
 
     m_scene->beginSimulation();
@@ -258,17 +256,12 @@ void Application::runLoop()
 
         m_scene->updateSimulation(deltaTime);
 
-        uint32_t imageIndex = m_renderer->acquireNextSwapChainImage();
-
-        m_renderer->m_renderGraph->processRendering(imageIndex,
-                                                    VkRect2D{
-                                                        .offset = {0, 0},
-                                                        .extent = m_window->getSwapChain()->getExtent(),
-                                                    },
-                                                    *mainCamera, lights);
-        m_renderer->presentBackBuffer(imageIndex);
-
-        m_renderer->m_renderGraph->swapAllRenderPhasesBackBuffers();
+        m_renderer->renderFrame(
+            VkRect2D{
+                .offset = {0, 0},
+                .extent = m_window->getSwapChain()->getExtent(),
+            },
+            *mainCamera, lights);
 
         m_window->swapBuffers();
     }
