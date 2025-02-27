@@ -10,6 +10,7 @@ class Context;
 class Device;
 class Renderer;
 class SceneABC;
+class RenderPhase;
 
 class Application
 {
@@ -19,8 +20,9 @@ class Application
     std::shared_ptr<Context> m_context;
     std::vector<std::shared_ptr<Device>> m_devices;
 
-    std::shared_ptr<Renderer> m_phongRenderer;
-    std::shared_ptr<Renderer> m_skyboxRenderer;
+    std::shared_ptr<Renderer> m_renderer;
+    RenderPhase *m_phongPhase;
+    RenderPhase *m_skyboxPhase;
 
     std::unique_ptr<SceneABC> m_scene;
 

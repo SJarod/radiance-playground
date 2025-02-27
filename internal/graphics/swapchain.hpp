@@ -24,6 +24,7 @@ class SwapChain
     std::unique_ptr<Image> m_depthImage;
     VkImageView m_depthImageView;
 
+    // TODO : rename (swapchain image count)
     uint32_t m_frameInFlightCount;
 
   public:

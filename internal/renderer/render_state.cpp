@@ -74,7 +74,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
     directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex)
+void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex)
 {
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0, 1,
                             &m_descriptorSets[imageIndex], 0, nullptr);
@@ -254,7 +254,7 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
     return result;
 }
 
-void MeshRenderState::recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer)
+void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     auto meshPtr = m_mesh.lock();
 
@@ -385,7 +385,7 @@ void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraAB
     mvpData->view = camera.getViewMatrix();
 }
 
-void SkyboxRenderState::recordBackBufferDrawObjectCommands(VkCommandBuffer& commandBuffer)
+void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer)
 {
     auto skyboxPtr = m_skybox.lock();
 

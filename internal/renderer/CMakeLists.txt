@@ -10,6 +10,12 @@ target_sources(${component}
     renderer.hpp
     renderer.cpp
 
+    render_phase.hpp
+    render_phase.cpp
+
+    render_graph.hpp
+    render_graph.cpp
+
     mesh.hpp
     mesh.cpp
 

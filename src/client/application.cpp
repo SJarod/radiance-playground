@@ -3,14 +3,17 @@
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
+#include "graphics/render_pass.hpp"
 
 #include "wsi/window.hpp"
 
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
-#include "renderer/skybox.hpp"
+#include "renderer/render_graph.hpp"
+#include "renderer/render_phase.hpp"
 #include "renderer/render_state.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/skybox.hpp"
 #include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
@@ -61,32 +64,65 @@ Application::Application()
     RenderPassBuilder phongRpb;
     phongRpb.setDevice(mainDevice);
     phongRpb.setSwapChain(m_window->getSwapChain());
-    phongRpb.addColorAttachment(m_window->getSwapChain()->getImageFormat());
-    phongRpb.addDepthAttachment(m_window->getSwapChain()->getDepthImageFormat());
 
-    RendererBuilder phongRb;
+    RenderPassAttachmentBuilder rpab;
+    RenderPassAttachmentDirector rpad;
+
+    rpad.configureAttachmentClearBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto clearColorAttachment = rpab.buildAndRestart();
+    phongRpb.addColorAttachment(*clearColorAttachment);
+
+    rpad.configureAttachmentClearBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto clearDepthAttachment = rpab.buildAndRestart();
+    phongRpb.addDepthAttachment(*clearDepthAttachment);
+
+    RenderPhaseBuilder phongRb;
     phongRb.setDevice(mainDevice);
-    phongRb.setRenderpass(phongRpb.build());
-    phongRb.setSwapChain(m_window->getSwapChain());
-    m_phongRenderer = phongRb.build();
+    phongRb.setRenderPass(phongRpb.build());
+    auto phongPhase = phongRb.build();
+    m_phongPhase = phongPhase.get();
 
     RenderPassBuilder skyboxRpb;
     skyboxRpb.setDevice(mainDevice);
     skyboxRpb.setSwapChain(m_window->getSwapChain());
-    skyboxRpb.addColorAttachment(m_window->getSwapChain()->getImageFormat());
-    skyboxRpb.addDepthAttachment(m_window->getSwapChain()->getDepthImageFormat());
 
-    RendererBuilder skyboxRb;
+    // TODO : test load/load and dontcare/dontcare
+    rpad.configureAttachmentDontCareBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    auto loadColorAttachment = rpab.buildAndRestart();
+    skyboxRpb.addColorAttachment(*loadColorAttachment);
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto loadDepthAttachment = rpab.buildAndRestart();
+    skyboxRpb.addDepthAttachment(*loadDepthAttachment);
+
+    RenderPhaseBuilder skyboxRb;
     skyboxRb.setDevice(mainDevice);
-    skyboxRb.setRenderpass(skyboxRpb.build());
-    skyboxRb.setSwapChain(m_window->getSwapChain());
-    m_skyboxRenderer = skyboxRb.build();
+    skyboxRb.setRenderPass(skyboxRpb.build());
+    auto skyboxPhase = skyboxRb.build();
+    m_skyboxPhase = skyboxPhase.get();
+
+    // TODO : renderer builder
+    m_renderer = std::make_unique<Renderer>();
+    m_renderer->m_device = mainDevice;
+    m_renderer->m_swapchain = m_window->getSwapChain();
+    // TODO : render graph builder
+    m_renderer->m_renderGraph = std::make_unique<RenderGraph>();
+    m_renderer->m_renderGraph->m_renderPhases.push_back(std::move(phongPhase));
+    m_renderer->m_renderGraph->m_renderPhases.push_back(std::move(skyboxPhase));
 }
 
 Application::~Application()
 {
-    m_phongRenderer.reset();
-    m_skyboxRenderer.reset();
+    m_renderer.reset();
     m_scene.reset();
 
     m_window.reset();
@@ -110,31 +146,31 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder phongPb;
     phongPb.setDevice(mainDevice);
     phongPb.addVertexShaderStage("phong");
     phongPb.addFragmentShaderStage("phong");
-    phongPb.setRenderPass(m_phongRenderer->getRenderPass());
+    phongPb.setRenderPass(m_phongPhase->getRenderPass());
     phongPb.setExtent(m_window->getSwapChain()->getExtent());
 
     PipelineDirector phongPd;
@@ -159,7 +195,7 @@ void Application::runLoop()
 
         mrsb.setPipeline(phongPipeline);
 
-        m_phongRenderer->registerRenderState(mrsb.build());
+        m_phongPhase->registerRenderState(mrsb.build());
     }
 
     // skybox
@@ -169,13 +205,13 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder skyboxPb;
     PipelineDirector skyboxPd;
@@ -183,7 +219,7 @@ void Application::runLoop()
     skyboxPb.setDevice(mainDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
-    skyboxPb.setRenderPass(m_skyboxRenderer->getRenderPass());
+    skyboxPb.setRenderPass(m_phongPhase->getRenderPass());
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
@@ -203,16 +239,16 @@ void Application::runLoop()
 
         srsb.setPipeline(skyboxPipeline);
 
-        m_skyboxRenderer->registerRenderState(srsb.build());
+        m_phongPhase->registerRenderState(srsb.build());
     }
 
-    auto& lights = m_scene->getLights();
+    auto &lights = m_scene->getLights();
 
     std::pair<double, double> mousePos;
     glfwGetCursorPos(m_window->getHandle(), &mousePos.first, &mousePos.second);
     glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    CameraABC* mainCamera = m_scene->getMainCamera();
+    CameraABC *mainCamera = m_scene->getMainCamera();
 
     while (!m_window->shouldClose())
     {
@@ -249,23 +285,17 @@ void Application::runLoop()
 
         mainCamera->setTransform(cameraTransform);
 
-        uint32_t phongImageIndex = m_phongRenderer->acquireBackBuffer();
-        
-        m_phongRenderer->recordRenderers(phongImageIndex, *mainCamera, lights);
-        
-        m_phongRenderer->submitBackBuffer();
-        m_phongRenderer->presentBackBuffer(phongImageIndex);
-        
-        m_phongRenderer->swapBuffers();
+        uint32_t imageIndex = m_renderer->acquireNextSwapChainImage();
 
-        uint32_t skyboxImageIndex = m_skyboxRenderer->acquireBackBuffer();
+        m_renderer->m_renderGraph->processRendering(imageIndex,
+                                                    VkRect2D{
+                                                        .offset = {0, 0},
+                                                        .extent = m_window->getSwapChain()->getExtent(),
+                                                    },
+                                                    *mainCamera, lights);
+        m_renderer->presentBackBuffer(imageIndex);
 
-        m_skyboxRenderer->recordRenderers(skyboxImageIndex, *mainCamera, lights);
-
-        m_skyboxRenderer->submitBackBuffer();
-        m_skyboxRenderer->presentBackBuffer(skyboxImageIndex);
-
-        m_skyboxRenderer->swapBuffers();
+        m_renderer->m_renderGraph->swapAllRenderPhasesBackBuffers();
 
         m_window->swapBuffers();
     }

@@ -28,7 +28,7 @@ class Pipeline
   public:
     ~Pipeline();
 
-    void recordBind(VkCommandBuffer &commandBuffer, uint32_t imageIndex);
+    void recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex);
 
   public:
     [[nodiscard]] const VkPipelineLayout &getPipelineLayout() const

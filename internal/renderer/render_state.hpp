@@ -71,17 +71,18 @@ class RenderStateABC
     std::vector<std::unique_ptr<Buffer>> m_pointLightStorageBuffers;
     std::vector<void *> m_pointLightStorageBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
-    std::vector<void*> m_directionalLightStorageBuffersMapped;
+    std::vector<void *> m_directionalLightStorageBuffersMapped;
 
     RenderStateABC() = default;
 
   public:
     virtual ~RenderStateABC();
 
-    virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights);
+    virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+                                      const std::vector<std::shared_ptr<Light>> &lights);
 
-    virtual void recordBackBufferDescriptorSetsCommands(VkCommandBuffer &commandBuffer, uint32_t imageIndex);
-    virtual void recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer) = 0;
+    virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex);
+    virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) = 0;
 
   public:
     [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const
@@ -112,7 +113,7 @@ class MeshRenderState : public RenderStateABC
     std::weak_ptr<Mesh> m_mesh;
 
   public:
-    void recordBackBufferDrawObjectCommands(VkCommandBuffer &commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
 
 class MeshRenderStateBuilder : public RenderStateBuilderI
@@ -170,14 +171,15 @@ class SkyboxRenderState : public RenderStateABC
     std::weak_ptr<Skybox> m_skybox;
 
   public:
-    void updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights) override;
+    void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+                              const std::vector<std::shared_ptr<Light>> &lights) override;
 
-    void recordBackBufferDrawObjectCommands(VkCommandBuffer& commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
 
 class SkyboxRenderStateBuilder : public RenderStateBuilderI
 {
-private:
+  private:
     std::unique_ptr<SkyboxRenderState> m_product;
 
     std::weak_ptr<Device> m_device;
@@ -187,7 +189,7 @@ private:
 
     std::weak_ptr<Texture> m_texture;
 
-public:
+  public:
     SkyboxRenderStateBuilder()
     {
         restart();
