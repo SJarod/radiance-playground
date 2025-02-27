@@ -68,7 +68,7 @@ void SkyboxBuilder::createIndexBuffer()
     stagingBuffer.reset();
 }
 
-std::unique_ptr<Skybox> SkyboxBuilder::build()
+std::unique_ptr<Skybox> SkyboxBuilder::buildAndRestart()
 {
     m_product->m_vertices = {
         // positions          // normals

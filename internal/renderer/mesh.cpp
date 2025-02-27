@@ -101,7 +101,7 @@ void MeshBuilder::setIndicesFromAiScene(const aiScene *pScene)
     }
 }
 
-std::unique_ptr<Mesh> MeshBuilder::build()
+std::unique_ptr<Mesh> MeshBuilder::buildAndRestart()
 {
     if (m_bLoadFromFile)
     {

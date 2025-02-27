@@ -180,7 +180,7 @@ void Application::runLoop()
 
     PipelineDirector phongPd;
     phongPd.createColorDepthRasterizerBuilder(phongPb);
-    phongPb.setUniformDescriptorPack(phongUdb.build());
+    phongPb.setUniformDescriptorPack(phongUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
@@ -227,7 +227,7 @@ void Application::runLoop()
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
-    skyboxPb.setUniformDescriptorPack(skyboxUdb.build());
+    skyboxPb.setUniformDescriptorPack(skyboxUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
 

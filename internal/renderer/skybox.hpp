@@ -100,5 +100,5 @@ class SkyboxBuilder
         m_product->m_texture = cubemap;
     }
 
-    std::unique_ptr<Skybox> build();
+    std::unique_ptr<Skybox> buildAndRestart();
 };

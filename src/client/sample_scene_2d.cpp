@@ -40,7 +40,7 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
     mb.setDevice(device);
     mb.setVertices(vertices);
     mb.setIndices(indices);
-    std::shared_ptr<Mesh> mesh = mb.build();
+    std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
 
     const std::vector<unsigned char> imagePixels = {
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
@@ -52,7 +52,7 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
     tb.setImageData(imagePixels);
     tb.setWidth(2);
     tb.setHeight(2);
-    mesh->setTexture(tb.build());
+    mesh->setTexture(tb.buildAndRestart());
 
     m_objects.push_back(mesh);
 }

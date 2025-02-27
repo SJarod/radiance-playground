@@ -111,7 +111,7 @@ class TextureBuilder
         m_samplerFilter = a;
     }
 
-    std::unique_ptr<Texture> build();
+    std::unique_ptr<Texture> buildAndRestart();
 };
 
 class CubemapBuilder
@@ -214,7 +214,7 @@ public:
         m_samplerFilter = a;
     }
 
-    std::unique_ptr<Texture> build();
+    std::unique_ptr<Texture> buildAndRestart();
 };
 
 class TextureDirector

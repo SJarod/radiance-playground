@@ -121,7 +121,7 @@ class MeshBuilder
         m_importerFlags = flags;
     }
 
-    std::unique_ptr<Mesh> build();
+    std::unique_ptr<Mesh> buildAndRestart();
 };
 
 class MeshDirector

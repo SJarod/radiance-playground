@@ -185,6 +185,5 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
         }
     }
 
-    auto result = std::move(m_product);
-    return result;
+    return std::move(m_product);
 }

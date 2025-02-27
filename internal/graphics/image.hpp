@@ -252,7 +252,7 @@ class ImageLayoutTransitionBuilder
         m_product->dstStageMask = a;
     }
 
-    std::unique_ptr<ImageLayoutTransition> build();
+    std::unique_ptr<ImageLayoutTransition> buildAndRestart();
 };
 
 class ImageLayoutTransitionDirector

@@ -283,7 +283,7 @@ void ImageLayoutTransitionBuilder::restart()
     m_product->barrier.subresourceRange.layerCount = 1;
 }
 
-std::unique_ptr<ImageLayoutTransition> ImageLayoutTransitionBuilder::build()
+std::unique_ptr<ImageLayoutTransition> ImageLayoutTransitionBuilder::buildAndRestart()
 {
     // image must be set using setImage()
     assert(m_product->barrier.image);

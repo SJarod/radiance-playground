@@ -52,7 +52,7 @@ class UniformDescriptorBuilder
         m_product->m_setWrites.push_back(write);
     }
 
-    std::unique_ptr<UniformDescriptor> build()
+    std::unique_ptr<UniformDescriptor> buildAndRestart()
     {
         auto result = std::move(m_product);
         restart();

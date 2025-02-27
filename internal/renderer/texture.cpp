@@ -20,7 +20,7 @@ Texture::~Texture()
     vkDestroyImageView(deviceHandle, m_imageView, nullptr);
 }
 
-std::unique_ptr<Texture> TextureBuilder::build()
+std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 {
     assert(m_device.lock());
 
@@ -70,13 +70,13 @@ std::unique_ptr<Texture> TextureBuilder::build()
 
     iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
-    m_product->m_image->transitionImageLayout(*iltb.build());
+    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_image->copyBufferToImage2D(stagingBuffer->getHandle());
 
     iltd.createBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
-    m_product->m_image->transitionImageLayout(*iltb.build());
+    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     // image view
 
@@ -118,7 +118,7 @@ std::unique_ptr<Texture> TextureBuilder::build()
     return result;
 }
 
-std::unique_ptr<Texture> CubemapBuilder::build()
+std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 {
     assert(m_device.lock());
 
@@ -182,14 +182,14 @@ std::unique_ptr<Texture> CubemapBuilder::build()
     iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     iltb.setLayerCount(6U);
-    m_product->m_image->transitionImageLayout(*iltb.build());
+    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_image->copyBufferToImageCube(stagingBuffer->getHandle());
 
     iltd.createBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     iltb.setLayerCount(6U);
-    m_product->m_image->transitionImageLayout(*iltb.build());
+    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     // image view
 

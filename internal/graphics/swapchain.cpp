@@ -142,7 +142,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     ImageLayoutTransitionDirector iltd;
     iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_depthImage);
-    m_product->m_depthImage->transitionImageLayout(*iltb.build());
+    m_product->m_depthImage->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_depthImageView = m_product->m_depthImage->createImageView2D();
 

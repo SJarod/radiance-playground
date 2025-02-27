@@ -40,21 +40,21 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
 
     SkyboxBuilder mainSb;
     mainSb.setDevice(device);
-    mainSb.setCubemap(ctb.build());
-    m_skybox = mainSb.build();
+    mainSb.setCubemap(ctb.buildAndRestart());
+    m_skybox = mainSb.buildAndRestart();
 
     MeshBuilder mb;
     MeshDirector md;
     md.createAssimpMeshBuilder(mb);
     mb.setDevice(device);
     mb.setModelFilename("assets/viking_room.obj");
-    std::shared_ptr<Mesh> mesh = mb.build();
+    std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
 
     TextureBuilder tb;
     td.createSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setTextureFilename("assets/viking_room.png");
-    mesh->setTexture(tb.build());
+    mesh->setTexture(tb.buildAndRestart());
 
     m_objects.push_back(mesh);
 
@@ -90,7 +90,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     mb.setDevice(device);
     mb.setVertices(vertices);
     mb.setIndices(indices);
-    std::shared_ptr<Mesh> mesh2 = mb.build();
+    std::shared_ptr<Mesh> mesh2 = mb.buildAndRestart();
 
     const std::vector<unsigned char> imagePixels = {
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
@@ -100,7 +100,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     tb.setImageData(imagePixels);
     tb.setWidth(2);
     tb.setHeight(2);
-    mesh2->setTexture(tb.build());
+    mesh2->setTexture(tb.buildAndRestart());
 
     m_objects.push_back(mesh2);
 }

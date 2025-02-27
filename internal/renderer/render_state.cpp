@@ -246,12 +246,11 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
             .pBufferInfo = &directionalLightBufferInfo,
             });
 
-        std::vector<VkWriteDescriptorSet> writes = udb.build()->getSetWrites();
+        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
         vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
-    auto result = std::move(m_product);
-    return result;
+    return std::move(m_product);
 }
 
 void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
@@ -369,12 +368,11 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
             .pImageInfo = &imageInfo,
             });
 
-        std::vector<VkWriteDescriptorSet> writes = udb.build()->getSetWrites();
+        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
         vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
-    auto result = std::move(m_product);
-    return result;
+    return std::move(m_product);
 }
 
 void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)

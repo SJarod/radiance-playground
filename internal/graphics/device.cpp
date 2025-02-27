@@ -181,6 +181,5 @@ std::unique_ptr<Device> DeviceBuilder::build()
         return nullptr;
     }
 
-    auto result = std::move(m_product);
-    return result;
+    return std::move(m_product);
 }
