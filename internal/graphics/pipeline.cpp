@@ -244,8 +244,8 @@ std::unique_ptr<Pipeline> PipelineBuilder::build()
     // descriptor set layout
 
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
-    if (m_uniformDescriptorPack)
-        layoutBindings = m_uniformDescriptorPack->getSetLayoutBindings();
+    if (m_product->m_uniformDescriptorPack)
+        layoutBindings = m_product->m_uniformDescriptorPack->getSetLayoutBindings();
     VkDescriptorSetLayoutCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = static_cast<uint32_t>(layoutBindings.size()),

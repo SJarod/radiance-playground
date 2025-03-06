@@ -96,6 +96,7 @@ void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffe
 void MeshRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
+    // TODO : set uniform block set writes in function of Pipeline's uniform description
 }
 void MeshRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
 {

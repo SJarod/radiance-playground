@@ -23,6 +23,8 @@ class Pipeline
 
     VkExtent2D m_extent;
 
+    std::unique_ptr<UniformDescriptor> m_uniformDescriptorPack;
+
     Pipeline() = default;
 
   public:
@@ -108,8 +110,6 @@ class PipelineBuilder
 
     // descriptor set layout
     std::vector<VkPushConstantRange> m_pushConstantRanges;
-
-    std::shared_ptr<UniformDescriptor> m_uniformDescriptorPack;
 
     const RenderPass *m_renderPass;
 
@@ -278,9 +278,9 @@ class PipelineBuilder
         m_blendConstants[2] = c;
         m_blendConstants[3] = d;
     }
-    void setUniformDescriptorPack(std::shared_ptr<UniformDescriptor> desc)
+    void setUniformDescriptorPack(std::unique_ptr<UniformDescriptor> desc)
     {
-        m_uniformDescriptorPack = desc;
+        m_product->m_uniformDescriptorPack = std::move(desc);
     }
     void setRenderPass(const RenderPass *a)
     {
