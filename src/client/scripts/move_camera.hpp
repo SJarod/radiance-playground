@@ -21,6 +21,10 @@ class MoveCamera : public ScriptableABC
     WindowGLFW *m_window;
     CameraABC *m_mainCamera;
 
+    bool m_isFocused = true;
+
+    void setFocus(bool newFocus);
+
   public:
     void init(void *userData) override;
     void begin() override;

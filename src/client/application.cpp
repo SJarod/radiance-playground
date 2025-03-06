@@ -8,7 +8,6 @@
 
 #include "wsi/window.hpp"
 
-#include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 
@@ -102,7 +101,7 @@ Application::Application()
 
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -119,12 +118,32 @@ Application::Application()
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
+    RenderPassBuilder imguiRpb;
+    imguiRpb.setDevice(mainDevice);
+    imguiRpb.setSwapChain(m_window->getSwapChain());
+    
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    auto imguiLoadColorAttachment = rpab.buildAndRestart();
+    imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
+
+
+    RenderPhaseBuilder imguiRb;
+    imguiRb.setDevice(mainDevice);
+    imguiRb.setRenderPass(imguiRpb.build());
+    auto imguiPhase = imguiRb.build();
+    m_imguiPhase = imguiPhase.get();
+
     RendererBuilder rb;
     rb.setDevice(mainDevice);
     rb.setSwapChain(m_window->getSwapChain());
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
     renderGraph->addRenderPhase(std::move(phongPhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
+    renderGraph->addRenderPhase(std::move(imguiPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
 }
@@ -148,6 +167,7 @@ Application::~Application()
     WindowGLFW::terminate();
 }
 
+
 void Application::initImgui()
 {
     VkDevice deviceHandle = m_devices[0]->getHandle();
@@ -155,9 +175,8 @@ void Application::initImgui()
     ImGuiRenderStateBuilder imguirsb;
 
     imguirsb.setDevice(m_devices[0]);
-
     imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
+    
     ImGui::CreateContext();
     if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true)) 
     {
@@ -166,7 +185,7 @@ void Application::initImgui()
     }
 
     std::shared_ptr<RenderStateABC> render_state = imguirsb.build();
-    //m_renderer->registerRenderState(render_state);
+    m_imguiPhase->registerRenderState(render_state);
 
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
@@ -177,7 +196,7 @@ void Application::initImgui()
     init_info.DescriptorPool = render_state->getDescriptorPool();
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
-    //init_info.RenderPass = m_renderer->getRenderPass()->getHandle();
+    init_info.RenderPass = m_imguiPhase->getRenderPass()->getHandle();
 
     if (!ImGui_ImplVulkan_Init(&init_info)) 
     {
@@ -256,7 +275,6 @@ void Application::runLoop()
         m_phongPhase->registerRenderState(mrsb.build());
     }
 
-    //initImgui();
     // skybox
     UniformDescriptorBuilder skyboxUdb;
     skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -302,29 +320,22 @@ void Application::runLoop()
         m_skyboxPhase->registerRenderState(srsb.build());
     }
 
+    initImgui();
+
     auto &lights = m_scene->getLights();
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
-    bool isUiFocused = false;
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
-        if (InputManager::GetKeyDown(Keycode::ESCAPE))
-        {
-            isUiFocused = !isUiFocused;
-            
-            int inputModeValue = isUiFocused ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-            glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, inputModeValue);
-        }
-
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
+        
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 

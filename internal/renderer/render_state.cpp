@@ -30,8 +30,8 @@ RenderStateABC::~RenderStateABC()
 
 void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
-    //if (m_uniformBuffersMapped.size() == 0)
-    //    return;
+    if (m_mvpUniformBuffersMapped.size() == 0)
+        return;
 
     MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->proj = camera.getProjectionMatrix();
@@ -316,7 +316,7 @@ void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer&
 {
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
-
+    
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
 }
 

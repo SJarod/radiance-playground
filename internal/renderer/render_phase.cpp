@@ -81,7 +81,10 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
     {
         m_renderStates[i]->updateUniformBuffers(imageIndex, camera, lights);
 
-        m_renderStates[i]->getPipeline()->recordBind(commandBuffer, imageIndex);
+        if (const auto &pipeline = m_renderStates[i]->getPipeline())
+        {
+            pipeline->recordBind(commandBuffer, imageIndex);
+        }
 
         m_renderStates[i]->recordBackBufferDescriptorSetsCommands(commandBuffer, imageIndex);
         m_renderStates[i]->recordBackBufferDrawObjectCommands(commandBuffer);

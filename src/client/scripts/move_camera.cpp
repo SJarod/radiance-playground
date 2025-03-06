@@ -2,7 +2,22 @@
 
 #include "engine/transform.hpp"
 
+#include "input_manager.hpp" 
 #include "move_camera.hpp"
+#include "imgui.h"
+
+void MoveCamera::setFocus(bool newFocus) 
+{
+    m_isFocused = newFocus;
+
+    if (m_isFocused) 
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    else 
+        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+
+    int inputModeValue = m_isFocused ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
+    glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, inputModeValue);
+}
 
 void MoveCamera::init(void *userData)
 {
@@ -13,12 +28,17 @@ void MoveCamera::init(void *userData)
 
 void MoveCamera::begin()
 {
-    glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    setFocus(true);
     glfwGetCursorPos(m_window->getHandle(), &m_mousePos.first, &m_mousePos.second);
 }
 
 void MoveCamera::update(float deltaTime)
 {
+    if (InputManager::GetKeyDown(Keycode::ESCAPE))
+    {
+        setFocus(!m_isFocused);
+    }
+
     double xpos, ypos;
     glfwGetCursorPos(m_window->getHandle(), &xpos, &ypos);
     std::pair<double, double> deltaMousePos;
@@ -26,6 +46,9 @@ void MoveCamera::update(float deltaTime)
     deltaMousePos.second = m_mousePos.second - ypos;
     m_mousePos.first = xpos;
     m_mousePos.second = ypos;
+
+    if (!m_isFocused)
+        return;
 
     float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
     float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;

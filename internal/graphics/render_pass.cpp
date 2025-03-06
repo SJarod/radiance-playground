@@ -57,7 +57,11 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
 
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
-        std::array<VkImageView, 2> framebufferAttachments = {imageViews[i], m_swapchain->getDepthImageView()};
+        std::vector<VkImageView> framebufferAttachments { imageViews[i] };
+        
+        if (m_depthAttachmentReferences.size() > 0)
+            framebufferAttachments.push_back(m_swapchain->getDepthImageView());
+
         VkFramebufferCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .renderPass = handle,

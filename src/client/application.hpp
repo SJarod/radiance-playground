@@ -23,7 +23,8 @@ class Application
 
     std::shared_ptr<Renderer> m_renderer;
     RenderPhase *m_phongPhase;
-    RenderPhase *m_skyboxPhase;
+    RenderPhase* m_skyboxPhase;
+    RenderPhase *m_imguiPhase;
 
     std::unique_ptr<SceneABC> m_scene;
 
