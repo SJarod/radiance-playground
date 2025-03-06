@@ -133,15 +133,15 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
 
     std::weak_ptr<Texture> m_texture;
 
+    void restart() override
+    {
+        m_product = std::unique_ptr<MeshRenderState>(new MeshRenderState);
+    }
+
   public:
     MeshRenderStateBuilder()
     {
         restart();
-    }
-
-    void restart() override
-    {
-        m_product = std::unique_ptr<MeshRenderState>(new MeshRenderState);
     }
 
     void setDevice(std::weak_ptr<Device> device) override

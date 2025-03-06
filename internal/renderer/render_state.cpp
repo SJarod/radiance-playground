@@ -28,7 +28,8 @@ RenderStateABC::~RenderStateABC()
     m_pipeline.reset();
 }
 
-void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
+void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+                                          const std::vector<std::shared_ptr<Light>> &lights)
 {
     if (m_mvpUniformBuffersMapped.size() == 0)
         return;
@@ -38,15 +39,17 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
     mvpData->model = glm::identity<glm::mat4>();
     mvpData->view = camera.getViewMatrix();
 
-    PointLightContainer* pointLightContainer = static_cast<PointLightContainer*>(m_pointLightStorageBuffersMapped[imageIndex]);
-    DirectionalLightContainer* directionalLightContainer = static_cast<DirectionalLightContainer*>(m_directionalLightStorageBuffersMapped[imageIndex]);
+    PointLightContainer *pointLightContainer =
+        static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[imageIndex]);
+    DirectionalLightContainer *directionalLightContainer =
+        static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[imageIndex]);
 
     int pointLightCount = 0;
     int directionalLightCount = 0;
     for (int i = 0; i < lights.size(); i++)
     {
-        const Light* light = lights[i].get();
-        if (const PointLight* pointLight = dynamic_cast<const PointLight*>(light))
+        const Light *light = lights[i].get();
+        if (const PointLight *pointLight = dynamic_cast<const PointLight *>(light))
         {
             PointLightContainer::PointLight pointLightData{
                 .diffuseColor = pointLight->diffuseColor,
@@ -61,7 +64,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
             continue;
         }
 
-        if (const DirectionalLight* directionalLight = dynamic_cast<const DirectionalLight*>(light))
+        if (const DirectionalLight *directionalLight = dynamic_cast<const DirectionalLight *>(light))
         {
             DirectionalLightContainer::DirectionalLight directionalLightData{
                 .diffuseColor = directionalLight->diffuseColor,
@@ -167,8 +170,8 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_pointLightStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_pointLightStorageBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::PointLightContainer), 0,
-                    &m_product->m_pointLightStorageBuffersMapped[i]);
+        vkMapMemory(deviceHandle, m_product->m_pointLightStorageBuffers[i]->getMemory(), 0,
+                    sizeof(RenderStateABC::PointLightContainer), 0, &m_product->m_pointLightStorageBuffersMapped[i]);
     }
 
     m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
@@ -182,8 +185,9 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_directionalLightStorageBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::DirectionalLightContainer), 0,
-            &m_product->m_directionalLightStorageBuffersMapped[i]);
+        vkMapMemory(deviceHandle, m_product->m_directionalLightStorageBuffers[i]->getMemory(), 0,
+                    sizeof(RenderStateABC::DirectionalLightContainer), 0,
+                    &m_product->m_directionalLightStorageBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_descriptorSets.size(); ++i)
@@ -254,7 +258,7 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .pBufferInfo = &directionalLightBufferInfo,
-            });
+        });
 
         std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
         vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -329,7 +333,7 @@ void SkyboxRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
         .descriptorCount = m_frameInFlightCount,
-        });
+    });
 }
 
 std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
@@ -354,7 +358,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
 
     // descriptor set
     std::vector<VkDescriptorSetLayout> setLayouts(m_frameInFlightCount,
-        m_product->m_pipeline->getDescriptorSetLayout());
+                                                  m_product->m_pipeline->getDescriptorSetLayout());
     VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = m_product->m_descriptorPool,
@@ -383,7 +387,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
         vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-            &m_product->m_mvpUniformBuffersMapped[i]);
+                    &m_product->m_mvpUniformBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_descriptorSets.size(); ++i)
@@ -403,7 +407,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .pBufferInfo = &mvpBufferInfo,
-            });
+        });
 
         VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -422,7 +426,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .pImageInfo = &imageInfo,
-            });
+        });
 
         std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
         vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -431,20 +435,21 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+                                             const std::vector<std::shared_ptr<Light>> &lights)
 {
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->proj = camera.getProjectionMatrix();
     mvpData->model = glm::identity<glm::mat4>();
     mvpData->view = camera.getViewMatrix();
 }
 
-void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer)
+void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     auto skyboxPtr = m_skybox.lock();
 
-    VkBuffer vbos[] = { skyboxPtr->getVertexBufferHandle() };
-    VkDeviceSize offsets[] = { 0 };
+    VkBuffer vbos[] = {skyboxPtr->getVertexBufferHandle()};
+    VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }

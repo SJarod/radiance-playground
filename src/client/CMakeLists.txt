@@ -6,6 +6,8 @@ target_sources(${component}
     PRIVATE
     scripts/move_camera.hpp
     scripts/move_camera.cpp
+    scripts/probes.hpp
+    scripts/probes.cpp
 
     application.cpp
     application.hpp

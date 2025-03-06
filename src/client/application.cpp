@@ -118,6 +118,22 @@ Application::Application()
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
+    RenderPassBuilder postProcessRpb;
+    postProcessRpb.setDevice(mainDevice);
+    postProcessRpb.setSwapChain(m_window->getSwapChain());
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto finalLoadColorAttachment = rpab.buildAndRestart();
+    postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
+
+    RenderPhaseBuilder postProcessRb;
+    postProcessRb.setDevice(mainDevice);
+    postProcessRb.setRenderPass(postProcessRpb.build());
+    auto postProcessPhase = postProcessRb.build();
+    m_postProcessPhase = postProcessPhase.get();
+
     RenderPassBuilder imguiRpb;
     imguiRpb.setDevice(mainDevice);
     imguiRpb.setSwapChain(m_window->getSwapChain());
@@ -143,6 +159,7 @@ Application::Application()
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
     renderGraph->addRenderPhase(std::move(phongPhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
+    renderGraph->addRenderPhase(std::move(postProcessPhase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
@@ -214,7 +231,7 @@ void Application::runLoop()
     
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
+    m_scene = std::make_unique<SampleScene2D>(mainDevice);
 
     // material
     UniformDescriptorBuilder phongUdb;
@@ -261,7 +278,7 @@ void Application::runLoop()
     for (int i = 0; i < objects.size(); ++i)
     {
         MeshRenderStateBuilder mrsb;
-        mrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
+        mrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -308,7 +325,7 @@ void Application::runLoop()
     if (std::shared_ptr<Skybox> skybox = m_scene->getSkybox())
     {
         SkyboxRenderStateBuilder srsb;
-        srsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
+        srsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         srsb.setDevice(mainDevice);
@@ -319,6 +336,32 @@ void Application::runLoop()
 
         m_skyboxPhase->registerRenderState(srsb.build());
     }
+
+    MeshBuilder mb;
+    mb.setDevice(mainDevice);
+    mb.setVertices({{{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 0.0f, 0.0f, 1.f}, {0.f, 0.f}},
+                    {{0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {0.f, 1.f}},
+                    {{0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
+                    {{-0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {1.f, 0.f}}});
+    mb.setIndices({0, 1, 2, 2, 3, 0});
+    std::shared_ptr<Mesh> postProcessQuad = mb.buildAndRestart();
+    MeshRenderStateBuilder quadRsb;
+    quadRsb.setDevice(mainDevice);
+    quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+    quadRsb.setMesh(postProcessQuad);
+    PipelineBuilder postProcessPb;
+    PipelineDirector postProcessPd;
+    postProcessPd.createColorDepthRasterizerBuilder(postProcessPb);
+    postProcessPb.setDevice(mainDevice);
+    postProcessPb.setRenderPass(m_postProcessPhase->getRenderPass());
+    postProcessPb.addVertexShaderStage("screen");
+    postProcessPb.addFragmentShaderStage("postprocess");
+    postProcessPb.setExtent(m_window->getSwapChain()->getExtent());
+    postProcessPb.setDepthTestEnable(VK_FALSE);
+    postProcessPb.setDepthWriteEnable(VK_FALSE);
+    postProcessPb.setBlendEnable(VK_FALSE);
+    quadRsb.setPipeline(postProcessPb.build());
+    m_postProcessPhase->registerRenderState(quadRsb.build());
 
     initImgui();
 

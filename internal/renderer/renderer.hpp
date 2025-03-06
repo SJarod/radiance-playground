@@ -38,6 +38,12 @@ class Renderer
                          const std::vector<std::shared_ptr<Light>> &lights);
 
   public:
+    [[nodiscard]] int getFrameInFlightCount() const
+    {
+        return m_framesInFlight;
+    }
+
+  public:
     void setSwapChain(const SwapChain *swapchain)
     {
         m_swapchain = swapchain;
