@@ -47,7 +47,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalHandle, surfaceHandle, &modeCount, presentModes.data());
 
     VkSurfaceFormatKHR surfaceFormat = formats[0];
-    VkPresentModeKHR presentMode = presentModes[0];
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount)

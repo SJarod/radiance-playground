@@ -45,11 +45,11 @@ class UniformDescriptorBuilder
 
     void addSetLayoutBinding(VkDescriptorSetLayoutBinding binding)
     {
-        m_product->m_setLayoutBindings.push_back(binding);
+        m_product->m_setLayoutBindings.emplace_back(binding);
     }
     void addSetWrites(VkWriteDescriptorSet write)
     {
-        m_product->m_setWrites.push_back(write);
+        m_product->m_setWrites.emplace_back(write);
     }
 
     std::unique_ptr<UniformDescriptor> buildAndRestart()

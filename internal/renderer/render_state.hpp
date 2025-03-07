@@ -133,6 +133,10 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
 
     std::weak_ptr<Texture> m_texture;
 
+    bool m_lightDescriptorEnable = true;
+    bool m_textureDescriptorEnable = true;
+    bool m_mvpDescriptorEnable = true;
+
     void restart() override
     {
         m_product = std::unique_ptr<MeshRenderState>(new MeshRenderState);
@@ -165,6 +169,19 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
         m_product->m_mesh = mesh;
     }
 
+    void setLightDescriptorEnable(bool a)
+    {
+        m_lightDescriptorEnable = a;
+    }
+    void setTextureDescriptorEnable(bool a)
+    {
+        m_textureDescriptorEnable = a;
+    }
+    void setMVPDescriptorEnable(bool a)
+    {
+        m_mvpDescriptorEnable = a;
+    }
+
     std::unique_ptr<RenderStateABC> build() override;
 };
 
@@ -172,13 +189,13 @@ class ImGuiRenderState : public RenderStateABC
 {
     friend ImGuiRenderStateBuilder;
 
-public:
-    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
+  public:
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
 
 class ImGuiRenderStateBuilder : public RenderStateBuilderI
 {
-private:
+  private:
     std::unique_ptr<ImGuiRenderState> m_product;
 
     std::weak_ptr<Device> m_device;
@@ -188,7 +205,7 @@ private:
 
     std::weak_ptr<Texture> m_texture;
 
-public:
+  public:
     ImGuiRenderStateBuilder()
     {
         restart();
@@ -211,7 +228,9 @@ public:
         m_frameInFlightCount = a;
     }
 
-    void setTexture(std::weak_ptr<Texture> texture) override {}
+    void setTexture(std::weak_ptr<Texture> texture) override
+    {
+    }
 
     std::unique_ptr<RenderStateABC> build() override;
 };

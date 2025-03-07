@@ -62,7 +62,7 @@ Application::Application()
         m_devices.emplace_back(db.build());
     }
 
-    std::weak_ptr<Device> mainDevice = m_devices[0];
+    std::weak_ptr<Device> mainDevice = m_devices[1];
 
     SwapChainBuilder scb;
     scb.setDevice(mainDevice);
@@ -137,7 +137,6 @@ Application::Application()
     RenderPassBuilder imguiRpb;
     imguiRpb.setDevice(mainDevice);
     imguiRpb.setSwapChain(m_window->getSwapChain());
-    
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -145,7 +144,6 @@ Application::Application()
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
-
 
     RenderPhaseBuilder imguiRb;
     imguiRb.setDevice(mainDevice);
@@ -166,8 +164,8 @@ Application::Application()
 }
 
 Application::~Application()
-{   
-    vkDeviceWaitIdle(m_devices[0]->getHandle());
+{
+    vkDeviceWaitIdle(m_devices[1]->getHandle());
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -184,18 +182,17 @@ Application::~Application()
     WindowGLFW::terminate();
 }
 
-
 void Application::initImgui()
 {
-    VkDevice deviceHandle = m_devices[0]->getHandle();
+    VkDevice deviceHandle = m_devices[1]->getHandle();
 
     ImGuiRenderStateBuilder imguirsb;
 
-    imguirsb.setDevice(m_devices[0]);
+    imguirsb.setDevice(m_devices[1]);
     imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    
+
     ImGui::CreateContext();
-    if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true)) 
+    if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true))
     {
         std::cerr << "Failed to initialize ImGui GLFW Implemenation For Vulkan" << std::endl;
         throw;
@@ -207,28 +204,27 @@ void Application::initImgui()
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = m_context->getInstanceHandle();
-    init_info.PhysicalDevice = m_devices[0]->getPhysicalHandle();
+    init_info.PhysicalDevice = m_devices[1]->getPhysicalHandle();
     init_info.Device = deviceHandle;
-    init_info.Queue = m_devices[0]->getGraphicsQueue();
+    init_info.Queue = m_devices[1]->getGraphicsQueue();
     init_info.DescriptorPool = render_state->getDescriptorPool();
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
     init_info.RenderPass = m_imguiPhase->getRenderPass()->getHandle();
 
-    if (!ImGui_ImplVulkan_Init(&init_info)) 
+    if (!ImGui_ImplVulkan_Init(&init_info))
     {
         std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
         throw;
     }
-
 }
 
 void Application::runLoop()
 {
-    std::shared_ptr<Device> mainDevice = m_devices[0];
+    std::shared_ptr<Device> mainDevice = m_devices[1];
 
     m_window->makeContextCurrent();
-    
+
     bool show_demo_window = true;
 
     m_scene = std::make_unique<SampleScene2D>(mainDevice);
@@ -279,6 +275,7 @@ void Application::runLoop()
     {
         MeshRenderStateBuilder mrsb;
         mrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+        mrsb.setFrameInFlightCount(3);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -306,7 +303,6 @@ void Application::runLoop()
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
-
 
     PipelineBuilder skyboxPb;
     PipelineDirector skyboxPd;
@@ -339,15 +335,19 @@ void Application::runLoop()
 
     MeshBuilder mb;
     mb.setDevice(mainDevice);
-    mb.setVertices({{{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 0.0f, 0.0f, 1.f}, {0.f, 0.f}},
-                    {{0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {0.f, 1.f}},
-                    {{0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
-                    {{-0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {1.f, 0.f}}});
+    mb.setVertices({{{-1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 0.0f, 0.0f, 1.f}, {0.f, 0.f}},
+                    {{1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {0.f, 1.f}},
+                    {{1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
+                    {{-1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {1.f, 0.f}}});
     mb.setIndices({0, 1, 2, 2, 3, 0});
     std::shared_ptr<Mesh> postProcessQuad = mb.buildAndRestart();
     MeshRenderStateBuilder quadRsb;
+    quadRsb.setLightDescriptorEnable(false);
+    quadRsb.setTextureDescriptorEnable(false);
+    quadRsb.setMVPDescriptorEnable(false);
     quadRsb.setDevice(mainDevice);
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+    quadRsb.setFrameInFlightCount(3);
     quadRsb.setMesh(postProcessQuad);
     PipelineBuilder postProcessPb;
     PipelineDirector postProcessPd;
@@ -360,6 +360,7 @@ void Application::runLoop()
     postProcessPb.setDepthTestEnable(VK_FALSE);
     postProcessPb.setDepthWriteEnable(VK_FALSE);
     postProcessPb.setBlendEnable(VK_FALSE);
+    postProcessPb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
     quadRsb.setPipeline(postProcessPb.build());
     m_postProcessPhase->registerRenderState(quadRsb.build());
 
@@ -378,11 +379,10 @@ void Application::runLoop()
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        
+
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
-       
         m_inputManager.UpdateInputStates();
         m_window->pollEvents();
 

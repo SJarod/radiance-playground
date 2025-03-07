@@ -79,14 +79,14 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
 
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
-        m_renderStates[i]->updateUniformBuffers(imageIndex, camera, lights);
+        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, camera, lights);
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())
         {
-            pipeline->recordBind(commandBuffer, imageIndex);
+            pipeline->recordBind(commandBuffer);
         }
 
-        m_renderStates[i]->recordBackBufferDescriptorSetsCommands(commandBuffer, imageIndex);
+        m_renderStates[i]->recordBackBufferDescriptorSetsCommands(commandBuffer, m_backBufferIndex);
         m_renderStates[i]->recordBackBufferDrawObjectCommands(commandBuffer);
     }
 

@@ -3,8 +3,8 @@
 #include <memory>
 #include <vector>
 
-#include "time_manager.hpp"
 #include "input_manager.hpp"
+#include "time_manager.hpp"
 
 class WindowGLFW;
 class Context;
@@ -23,8 +23,8 @@ class Application
 
     std::shared_ptr<Renderer> m_renderer;
     RenderPhase *m_phongPhase;
-    RenderPhase* m_skyboxPhase;
-	RenderPhase *m_postProcessPhase;
+    RenderPhase *m_skyboxPhase;
+    RenderPhase *m_postProcessPhase;
     RenderPhase *m_imguiPhase;
 
     std::unique_ptr<SceneABC> m_scene;

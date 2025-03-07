@@ -1,9 +1,9 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
-#include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
+#include "imgui.h"
 
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
@@ -28,21 +28,21 @@ RenderStateABC::~RenderStateABC()
     m_pipeline.reset();
 }
 
-void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, const CameraABC &camera,
                                           const std::vector<std::shared_ptr<Light>> &lights)
 {
     if (m_mvpUniformBuffersMapped.size() == 0)
         return;
 
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
     mvpData->proj = camera.getProjectionMatrix();
     mvpData->model = glm::identity<glm::mat4>();
     mvpData->view = camera.getViewMatrix();
 
     PointLightContainer *pointLightContainer =
-        static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[imageIndex]);
+        static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[backBufferIndex]);
     DirectionalLightContainer *directionalLightContainer =
-        static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[imageIndex]);
+        static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[backBufferIndex]);
 
     int pointLightCount = 0;
     int directionalLightCount = 0;
@@ -84,13 +84,13 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
     directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex)
+void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex)
 {
     if (m_descriptorSets.size() == 0)
         return;
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0, 1,
-                            &m_descriptorSets[imageIndex], 0, nullptr);
+                            &m_descriptorSets[backBufferIndex], 0, nullptr);
 }
 
 void MeshRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
@@ -144,124 +144,135 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
 
     // uniform buffers
 
-    m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+    if (m_mvpDescriptorEnable)
     {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
-        bb.setDevice(m_device);
-        m_product->m_mvpUniformBuffers[i] = bb.build();
+        m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
+        m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
+        for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.createUniformBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::MVP));
+            bb.setDevice(m_device);
+            m_product->m_mvpUniformBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-                    &m_product->m_mvpUniformBuffersMapped[i]);
+            vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
+                        &m_product->m_mvpUniformBuffersMapped[i]);
+        }
     }
 
-    m_product->m_pointLightStorageBuffers.resize(m_frameInFlightCount);
-    m_product->m_pointLightStorageBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_pointLightStorageBuffers.size(); ++i)
+    if (m_lightDescriptorEnable)
     {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.createStorageBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::PointLightContainer));
-        bb.setDevice(m_device);
-        m_product->m_pointLightStorageBuffers[i] = bb.build();
+        m_product->m_pointLightStorageBuffers.resize(m_frameInFlightCount);
+        m_product->m_pointLightStorageBuffersMapped.resize(m_frameInFlightCount);
+        for (int i = 0; i < m_product->m_pointLightStorageBuffers.size(); ++i)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.createStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::PointLightContainer));
+            bb.setDevice(m_device);
+            m_product->m_pointLightStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_pointLightStorageBuffers[i]->getMemory(), 0,
-                    sizeof(RenderStateABC::PointLightContainer), 0, &m_product->m_pointLightStorageBuffersMapped[i]);
-    }
+            vkMapMemory(deviceHandle, m_product->m_pointLightStorageBuffers[i]->getMemory(), 0,
+                        sizeof(RenderStateABC::PointLightContainer), 0,
+                        &m_product->m_pointLightStorageBuffersMapped[i]);
+        }
 
-    m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
-    m_product->m_directionalLightStorageBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_directionalLightStorageBuffers.size(); ++i)
-    {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.createStorageBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
-        bb.setDevice(m_device);
-        m_product->m_directionalLightStorageBuffers[i] = bb.build();
+        m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
+        m_product->m_directionalLightStorageBuffersMapped.resize(m_frameInFlightCount);
+        for (int i = 0; i < m_product->m_directionalLightStorageBuffers.size(); ++i)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.createStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
+            bb.setDevice(m_device);
+            m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_directionalLightStorageBuffers[i]->getMemory(), 0,
-                    sizeof(RenderStateABC::DirectionalLightContainer), 0,
-                    &m_product->m_directionalLightStorageBuffersMapped[i]);
+            vkMapMemory(deviceHandle, m_product->m_directionalLightStorageBuffers[i]->getMemory(), 0,
+                        sizeof(RenderStateABC::DirectionalLightContainer), 0,
+                        &m_product->m_directionalLightStorageBuffersMapped[i]);
+        }
     }
 
     for (int i = 0; i < m_product->m_descriptorSets.size(); ++i)
     {
-        VkDescriptorBufferInfo mvpBufferInfo = {
-            .buffer = m_product->m_mvpUniformBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::MVP),
-        };
-
+        VkDescriptorBufferInfo mvpBufferInfo;
         UniformDescriptorBuilder udb;
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &mvpBufferInfo,
-        });
+        if (m_mvpDescriptorEnable)
+        {
+            mvpBufferInfo.buffer = m_product->m_mvpUniformBuffers[i]->getHandle();
+            mvpBufferInfo.offset = 0;
+            mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &mvpBufferInfo,
+            });
+        }
 
         VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
-        if (m_texture.lock())
+        if (m_textureDescriptorEnable)
         {
-            auto texPtr = m_texture.lock();
-            imageInfo.sampler = texPtr->getSampler();
-            imageInfo.imageView = texPtr->getImageView();
+            if (m_texture.lock())
+            {
+                auto texPtr = m_texture.lock();
+                imageInfo.sampler = texPtr->getSampler();
+                imageInfo.imageView = texPtr->getImageView();
+            }
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &imageInfo,
+            });
         }
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 1,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &imageInfo,
-        });
 
-        VkDescriptorBufferInfo pointLightBufferInfo = {
-            .buffer = m_product->m_pointLightStorageBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::PointLightContainer),
-        };
+        VkDescriptorBufferInfo pointLightBufferInfo;
+        VkDescriptorBufferInfo directionalLightBufferInfo;
+        if (m_lightDescriptorEnable)
+        {
+            pointLightBufferInfo.buffer = m_product->m_pointLightStorageBuffers[i]->getHandle();
+            pointLightBufferInfo.offset = 0;
+            pointLightBufferInfo.range = sizeof(RenderStateABC::PointLightContainer);
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 2,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .pBufferInfo = &pointLightBufferInfo,
+            });
 
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 2,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &pointLightBufferInfo,
-        });
-
-        VkDescriptorBufferInfo directionalLightBufferInfo = {
-            .buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::DirectionalLightContainer),
-        };
-
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_descriptorSets[i],
-            .dstBinding = 3,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &directionalLightBufferInfo,
-        });
+            directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
+            directionalLightBufferInfo.offset = 0;
+            directionalLightBufferInfo.range = sizeof(RenderStateABC::DirectionalLightContainer);
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 3,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .pBufferInfo = &directionalLightBufferInfo,
+            });
+        }
 
         std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        if (!writes.empty())
+            vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
     return std::move(m_product);
@@ -283,7 +294,7 @@ std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()
     assert(m_device.lock());
 
     auto deviceHandle = m_device.lock()->getHandle();
-    
+
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -313,14 +324,14 @@ void ImGuiRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
         .descriptorCount = 1,
-        });
+    });
 }
 
-void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) 
+void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     ImGui::Render();
-    ImDrawData* draw_data = ImGui::GetDrawData();
-    
+    ImDrawData *draw_data = ImGui::GetDrawData();
+
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
 }
 
@@ -453,4 +464,3 @@ void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }
-

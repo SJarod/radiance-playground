@@ -363,7 +363,7 @@ void PipelineDirector::createColorDepthRasterizerBuilder(PipelineBuilder &builde
     builder.setBlendConstants(0.f, 0.f, 0.f, 0.f);
 }
 
-void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex)
+void Pipeline::recordBind(const VkCommandBuffer &commandBuffer)
 {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_handle);
 
