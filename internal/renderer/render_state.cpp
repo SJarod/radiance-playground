@@ -1,9 +1,9 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
-#include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
+#include "imgui.h"
 
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
@@ -18,35 +18,13 @@
 
 #include "render_state.hpp"
 
-RenderStateABC::~RenderStateABC()
+void PointLightUniformBlock::update(uint32_t imageIndex, void *userData)
 {
-    if (!m_device.lock())
-        return;
-
-    vkDestroyDescriptorPool(m_device.lock()->getHandle(), m_descriptorPool, nullptr);
-
-    m_pipeline.reset();
-}
-
-void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
-                                          const std::vector<std::shared_ptr<Light>> &lights)
-{
-    if (m_mvpUniformBuffersMapped.size() == 0)
-        return;
-
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
-    mvpData->proj = camera.getProjectionMatrix();
-    mvpData->model = glm::identity<glm::mat4>();
-    mvpData->view = camera.getViewMatrix();
-
-    PointLightContainer *pointLightContainer =
-        static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[imageIndex]);
-    DirectionalLightContainer *directionalLightContainer =
-        static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[imageIndex]);
+    (std::vector<std::shared_ptr<Light>>*)light
+    PointLightContainer *pointLightContainer = static_cast<PointLightContainer *>(m_buffersMapped[imageIndex]);
 
     int pointLightCount = 0;
-    int directionalLightCount = 0;
-    for (int i = 0; i < lights.size(); i++)
+    for (int i = 0; i < (std::vector<std::shared_ptr<Light>>*)lights.size(); i++)
     {
         const Light *light = lights[i].get();
         if (const PointLight *pointLight = dynamic_cast<const PointLight *>(light))
@@ -63,7 +41,20 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
             pointLightCount++;
             continue;
         }
+    }
 
+    pointLightContainer->pointLightCount = pointLightCount;
+}
+
+void DirectionalLightUniformBlock::update(uint32_t imageIndex, void *userData)
+{
+    DirectionalLightContainer *directionalLightContainer =
+        static_cast<DirectionalLightContainer *>(m_buffersMapped[imageIndex]);
+
+    int directionalLightCount = 0;
+    for (int i = 0; i < lights.size(); i++)
+    {
+        const Light *light = lights[i].get();
         if (const DirectionalLight *directionalLight = dynamic_cast<const DirectionalLight *>(light))
         {
             DirectionalLightContainer::DirectionalLight directionalLightData{
@@ -80,8 +71,31 @@ void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &
         }
     }
 
-    pointLightContainer->pointLightCount = pointLightCount;
     directionalLightContainer->directionalLightCount = directionalLightCount;
+}
+
+void MVPUniformBlock::update(uint32_t imageIndex, void *userData)
+{
+    CameraABC *camera = (CameraABC *)userData;
+    MVP *mvpData = static_cast<MVP *>(m_buffersMapped[imageIndex]);
+    mvpData->proj = camera->getProjectionMatrix();
+    mvpData->model = glm::identity<glm::mat4>();
+    mvpData->view = camera->getViewMatrix();
+}
+
+RenderStateABC::~RenderStateABC()
+{
+    if (!m_device.lock())
+        return;
+
+    vkDestroyDescriptorPool(m_device.lock()->getHandle(), m_descriptorPool, nullptr);
+
+    m_pipeline.reset();
+}
+
+void RenderStateABC::updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+                                          const std::vector<std::shared_ptr<Light>> &lights)
+{
 }
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex)
@@ -284,7 +298,7 @@ std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()
     assert(m_device.lock());
 
     auto deviceHandle = m_device.lock()->getHandle();
-    
+
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -314,14 +328,14 @@ void ImGuiRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
         .descriptorCount = 1,
-        });
+    });
 }
 
-void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) 
+void ImGuiRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     ImGui::Render();
-    ImDrawData* draw_data = ImGui::GetDrawData();
-    
+    ImDrawData *draw_data = ImGui::GetDrawData();
+
     ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
 }
 
@@ -454,4 +468,3 @@ void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }
-

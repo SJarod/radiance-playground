@@ -4,6 +4,12 @@
 
 #include <vulkan/vulkan.h>
 
+class UniformI
+{
+  protected:
+    virtual void update(uint32_t imageIndex, void *userData) = 0;
+};
+
 class UniformDescriptorBuilder;
 
 class UniformDescriptor

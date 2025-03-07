@@ -7,6 +7,8 @@
 
 #include <glm/glm.hpp>
 
+#include "engine/uniform.hpp"
+
 class Pipeline;
 class Device;
 class Buffer;
@@ -19,50 +21,69 @@ class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
 class Texture;
 
-struct PointLightContainer
-{
-    struct PointLight
-    {
-        glm::vec3 diffuseColor;
-        float diffusePower;
-        glm::vec3 specularColor;
-        float specularPower;
-        glm::vec3 position;
-        float pad0[1];
-    };
-
-    int pointLightCount;
-    alignas(16) PointLight pointLights[2];
-};
-
-struct DirectionalLightContainer
-{
-    struct DirectionalLight
-    {
-        glm::vec3 diffuseColor;
-        float diffusePower;
-        glm::vec3 specularColor;
-        float specularPower;
-        glm::vec3 direction;
-        float pad0[1];
-    };
-
-    int directionalLightCount;
-    alignas(16) DirectionalLight directionalLights[2];
-};
-
-struct MVP
-{
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
-
-class UniformBlock
+class UniformBlockABC : public UniformI
 {
   public:
-    std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
-    std::vector<void *> m_mvpUniformBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_buffers;
+    std::vector<void *> m_buffersMapped;
+};
+
+class PointLightUniformBlock : public UniformBlockABC
+{
+  private:
+    struct PointLightContainer
+    {
+        struct PointLight
+        {
+            glm::vec3 diffuseColor;
+            float diffusePower;
+            glm::vec3 specularColor;
+            float specularPower;
+            glm::vec3 position;
+            float pad0[1];
+        };
+
+        int pointLightCount;
+        alignas(16) PointLight pointLights[2];
+    };
+
+  public:
+    void update(uint32_t imageIndex, void* userData) override;
+};
+class DirectionalLightUniformBlock : public UniformBlockABC
+{
+  private:
+    struct DirectionalLightContainer
+    {
+        struct DirectionalLight
+        {
+            glm::vec3 diffuseColor;
+            float diffusePower;
+            glm::vec3 specularColor;
+            float specularPower;
+            glm::vec3 direction;
+            float pad0[1];
+        };
+
+        int directionalLightCount;
+        alignas(16) DirectionalLight directionalLights[2];
+    };
+
+  public:
+    void update(uint32_t imageIndex, void* userData) override;
+};
+class MVPUniformBlock : public UniformBlockABC
+{
+  private:
+    struct MVP
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    };
+
+  public:
+    void update(uint32_t imageIndex, void* userData) override;
 };
 
 class RenderStateABC
@@ -74,7 +95,7 @@ class RenderStateABC
 
     VkDescriptorPool m_descriptorPool;
     std::vector<VkDescriptorSet> m_descriptorSets;
-    std::vector<UniformBlock> m_uniformBlocks;
+    std::vector<UniformBlockABC> m_uniformBlocks;
 
     RenderStateABC() = default;
 
