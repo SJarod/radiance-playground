@@ -68,6 +68,11 @@ Application::Application()
     scb.setDevice(mainDevice);
     scb.setWidth(1366);
     scb.setHeight(768);
+    scb.setSwapchainImageFormat(VkSurfaceFormatKHR{
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    });
+    scb.setSwapchainPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR);
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 

@@ -86,6 +86,9 @@ class SwapChainBuilder
   private:
     std::unique_ptr<SwapChain> m_product;
 
+    VkSurfaceFormatKHR m_swapchainSurfaceFormat;
+    VkPresentModeKHR m_swapchainPresentMode;
+
     bool m_useImagesAsSamplers = false;
 
     void restart()
@@ -111,6 +114,14 @@ class SwapChainBuilder
     {
         m_product->m_extent.height = height;
     }
+    void setSwapchainImageFormat(VkSurfaceFormatKHR swapchainSurfaceFormat)
+    {
+        m_swapchainSurfaceFormat = swapchainSurfaceFormat;
+    };
+    void setSwapchainPresentMode(VkPresentModeKHR swapchainPresentMode)
+    {
+        m_swapchainPresentMode = swapchainPresentMode;
+    };
     void setUseImagesAsSamplers(bool a)
     {
         m_useImagesAsSamplers = a;

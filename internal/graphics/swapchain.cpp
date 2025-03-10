@@ -45,16 +45,22 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
 
     uint32_t formatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physicalHandle, surfaceHandle, &formatCount, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalHandle, surfaceHandle, &formatCount, formats.data());
+    std::vector<VkSurfaceFormatKHR> supportedFormats(formatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalHandle, surfaceHandle, &formatCount, supportedFormats.data());
+    VkSurfaceFormatKHR surfaceFormat = supportedFormats[0];
+    if (std::find_if(supportedFormats.begin(), supportedFormats.end(), [this](VkSurfaceFormatKHR s) {
+            return s.format == m_swapchainSurfaceFormat.format && s.colorSpace == m_swapchainSurfaceFormat.colorSpace;
+        }) != supportedFormats.end())
+        surfaceFormat = m_swapchainSurfaceFormat;
 
     uint32_t modeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalHandle, surfaceHandle, &modeCount, nullptr);
-    std::vector<VkPresentModeKHR> presentModes(modeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalHandle, surfaceHandle, &modeCount, presentModes.data());
-
-    VkSurfaceFormatKHR surfaceFormat = formats[0];
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    std::vector<VkPresentModeKHR> supportedPresentModes(modeCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalHandle, surfaceHandle, &modeCount, supportedPresentModes.data());
+    VkPresentModeKHR presentMode = supportedPresentModes[0];
+    if (std::find(supportedPresentModes.begin(), supportedPresentModes.end(), m_swapchainPresentMode) !=
+        supportedPresentModes.end())
+        presentMode = m_swapchainPresentMode;
 
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount)
