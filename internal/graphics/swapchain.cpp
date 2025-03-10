@@ -9,6 +9,13 @@ SwapChain::~SwapChain()
 {
     auto deviceHandle = m_device.lock()->getHandle();
 
+    if (m_samplers.has_value())
+    {
+        for (std::unique_ptr<VkSampler> &sampler : m_samplers.value())
+        {
+            vkDestroySampler(deviceHandle, *sampler, nullptr);
+        }
+    }
     vkDestroyImageView(deviceHandle, m_depthImageView, nullptr);
     m_depthImage.reset();
     for (VkImageView &imageView : m_imageViews)
@@ -53,6 +60,9 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount)
         imageCount = capabilities.maxImageCount;
 
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (m_useImagesAsSamplers)
+        usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
     VkSwapchainCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = surfaceHandle,
@@ -61,7 +71,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
         .imageColorSpace = surfaceFormat.colorSpace,
         .imageExtent = m_product->m_extent,
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = usage,
         .preTransform = capabilities.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = presentMode,
@@ -140,11 +150,26 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
 
     ImageLayoutTransitionBuilder iltb;
     ImageLayoutTransitionDirector iltd;
-    iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(iltb);
+    iltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_depthImage);
     m_product->m_depthImage->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_depthImageView = m_product->m_depthImage->createImageView2D();
+
+    if (m_useImagesAsSamplers)
+    {
+        m_product->m_samplers = std::vector<std::unique_ptr<VkSampler>>();
+        m_product->m_samplers->reserve(imageCount);
+
+        SamplerBuilder sb;
+        sb.setDevice(m_product->m_device);
+        sb.setMagFilter(VK_FILTER_LINEAR);
+        sb.setMinFilter(VK_FILTER_LINEAR);
+        for (int i = 0; i < imageCount; ++i)
+        {
+            m_product->m_samplers->push_back(sb.buildAndRestart());
+        }
+    }
 
     return std::move(m_product);
 }

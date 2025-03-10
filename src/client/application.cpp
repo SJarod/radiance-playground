@@ -68,6 +68,7 @@ Application::Application()
     scb.setDevice(mainDevice);
     scb.setWidth(1366);
     scb.setHeight(768);
+    scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
     RenderPassBuilder phongRpb;
@@ -101,7 +102,7 @@ Application::Application()
 
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -123,7 +124,7 @@ Application::Application()
     postProcessRpb.setSwapChain(m_window->getSwapChain());
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto finalLoadColorAttachment = rpab.buildAndRestart();
     postProcessRpb.addColorAttachment(*finalLoadColorAttachment);

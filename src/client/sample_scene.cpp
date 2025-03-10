@@ -2,8 +2,8 @@
 
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
-#include "renderer/texture.hpp"
 #include "renderer/skybox.hpp"
+#include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
 
@@ -29,7 +29,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     TextureDirector td;
 
     CubemapBuilder ctb;
-    td.createSRGBTextureBuilder(ctb);
+    td.configureSRGBTextureBuilder(ctb);
     ctb.setDevice(device);
     ctb.setRightTextureFilename("assets/skybox/right.jpg");
     ctb.setLeftTextureFilename("assets/skybox/left.jpg");
@@ -51,7 +51,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
 
     TextureBuilder tb;
-    td.createSRGBTextureBuilder(tb);
+    td.configureSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setTextureFilename("assets/viking_room.png");
     mesh->setTexture(tb.buildAndRestart());
@@ -95,7 +95,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     const std::vector<unsigned char> imagePixels = {
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
     };
-    td.createSRGBTextureBuilder(tb);
+    td.configureSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setImageData(imagePixels);
     tb.setWidth(2);

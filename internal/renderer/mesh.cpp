@@ -26,7 +26,7 @@ void MeshBuilder::createVertexBuffer()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(vertexBufferSize);
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
@@ -55,7 +55,7 @@ void MeshBuilder::createIndexBuffer()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
 

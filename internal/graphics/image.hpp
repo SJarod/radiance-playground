@@ -179,8 +179,8 @@ class ImageDirector
     void createImage2DBuilder(ImageBuilder &builder);
     void createImageBuilderCube(ImageBuilder &builder);
     void createDepthImage2DBuilder(ImageBuilder &builder);
-    void createSampledImage2DBuilder(ImageBuilder &builder);
-    void createSampledImage3DBuilder(ImageBuilder &builder);
+    void configureSampledImage2DBuilder(ImageBuilder &builder);
+    void configureSampledImage3DBuilder(ImageBuilder &builder);
 };
 
 class ImageLayoutTransitionBuilder
@@ -258,14 +258,14 @@ class ImageLayoutTransitionBuilder
 class ImageLayoutTransitionDirector
 {
   public:
-    template <VkImageLayout TFrom, VkImageLayout TTo> void createBuilder(ImageLayoutTransitionBuilder &builder) const
+    template <VkImageLayout TFrom, VkImageLayout TTo> void configureBuilder(ImageLayoutTransitionBuilder &builder) const
     {
         builder.setOldLayout(TFrom);
         builder.setNewLayout(TTo);
     }
 
     template <>
-    void createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(
+    void configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(
         ImageLayoutTransitionBuilder &builder) const
     {
         builder.setOldLayout(VK_IMAGE_LAYOUT_UNDEFINED);
@@ -278,7 +278,7 @@ class ImageLayoutTransitionDirector
     }
 
     template <>
-    void createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(
+    void configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(
         ImageLayoutTransitionBuilder &builder) const
     {
         builder.setOldLayout(VK_IMAGE_LAYOUT_UNDEFINED);
@@ -290,7 +290,7 @@ class ImageLayoutTransitionDirector
     }
 
     template <>
-    void createBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(
+    void configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(
         ImageLayoutTransitionBuilder &builder) const
     {
         builder.setOldLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -300,4 +300,41 @@ class ImageLayoutTransitionDirector
         builder.setSrcStageMask(VK_PIPELINE_STAGE_TRANSFER_BIT);
         builder.setDstStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
+};
+
+class SamplerBuilder
+{
+  private:
+    std::unique_ptr<VkSampler> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    VkFilter m_magFilter;
+    VkFilter m_minFilter;
+
+    void restart()
+    {
+        m_product = std::make_unique<VkSampler>();
+    }
+
+  public:
+    SamplerBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        m_device = device;
+    }
+    void setMagFilter(VkFilter magFilter)
+    {
+        m_magFilter = magFilter;
+    }
+    void setMinFilter(VkFilter minFilter)
+    {
+        m_minFilter = minFilter;
+    }
+
+    std::unique_ptr<VkSampler> buildAndRestart();
 };

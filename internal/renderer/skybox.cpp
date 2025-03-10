@@ -21,7 +21,7 @@ void SkyboxBuilder::createVertexBuffer()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(vertexBufferSize);
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
@@ -50,7 +50,7 @@ void SkyboxBuilder::createIndexBuffer()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
 
@@ -72,42 +72,15 @@ std::unique_ptr<Skybox> SkyboxBuilder::buildAndRestart()
 {
     m_product->m_vertices = {
         // positions          // normals
-        {{-1.0f,  1.0f, -1.0f}},
-        {{-1.0f, -1.0f, -1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{ 1.0f,  1.0f, -1.0f}},
-        {{-1.0f,  1.0f, -1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{-1.0f, -1.0f, -1.0f}},
-        {{-1.0f,  1.0f, -1.0f}},
-        {{-1.0f,  1.0f, -1.0f}},
-        {{-1.0f,  1.0f,  1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{ 1.0f, -1.0f,  1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{ 1.0f,  1.0f, -1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{-1.0f,  1.0f,  1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{ 1.0f, -1.0f,  1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{-1.0f,  1.0f, -1.0f}},
-        {{ 1.0f,  1.0f, -1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{ 1.0f,  1.0f,  1.0f}},
-        {{-1.0f,  1.0f,  1.0f}},
-        {{-1.0f,  1.0f, -1.0f}},
-        {{-1.0f, -1.0f, -1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{ 1.0f, -1.0f, -1.0f}},
-        {{-1.0f, -1.0f,  1.0f}},
-        {{ 1.0f, -1.0f,  1.0f}},
+        {{-1.0f, 1.0f, -1.0f}}, {{-1.0f, -1.0f, -1.0f}}, {{1.0f, -1.0f, -1.0f}},  {{1.0f, -1.0f, -1.0f}},
+        {{1.0f, 1.0f, -1.0f}},  {{-1.0f, 1.0f, -1.0f}},  {{-1.0f, -1.0f, 1.0f}},  {{-1.0f, -1.0f, -1.0f}},
+        {{-1.0f, 1.0f, -1.0f}}, {{-1.0f, 1.0f, -1.0f}},  {{-1.0f, 1.0f, 1.0f}},   {{-1.0f, -1.0f, 1.0f}},
+        {{1.0f, -1.0f, -1.0f}}, {{1.0f, -1.0f, 1.0f}},   {{1.0f, 1.0f, 1.0f}},    {{1.0f, 1.0f, 1.0f}},
+        {{1.0f, 1.0f, -1.0f}},  {{1.0f, -1.0f, -1.0f}},  {{-1.0f, -1.0f, 1.0f}},  {{-1.0f, 1.0f, 1.0f}},
+        {{1.0f, 1.0f, 1.0f}},   {{1.0f, 1.0f, 1.0f}},    {{1.0f, -1.0f, 1.0f}},   {{-1.0f, -1.0f, 1.0f}},
+        {{-1.0f, 1.0f, -1.0f}}, {{1.0f, 1.0f, -1.0f}},   {{1.0f, 1.0f, 1.0f}},    {{1.0f, 1.0f, 1.0f}},
+        {{-1.0f, 1.0f, 1.0f}},  {{-1.0f, 1.0f, -1.0f}},  {{-1.0f, -1.0f, -1.0f}}, {{-1.0f, -1.0f, 1.0f}},
+        {{1.0f, -1.0f, -1.0f}}, {{1.0f, -1.0f, -1.0f}},  {{-1.0f, -1.0f, 1.0f}},  {{1.0f, -1.0f, 1.0f}},
     };
 
     createVertexBuffer();

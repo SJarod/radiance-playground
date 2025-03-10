@@ -21,7 +21,7 @@ class Texture
 
     std::unique_ptr<Image> m_image;
     VkImageView m_imageView;
-    VkSampler m_sampler;
+    std::unique_ptr<VkSampler> m_sampler;
 
     std::vector<unsigned char> m_imageData;
 
@@ -36,9 +36,9 @@ class Texture
     Texture &operator=(Texture &&) = delete;
 
   public:
-    [[nodiscard]] inline const VkSampler &getSampler() const
+    [[nodiscard]] inline const VkSampler *getSampler() const
     {
-        return m_sampler;
+        return m_sampler.get();
     }
     [[nodiscard]] inline const VkImageView &getImageView() const
     {
@@ -116,7 +116,7 @@ class TextureBuilder
 
 class CubemapBuilder
 {
-private:
+  private:
     std::unique_ptr<Texture> m_product;
 
     std::weak_ptr<Device> m_device;
@@ -138,7 +138,7 @@ private:
         m_product = std::unique_ptr<Texture>(new Texture);
     }
 
-public:
+  public:
     CubemapBuilder()
     {
         restart();
@@ -159,43 +159,43 @@ public:
         m_product->m_height = a;
     }
 
-    void setImageData(const std::vector<unsigned char>& data)
+    void setImageData(const std::vector<unsigned char> &data)
     {
         m_product->m_imageData = data;
         m_bLoadFromFile = false;
     }
 
-    void setRightTextureFilename(const std::string& filename)
+    void setRightTextureFilename(const std::string &filename)
     {
         m_rightTextureFilename = filename;
         m_bLoadFromFile = true;
     }
 
-    void setLeftTextureFilename(const std::string& filename)
+    void setLeftTextureFilename(const std::string &filename)
     {
         m_leftTextureFilename = filename;
         m_bLoadFromFile = true;
     }
 
-    void setTopTextureFilename(const std::string& filename)
+    void setTopTextureFilename(const std::string &filename)
     {
         m_topTextureFilename = filename;
         m_bLoadFromFile = true;
     }
 
-    void setBottomTextureFilename(const std::string& filename)
+    void setBottomTextureFilename(const std::string &filename)
     {
         m_bottomTextureFilename = filename;
         m_bLoadFromFile = true;
     }
 
-    void setFrontTextureFilename(const std::string& filename)
+    void setFrontTextureFilename(const std::string &filename)
     {
         m_frontTextureFilename = filename;
         m_bLoadFromFile = true;
     }
 
-    void setBackTextureFilename(const std::string& filename)
+    void setBackTextureFilename(const std::string &filename)
     {
         m_backTextureFilename = filename;
         m_bLoadFromFile = true;
@@ -219,7 +219,7 @@ public:
 
 class TextureDirector
 {
-public:
-    void createSRGBTextureBuilder(TextureBuilder& builder);
-    void createSRGBTextureBuilder(CubemapBuilder& builder);
+  public:
+    void configureSRGBTextureBuilder(TextureBuilder &builder);
+    void configureSRGBTextureBuilder(CubemapBuilder &builder);
 };

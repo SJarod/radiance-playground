@@ -16,7 +16,7 @@ Texture::~Texture()
         return;
 
     auto deviceHandle = m_device.lock()->getHandle();
-    vkDestroySampler(deviceHandle, m_sampler, nullptr);
+    vkDestroySampler(deviceHandle, *m_sampler, nullptr);
     vkDestroyImageView(deviceHandle, m_imageView, nullptr);
 }
 
@@ -48,7 +48,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_device);
     bb.setSize(imageSize);
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
@@ -57,7 +57,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 
     ImageBuilder ib;
     ImageDirector id;
-    id.createSampledImage2DBuilder(ib);
+    id.configureSampledImage2DBuilder(ib);
     ib.setDevice(m_device);
     ib.setFormat(m_format);
     ib.setWidth(m_product->m_width);
@@ -68,13 +68,13 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     ImageLayoutTransitionBuilder iltb;
     ImageLayoutTransitionDirector iltd;
 
-    iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
+    iltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_image->copyBufferToImage2D(stagingBuffer->getHandle());
 
-    iltd.createBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
+    iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
@@ -84,34 +84,11 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 
     // sampler
 
-    auto devicePtr = m_device.lock();
-    auto deviceHandle = devicePtr->getHandle();
-
-    VkSamplerCreateInfo createInfo = {
-        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = m_samplerFilter,
-        .minFilter = m_samplerFilter,
-        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .mipLodBias = 0.f,
-        .anisotropyEnable = devicePtr->getPhysicalDeviceFeatures2().features.samplerAnisotropy,
-        .maxAnisotropy = devicePtr->getPhysicalDeviceProperties().limits.maxSamplerAnisotropy,
-        .compareEnable = VK_FALSE,
-        .compareOp = VK_COMPARE_OP_ALWAYS,
-        .minLod = 0.f,
-        .maxLod = 0.f,
-        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-        .unnormalizedCoordinates = VK_FALSE,
-    };
-
-    VkResult res = vkCreateSampler(deviceHandle, &createInfo, nullptr, &m_product->m_sampler);
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to create image sampler : " << res << std::endl;
-        return nullptr;
-    }
+    SamplerBuilder sb;
+    sb.setDevice(m_device);
+    sb.setMagFilter(m_samplerFilter);
+    sb.setMinFilter(m_samplerFilter);
+    m_product->m_sampler = sb.buildAndRestart();
 
     auto result = std::move(m_product);
     restart();
@@ -122,11 +99,8 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 {
     assert(m_device.lock());
 
-
-    std::array<std::string, 6> filepath = { m_rightTextureFilename, m_leftTextureFilename,
-                                          m_topTextureFilename, m_bottomTextureFilename,
-                                          m_frontTextureFilename, m_backTextureFilename
-                                        };
+    std::array<std::string, 6> filepath = {m_rightTextureFilename,  m_leftTextureFilename,  m_topTextureFilename,
+                                           m_bottomTextureFilename, m_frontTextureFilename, m_backTextureFilename};
 
     size_t currentTotalSize = 0u;
 
@@ -134,9 +108,9 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
     {
         for (int i = 0; i < filepath.size(); i++)
         {
-            const char* currentFilepath = filepath[i].c_str();
+            const char *currentFilepath = filepath[i].c_str();
             int texWidth, texHeight, texChannels;
-            stbi_uc* textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+            stbi_uc *textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
             if (!textureData)
             {
                 std::cerr << "Failed to load texture : " << m_rightTextureFilename << std::endl;
@@ -159,7 +133,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     BufferBuilder bb;
     BufferDirector bd;
-    bd.createStagingBufferBuilder(bb);
+    bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_device);
     bb.setSize(totalSize);
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
@@ -168,7 +142,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     ImageBuilder ib;
     ImageDirector id;
-    id.createSampledImage3DBuilder(ib);
+    id.configureSampledImage3DBuilder(ib);
     ib.setDevice(m_device);
     ib.setFormat(m_format);
     ib.setWidth(m_product->m_width);
@@ -179,14 +153,14 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
     ImageLayoutTransitionBuilder iltb;
     ImageLayoutTransitionDirector iltd;
 
-    iltd.createBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
+    iltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     iltb.setLayerCount(6U);
     m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_image->copyBufferToImageCube(stagingBuffer->getHandle());
 
-    iltd.createBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
+    iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
     iltb.setImage(*m_product->m_image);
     iltb.setLayerCount(6U);
     m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
@@ -197,48 +171,25 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     // sampler
 
-    auto devicePtr = m_device.lock();
-    auto deviceHandle = devicePtr->getHandle();
-
-    VkSamplerCreateInfo createInfo = {
-        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .magFilter = m_samplerFilter,
-        .minFilter = m_samplerFilter,
-        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-        .mipLodBias = 0.f,
-        .anisotropyEnable = devicePtr->getPhysicalDeviceFeatures2().features.samplerAnisotropy,
-        .maxAnisotropy = devicePtr->getPhysicalDeviceProperties().limits.maxSamplerAnisotropy,
-        .compareEnable = VK_FALSE,
-        .compareOp = VK_COMPARE_OP_ALWAYS,
-        .minLod = 0.f,
-        .maxLod = 0.f,
-        .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-        .unnormalizedCoordinates = VK_FALSE,
-    };
-
-    VkResult res = vkCreateSampler(deviceHandle, &createInfo, nullptr, &m_product->m_sampler);
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to create image sampler : " << res << std::endl;
-        return nullptr;
-    }
+    SamplerBuilder sb;
+    sb.setDevice(m_device);
+    sb.setMagFilter(m_samplerFilter);
+    sb.setMinFilter(m_samplerFilter);
+    m_product->m_sampler = sb.buildAndRestart();
 
     auto result = std::move(m_product);
     restart();
     return result;
 }
 
-void TextureDirector::createSRGBTextureBuilder(TextureBuilder& builder)
+void TextureDirector::configureSRGBTextureBuilder(TextureBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
     builder.setSamplerFilter(VK_FILTER_NEAREST);
 }
 
-void TextureDirector::createSRGBTextureBuilder(CubemapBuilder& builder)
+void TextureDirector::configureSRGBTextureBuilder(CubemapBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);

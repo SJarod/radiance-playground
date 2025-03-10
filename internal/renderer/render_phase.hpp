@@ -20,7 +20,7 @@ struct BackBufferT
 {
     VkCommandBuffer commandBuffer;
 
-    // TODO : remove acquire semaphore
+    // TODO : make acquire semaphore optional
     VkSemaphore acquireSemaphore;
     VkSemaphore renderSemaphore;
     VkFence inFlightFence;
@@ -48,6 +48,7 @@ class RenderPhase
 
     RenderPhase() = default;
 
+  private:
     [[nodiscard]] const BackBufferT &getCurrentBackBuffer() const
     {
         return m_backBuffers[m_backBufferIndex];
@@ -69,6 +70,7 @@ class RenderPhase
 
     void swapBackBuffers();
 
+  public:
     [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore() const
     {
         return getCurrentBackBuffer().acquireSemaphore;
@@ -81,8 +83,6 @@ class RenderPhase
     {
         return getCurrentBackBuffer().inFlightFence;
     }
-
-  public:
     [[nodiscard]] const RenderPass *getRenderPass() const
     {
         return m_renderPass.get();

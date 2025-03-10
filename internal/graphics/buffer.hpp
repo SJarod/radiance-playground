@@ -92,7 +92,7 @@ class BufferBuilder
 class BufferDirector
 {
   public:
-    void createStagingBufferBuilder(BufferBuilder &builder);
+    void configureStagingBufferBuilder(BufferBuilder &builder);
     void createVertexBufferBuilder(BufferBuilder &builder);
     void createIndexBufferBuilder(BufferBuilder &builder);
     void createUniformBufferBuilder(BufferBuilder& builder);

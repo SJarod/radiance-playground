@@ -84,7 +84,8 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, const Camera
     directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex)
+void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,
+                                                            uint32_t backBufferIndex)
 {
     if (m_descriptorSets.size() == 0)
         return;
@@ -225,7 +226,7 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
             if (m_texture.lock())
             {
                 auto texPtr = m_texture.lock();
-                imageInfo.sampler = texPtr->getSampler();
+                imageInfo.sampler = *texPtr->getSampler();
                 imageInfo.imageView = texPtr->getImageView();
             }
             udb.addSetWrites(VkWriteDescriptorSet{
@@ -426,7 +427,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
         if (m_texture.lock())
         {
             auto texPtr = m_texture.lock();
-            imageInfo.sampler = texPtr->getSampler();
+            imageInfo.sampler = *texPtr->getSampler();
             imageInfo.imageView = texPtr->getImageView();
         }
         udb.addSetWrites(VkWriteDescriptorSet{

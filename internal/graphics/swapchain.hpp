@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -25,6 +26,8 @@ class SwapChain
 
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
+
+    std::optional<std::vector<std::unique_ptr<VkSampler>>> m_samplers;
 
     std::unique_ptr<Image> m_depthImage;
     VkImageView m_depthImageView;
@@ -83,6 +86,8 @@ class SwapChainBuilder
   private:
     std::unique_ptr<SwapChain> m_product;
 
+    bool m_useImagesAsSamplers = false;
+
     void restart()
     {
         m_product = std::unique_ptr<SwapChain>(new SwapChain);
@@ -105,6 +110,10 @@ class SwapChainBuilder
     void setHeight(uint32_t height)
     {
         m_product->m_extent.height = height;
+    }
+    void setUseImagesAsSamplers(bool a)
+    {
+        m_useImagesAsSamplers = a;
     }
 
     std::unique_ptr<SwapChain> build();

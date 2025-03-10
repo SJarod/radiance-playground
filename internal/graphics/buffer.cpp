@@ -79,7 +79,7 @@ std::unique_ptr<Buffer> BufferBuilder::build()
     return std::move(m_product);
 }
 
-void BufferDirector::createStagingBufferBuilder(BufferBuilder &builder)
+void BufferDirector::configureStagingBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

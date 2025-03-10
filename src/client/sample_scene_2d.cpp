@@ -47,7 +47,7 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
     };
     TextureBuilder tb;
     TextureDirector td;
-    td.createSRGBTextureBuilder(tb);
+    td.configureSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setImageData(imagePixels);
     tb.setWidth(2);
