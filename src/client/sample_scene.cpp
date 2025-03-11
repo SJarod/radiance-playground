@@ -49,6 +49,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     mb.setDevice(device);
     mb.setModelFilename("assets/viking_room.obj");
     std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
+    Model
 
     TextureBuilder tb;
     td.configureSRGBTextureBuilder(tb);

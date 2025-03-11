@@ -1,5 +1,6 @@
 #include <assimp/Importer.hpp>
 #include <memory>
+#include <string>
 
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -245,6 +246,51 @@ void Application::initImgui()
         std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
         throw;
     }
+}
+
+void Application::displayImgui() 
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::Begin("Radiance playground");
+
+    ImGui::Text(std::format("Average FPS: {0}", ImGui::GetIO().Framerate).c_str());
+
+
+    if (ImGui::CollapsingHeader("Scene Objects", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
+    {
+        auto objects = m_scene->getObjects();
+        for (auto object : objects) 
+        {
+            if (ImGui::TreeNode(object->getName().c_str()))
+            {
+                Transform t = object->getTransform();
+                glm::vec3 euler = glm::degrees(glm::eulerAngles(t.rotation));
+
+                bool isTransformEdited = false;
+                ImGui::PushID(object->getName().c_str());
+                isTransformEdited |= ImGui::DragFloat3("Position", &t.position[0]);
+                if (ImGui::DragFloat3("Rotation", &euler[0])) 
+                {
+                    isTransformEdited = true;
+                    t.rotation = glm::quat(glm::radians(euler));
+                }
+                isTransformEdited |= ImGui::DragFloat3("Scale", &t.scale[0]);
+                ImGui::PopID();
+
+                if (isTransformEdited) 
+                {
+                    object->setTransform(t);
+                }
+
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    ImGui::End();
 }
 
 void Application::runLoop()
@@ -532,12 +578,8 @@ void Application::runLoop()
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
 
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
+        displayImgui();
 
         m_inputManager.UpdateInputStates();
         m_window->pollEvents();

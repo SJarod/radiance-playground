@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "engine/vertex.hpp"
+#include "engine/transform.hpp"
 #include "graphics/buffer.hpp"
 
 class Device;
@@ -29,7 +30,6 @@ class Mesh
     std::shared_ptr<Texture> m_texture;
 
     Mesh() = default;
-
   public:
     ~Mesh();
 
@@ -60,7 +60,7 @@ class Mesh
         return m_texture;
     }
 
-  public:
+public:
     void setTexture(const std::shared_ptr<Texture> &texture)
     {
         m_texture = texture;

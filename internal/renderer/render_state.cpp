@@ -363,6 +363,16 @@ void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
+void MeshRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+{
+    RenderStateABC::updateUniformBuffers(imageIndex, camera, lights);
+
+    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+    auto meshPtr = m_mesh.lock();
+
+    mvpData->model = meshPtr->getTransform().getTransformMatrix();
+}
+
 std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()
 {
     assert(m_device.lock());

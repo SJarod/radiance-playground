@@ -33,6 +33,9 @@ class Application
     Time::TimeManager m_timeManager;
     InputManager m_inputManager;
 
+    void initImgui();
+    void displayImgui();
+
   public:
     Application();
     ~Application();
@@ -42,6 +45,5 @@ class Application
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
 
-    void initImgui();
     void runLoop();
 };

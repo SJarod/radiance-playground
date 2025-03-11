@@ -140,6 +140,9 @@ class MeshRenderState : public RenderStateABC
     void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera,
           const std::vector<std::shared_ptr<Light>>& lights) override;
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
+    
+    void updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera,
+        const std::vector<std::shared_ptr<Light>>& lights) override;
 };
 
 class MeshRenderStateBuilder : public RenderStateBuilderI

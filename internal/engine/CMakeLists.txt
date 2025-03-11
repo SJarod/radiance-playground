@@ -14,8 +14,7 @@ target_sources(${component}
     transform.cpp
 
     camera.hpp
-    camera.cpp
-)
+    camera.cpp)
 
 target_link_libraries(${component}
     PUBLIC ${Vulkan_LIBRARY}

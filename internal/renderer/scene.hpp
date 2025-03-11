@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-class Mesh;
+class Model;
 class CameraABC;
 class Light;
 class Skybox;
@@ -17,7 +17,7 @@ class SceneABC
     std::vector<std::unique_ptr<CameraABC>> m_cameras;
 
     std::vector<std::unique_ptr<ScriptableABC>> m_scripts;
-    std::vector<std::shared_ptr<Mesh>> m_objects;
+    std::vector<std::shared_ptr<Model>> m_objects;
     std::vector<std::shared_ptr<Light>> m_lights;
     std::shared_ptr<Skybox> m_skybox;
 
@@ -35,7 +35,7 @@ class SceneABC
     void updateSimulation(float deltaTime);
 
   public:
-    [[nodiscard]] const std::vector<std::shared_ptr<Mesh>> &getObjects() const
+    [[nodiscard]] const std::vector<std::shared_ptr<Model>> &getObjects() const
     {
         return m_objects;
     }

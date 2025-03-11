@@ -29,7 +29,7 @@ target_sources(${component}
     light.cpp
     
     skybox.hpp
-    skybox.cpp)
+    skybox.cpp "model.cpp")
 
 target_link_libraries(${component}
     PUBLIC graphics
