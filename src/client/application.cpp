@@ -14,6 +14,7 @@
 
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
+#include "renderer/model.hpp"
 #include "renderer/render_graph.hpp"
 #include "renderer/render_phase.hpp"
 #include "renderer/render_state.hpp"
@@ -420,20 +421,20 @@ void Application::runLoop()
     std::shared_ptr<Skybox> skybox = m_scene->getSkybox();
     for (int i = 0; i < objects.size(); ++i)
     {
-        MeshRenderStateBuilder mrsb;
-        mrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+        ModelRenderStateBuilder mrsb;
+        mrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.setDevice(mainDevice);
-        mrsb.setTexture(objects[i]->getTexture());
-
+        mrsb.setTexture(objects[i]->getMesh()->getTexture());
+        
         if (skybox)
             mrsb.setEnvironmentMap(skybox->getTexture());
-
-        mrsb.setMesh(objects[i]);
+        
+        mrsb.setModel(objects[i]);
 
         // Check if the mesh is the quad
         if (i != 1)
@@ -511,15 +512,19 @@ void Application::runLoop()
                     {{1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
                     {{-1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {0.f, 1.f}}});
     mb.setIndices({0, 1, 2, 2, 3, 0});
-    std::shared_ptr<Mesh> postProcessQuad = mb.buildAndRestart();
-    MeshRenderStateBuilder quadRsb;
+    std::shared_ptr<Mesh> postProcessQuadMesh = mb.buildAndRestart();
+    ModelBuilder modelBuilder;
+    modelBuilder.setMesh(postProcessQuadMesh);
+    modelBuilder.setName("Viking Room");
+    std::shared_ptr<Model> postProcessQuadModel = modelBuilder.build();
+    ModelRenderStateBuilder quadRsb;
     quadRsb.setDevice(mainDevice);
     quadRsb.setLightDescriptorEnable(false);
     quadRsb.setTextureDescriptorEnable(false);
     quadRsb.setMVPDescriptorEnable(false);
     quadRsb.setPushViewPositionEnable(false);
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
-    quadRsb.setMesh(postProcessQuad);
+    quadRsb.setModel(postProcessQuadModel);
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     quadRsb.setDescriptorSetUpdatePred([&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
         auto deviceHandle = mainDevice->getHandle();

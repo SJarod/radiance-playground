@@ -14,6 +14,7 @@
 #include "light.hpp"
 #include "mesh.hpp"
 #include "render_phase.hpp"
+#include "model.hpp";
 #include "skybox.hpp"
 #include "texture.hpp"
 
@@ -129,11 +130,11 @@ void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffe
                             &m_descriptorSets[backBufferIndex], 0, nullptr);
 }
 
-void MeshRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
+void ModelRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
 }
-void MeshRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
@@ -141,7 +142,7 @@ void MeshRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     });
 }
 
-std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
+std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -334,7 +335,7 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void MeshRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderCount, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+void ModelRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderCount, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
 {
     if (m_pushViewPosition)
     {
@@ -352,9 +353,10 @@ void MeshRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, 
     }
 }
 
-void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
+void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
-    auto meshPtr = m_mesh.lock();
+    auto modelPtr = m_model.lock();
+    auto meshPtr = modelPtr->getMesh();
 
     VkBuffer vbos[] = {meshPtr->getVertexBufferHandle()};
     VkDeviceSize offsets[] = {0};
@@ -363,14 +365,17 @@ void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
-void MeshRenderState::updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, camera, lights);
+    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, camera, lights);
 
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
-    auto meshPtr = m_mesh.lock();
+    if (m_mvpUniformBuffersMapped.size() > 0)
+    {
+        MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+        auto modelPtr = m_model.lock();
 
-    mvpData->model = meshPtr->getTransform().getTransformMatrix();
+        mvpData->model = modelPtr->getTransform().getTransformMatrix();
+    }
 }
 
 std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()

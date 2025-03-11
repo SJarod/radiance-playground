@@ -3,6 +3,7 @@
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
 #include "renderer/texture.hpp"
+#include "renderer/model.hpp"
 
 #include "engine/camera.hpp"
 
@@ -54,5 +55,8 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
     tb.setHeight(2);
     mesh->setTexture(tb.buildAndRestart());
 
-    m_objects.push_back(mesh);
+    ModelBuilder modelBuilder;
+    modelBuilder.setMesh(mesh);
+
+    m_objects.push_back(modelBuilder.build());
 }

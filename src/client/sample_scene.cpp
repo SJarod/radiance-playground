@@ -3,6 +3,7 @@
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
 #include "renderer/skybox.hpp"
+#include "renderer/model.hpp"
 #include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
@@ -49,7 +50,6 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     mb.setDevice(device);
     mb.setModelFilename("assets/viking_room.obj");
     std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
-    Model
 
     TextureBuilder tb;
     td.configureSRGBTextureBuilder(tb);
@@ -57,7 +57,11 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     tb.setTextureFilename("assets/viking_room.png");
     mesh->setTexture(tb.buildAndRestart());
 
-    m_objects.push_back(mesh);
+    ModelBuilder modelBuilder;
+    modelBuilder.setMesh(mesh);
+    modelBuilder.setName("Viking Room");
+
+    m_objects.push_back(modelBuilder.build());
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
     light->position = glm::vec3(-1.0, 0.0, 0.0);
@@ -103,5 +107,9 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     tb.setHeight(2);
     mesh2->setTexture(tb.buildAndRestart());
 
-    m_objects.push_back(mesh2);
+    ModelBuilder modelBuilder2;
+    modelBuilder2.setMesh(mesh2);
+    modelBuilder2.setName("Planes");
+
+    m_objects.push_back(modelBuilder2.build());
 }

@@ -50,6 +50,8 @@ void MoveCamera::update(float deltaTime)
     if (!m_isFocused)
         return;
 
+    float isFastMovementActive = InputManager::GetKey(Keycode::LEFT_SHIFT) ? 3.f : 1.f;
+
     float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
     float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
     Transform cameraTransform = m_mainCamera->getTransform();
@@ -66,7 +68,7 @@ void MoveCamera::update(float deltaTime)
     glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * cameraTransform.rotation;
     if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
         dir = glm::normalize(dir);
-    cameraTransform.position += m_mainCamera->getSpeed() * dir * deltaTime;
+    cameraTransform.position += m_mainCamera->getSpeed() * dir * deltaTime * isFastMovementActive;
 
     m_mainCamera->setTransform(cameraTransform);
 }

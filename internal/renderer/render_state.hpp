@@ -13,9 +13,10 @@ class Device;
 class Buffer;
 class CameraABC;
 class Mesh;
+class Model;
 class Skybox;
 class Light;
-class MeshRenderStateBuilder;
+class ModelRenderStateBuilder;
 class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
 class EnvironmentCaptureRenderStateBuilder;
@@ -127,12 +128,12 @@ class RenderStateBuilderI
     virtual std::unique_ptr<RenderStateABC> build() = 0;
 };
 
-class MeshRenderState : public RenderStateABC
+class ModelRenderState : public RenderStateABC
 {
-    friend MeshRenderStateBuilder;
+    friend ModelRenderStateBuilder;
 
   private:
-    std::weak_ptr<Mesh> m_mesh;
+    std::weak_ptr<Model> m_model;
 
     bool m_pushViewPosition = true;
 
@@ -141,14 +142,14 @@ class MeshRenderState : public RenderStateABC
           const std::vector<std::shared_ptr<Light>>& lights) override;
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
     
-    void updateUniformBuffers(uint32_t imageIndex, const CameraABC& camera,
+    void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC& camera,
         const std::vector<std::shared_ptr<Light>>& lights) override;
 };
 
-class MeshRenderStateBuilder : public RenderStateBuilderI
+class ModelRenderStateBuilder : public RenderStateBuilderI
 {
   private:
-    std::unique_ptr<MeshRenderState> m_product;
+    std::unique_ptr<ModelRenderState> m_product;
 
     std::weak_ptr<Device> m_device;
 
@@ -162,15 +163,15 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     bool m_textureDescriptorEnable = true;
     bool m_mvpDescriptorEnable = true;
 
-    void restart() override
-    {
-        m_product = std::unique_ptr<MeshRenderState>(new MeshRenderState);
-    }
-
   public:
-    MeshRenderStateBuilder()
+    ModelRenderStateBuilder()
     {
         restart();
+    }
+
+    void restart() override
+    {
+        m_product = std::unique_ptr<ModelRenderState>(new ModelRenderState);
     }
 
     void setDevice(std::weak_ptr<Device> device) override
@@ -202,9 +203,9 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     }
 
 
-    void setMesh(std::shared_ptr<Mesh> mesh)
+    void setModel(std::shared_ptr<Model> mesh)
     {
-        m_product->m_mesh = mesh;
+        m_product->m_model = mesh;
     }
 
     void setLightDescriptorEnable(bool a)
