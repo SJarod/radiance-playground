@@ -27,7 +27,7 @@ class SwapChain
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
 
-    std::optional<std::vector<std::unique_ptr<VkSampler>>> m_samplers;
+    std::optional<std::unique_ptr<VkSampler>> m_sampler;
 
     std::unique_ptr<Image> m_depthImage;
     VkImageView m_depthImageView;

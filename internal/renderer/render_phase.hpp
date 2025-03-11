@@ -38,6 +38,7 @@ class RenderPhase
 
   private:
     std::weak_ptr<Device> m_device;
+    const RenderPhase *m_parentPhase = nullptr;
 
     std::unique_ptr<RenderPass> m_renderPass;
 
@@ -113,6 +114,10 @@ class RenderPhaseBuilder
     {
         m_device = device;
         m_product->m_device = device;
+    }
+    void setParentPhase(const RenderPhase *parentPhase)
+    {
+        m_product->m_parentPhase = parentPhase;
     }
     void setRenderPass(std::unique_ptr<RenderPass> renderPass)
     {

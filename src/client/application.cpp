@@ -137,6 +137,7 @@ Application::Application()
     RenderPhaseBuilder postProcessRb;
     postProcessRb.setDevice(mainDevice);
     postProcessRb.setRenderPass(postProcessRpb.build());
+    postProcessRb.setParentPhase(m_skyboxPhase);
     auto postProcessPhase = postProcessRb.build();
     m_postProcessPhase = postProcessPhase.get();
 

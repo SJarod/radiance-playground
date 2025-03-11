@@ -9,12 +9,9 @@ SwapChain::~SwapChain()
 {
     auto deviceHandle = m_device.lock()->getHandle();
 
-    if (m_samplers.has_value())
+    if (m_sampler.has_value())
     {
-        for (std::unique_ptr<VkSampler> &sampler : m_samplers.value())
-        {
-            vkDestroySampler(deviceHandle, *sampler, nullptr);
-        }
+        vkDestroySampler(deviceHandle, **m_sampler, nullptr);
     }
     vkDestroyImageView(deviceHandle, m_depthImageView, nullptr);
     m_depthImage.reset();
@@ -164,16 +161,13 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
 
     if (m_useImagesAsSamplers)
     {
-        m_product->m_samplers = std::vector<std::unique_ptr<VkSampler>>();
-        m_product->m_samplers->reserve(imageCount);
-
         SamplerBuilder sb;
         sb.setDevice(m_product->m_device);
         sb.setMagFilter(VK_FILTER_LINEAR);
         sb.setMinFilter(VK_FILTER_LINEAR);
         for (int i = 0; i < imageCount; ++i)
         {
-            m_product->m_samplers->push_back(sb.buildAndRestart());
+            m_product->m_sampler = sb.buildAndRestart();
         }
     }
 
