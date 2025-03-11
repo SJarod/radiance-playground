@@ -241,29 +241,30 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
             });
         }
 
-        VkDescriptorImageInfo imageInfo = {
+        VkDescriptorImageInfo diffuseImageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         if (m_textureDescriptorEnable)
         {
-            if (m_texture.lock())
-            {
-                auto texPtr = m_texture.lock();
-                imageInfo.sampler = *texPtr->getSampler();
-                imageInfo.imageView = texPtr->getImageView();
-            }
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_descriptorSets[i],
-                .dstBinding = 1,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageInfo,
-            });
-        }
+	        if (!m_texture.expired())
+	        {
+	            auto texPtr = m_texture.lock();
+	            diffuseImageInfo.sampler = *texPtr->getSampler();
+	            diffuseImageInfo.imageView = texPtr->getImageView();
 
-        VkDescriptorBufferInfo pointLightBufferInfo;
+                udb.addSetWrites(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = m_product->m_descriptorSets[i],
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &diffuseImageInfo,
+                });
+	        }
+    	}
+    	
+    	VkDescriptorBufferInfo pointLightBufferInfo;
         VkDescriptorBufferInfo directionalLightBufferInfo;
         if (m_lightDescriptorEnable)
         {
@@ -279,8 +280,8 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                 .pBufferInfo = &pointLightBufferInfo,
             });
-
-            directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
+            
+			directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
             directionalLightBufferInfo.offset = 0;
             directionalLightBufferInfo.range = sizeof(RenderStateABC::DirectionalLightContainer);
             udb.addSetWrites(VkWriteDescriptorSet{
@@ -291,6 +292,25 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                 .pBufferInfo = &directionalLightBufferInfo,
+            });
+        }
+        VkDescriptorImageInfo envMapImageInfo = {
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        if (!m_environmentMap.expired())
+        {
+            auto texPtr = m_environmentMap.lock();
+            envMapImageInfo.sampler = *texPtr->getSampler();
+            envMapImageInfo.imageView = texPtr->getImageView();
+
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 4,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &envMapImageInfo,
             });
         }
 

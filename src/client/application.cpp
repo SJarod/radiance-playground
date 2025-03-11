@@ -234,7 +234,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene2D>(mainDevice);
+    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
 
     // material
     UniformDescriptorBuilder phongUdb;
@@ -262,6 +262,12 @@ void Application::runLoop()
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    });
 
     PipelineBuilder phongPb;
     phongPb.setDevice(mainDevice);
@@ -278,6 +284,7 @@ void Application::runLoop()
 
     auto objects = m_scene->getObjects();
 
+    std::shared_ptr<Skybox> skybox = m_scene->getSkybox();
     for (int i = 0; i < objects.size(); ++i)
     {
         MeshRenderStateBuilder mrsb;
@@ -286,8 +293,13 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.setDevice(mainDevice);
         mrsb.setTexture(objects[i]->getTexture());
+
+        if (skybox)
+            mrsb.setEnvironmentMap(skybox->getTexture());
+
         mrsb.setMesh(objects[i]);
 
         mrsb.setPipeline(phongPipeline);
@@ -324,7 +336,7 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
 
-    if (std::shared_ptr<Skybox> skybox = m_scene->getSkybox())
+    if (skybox)
     {
         SkyboxRenderStateBuilder srsb;
         srsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());

@@ -9,6 +9,7 @@ layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec3 fragColor;
 layout(location = 2) out vec2 fragUV;
 layout(location = 3) out vec3 fragPos;
+layout(location = 4) out vec3 viewPos;
 
 layout(binding = 0) uniform MVPUniformBufferObject
 {
@@ -22,7 +23,8 @@ void main()
 	gl_Position = mvp.proj * mvp.view * mvp.model * vec4(aPos, 1.0);
 
 	fragPos = vec3(mvp.model * vec4(aPos, 1.0));
-	fragNormal = normalize(aNormal);
+	fragNormal = normalize(mat3(mvp.model) * aNormal);
 	fragColor = aColor;
 	fragUV = aUV;
+	viewPos = mvp.view[3].xyz;
 }

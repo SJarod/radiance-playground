@@ -145,6 +145,7 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     uint32_t m_frameInFlightCount;
 
     std::weak_ptr<Texture> m_texture;
+    std::weak_ptr<Texture> m_environmentMap;
 
     bool m_lightDescriptorEnable = true;
     bool m_textureDescriptorEnable = true;
@@ -175,6 +176,10 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     void setTexture(std::weak_ptr<Texture> texture) override
     {
         m_texture = texture;
+    }
+    void setEnvironmentMap(std::weak_ptr<Texture> texture)
+    {
+        m_environmentMap = texture;
     }
     void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
