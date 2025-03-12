@@ -10,11 +10,6 @@ void MoveCamera::setFocus(bool newFocus)
 {
     m_isFocused = newFocus;
 
-    if (m_isFocused) 
-        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
-    else 
-        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-
     int inputModeValue = m_isFocused ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
     glfwSetInputMode(m_window->getHandle(), GLFW_CURSOR, inputModeValue);
 }

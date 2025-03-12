@@ -28,21 +28,6 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
 
     TextureDirector td;
 
-    CubemapBuilder ctb;
-    td.configureSRGBTextureBuilder(ctb);
-    ctb.setDevice(device);
-    ctb.setRightTextureFilename("assets/skybox/right.jpg");
-    ctb.setLeftTextureFilename("assets/skybox/left.jpg");
-    ctb.setTopTextureFilename("assets/skybox/top.jpg");
-    ctb.setBottomTextureFilename("assets/skybox/bottom.jpg");
-    ctb.setFrontTextureFilename("assets/skybox/front.jpg");
-    ctb.setBackTextureFilename("assets/skybox/back.jpg");
-
-    SkyboxBuilder mainSb;
-    mainSb.setDevice(device);
-    mainSb.setCubemap(ctb.buildAndRestart());
-    m_skybox = mainSb.buildAndRestart();
-
     MeshBuilder mb;
     MeshDirector md;
     md.createAssimpMeshBuilder(mb);
@@ -74,33 +59,4 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     light1->specularPower = 1.0;
     m_lights.push_back(light1);
 
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
-        {{0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 1.f, 0.f, 1.f}, {0.f, 0.f}},
-        {{0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {0.f, 1.f}},
-        {{-0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {1.f, 1.f}},
-        {{-0.5f, -0.5f, -0.5f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
-        {{0.5f, -0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.f, 1.f, 0.f, 1.f}, {0.f, 0.f}},
-        {{0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {0.f, 1.f}},
-        {{-0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {1.f, 1.f}},
-    };
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
-    };
-    mb.setDevice(device);
-    mb.setVertices(vertices);
-    mb.setIndices(indices);
-    std::shared_ptr<Mesh> mesh2 = mb.buildAndRestart();
-
-    const std::vector<unsigned char> imagePixels = {
-        255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
-    };
-    td.configureSRGBTextureBuilder(tb);
-    tb.setDevice(device);
-    tb.setImageData(imagePixels);
-    tb.setWidth(2);
-    tb.setHeight(2);
-    mesh2->setTexture(tb.buildAndRestart());
-
-    m_objects.push_back(mesh2);
 }
