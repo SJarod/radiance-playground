@@ -73,20 +73,19 @@ Application::Application()
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
     });
     scb.setSwapchainPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR);
-    scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
     RenderPassBuilder phongRpb;
     phongRpb.setDevice(mainDevice);
-    phongRpb.setSwapChain(m_window->getSwapChain());
-
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
 
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     auto clearColorAttachment = rpab.buildAndRestart();
+    phongRpb.addAttachmentView(m_window->getSwapChain()->getImageViews()[0]);
+    phongRpb.addAttachment({});
     phongRpb.addColorAttachment(*clearColorAttachment);
 
     rpad.configureAttachmentClearBuilder(rpab);

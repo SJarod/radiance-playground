@@ -8,6 +8,31 @@ class Device;
 class SwapChain;
 class RenderPassBuilder;
 
+class AttachmentPack
+{
+  private:
+    std::optional<std::vector<VkImageView>> m_colorAttachments;
+    std::optional<VkImageView> m_depthAttachment;
+};
+class Framebuffer
+{
+  private:
+    std::optional<std::vector<Image>> m_images;
+    std::vector<AttachmentPack> m_attachments;
+};
+class SubpassDescription
+{
+    private:
+    std::optional<std::vector<VkAttachmentReference>> m_inputAttachmentReferences;
+    std::optional<std::vector<VkAttachmentReference>> m_colorAttachmentReferences;
+    std::optional<VkAttachmentReference> m_depthAttachmentReference;
+};
+class Subpass
+{
+    private:
+    std::vector<SubpassDescription> m_descriptions;
+};
+
 class RenderPass
 {
     friend RenderPassBuilder;
@@ -16,8 +41,9 @@ class RenderPass
     std::weak_ptr<Device> m_device;
 
     VkRenderPass m_handle;
-    std::vector<VkFramebuffer> m_framebuffers;
-    std::vector<const VkImageView *> m_views;
+
+    std::vector<Framebuffer> m_framebuffers;
+    std::vector<Subpass> m_subpasses;
 
     RenderPass() = default;
 
@@ -34,16 +60,6 @@ class RenderPass
     {
         return m_handle;
     }
-
-    [[nodiscard]] const VkFramebuffer &getFramebuffer(uint32_t imageIndex) const
-    {
-        return m_framebuffers[imageIndex];
-    }
-
-    [[nodiscard]] const VkImageView *getImageView(uint32_t imageIndex) const
-    {
-        return m_views[imageIndex];
-    }
     [[nodiscard]] const uint32_t getImageCount() const
     {
         return static_cast<uint32_t>(m_framebuffers.size());
@@ -55,25 +71,11 @@ class RenderPassBuilder
   private:
     std::unique_ptr<RenderPass> m_product;
 
-    std::vector<VkAttachmentDescription> m_attachments;
-
-    std::vector<VkAttachmentReference> m_colorAttachmentReferences;
-    std::vector<VkAttachmentReference> m_depthAttachmentReferences;
-
-    VkSubpassDescription m_subpass = {};
-    VkSubpassDependency m_subpassDependency = {};
-
     std::weak_ptr<Device> m_device;
-    const SwapChain *m_swapchain;
 
     void restart()
     {
         m_product = std::unique_ptr<RenderPass>(new RenderPass);
-
-        m_subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        m_subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        m_subpassDependency.dstSubpass = 0;
-        m_subpassDependency.srcAccessMask = 0;
     }
 
   public:
@@ -82,17 +84,20 @@ class RenderPassBuilder
         restart();
     }
 
-    void addColorAttachment(VkAttachmentDescription attachment);
-    void addDepthAttachment(VkAttachmentDescription attachment);
-
     void setDevice(std::weak_ptr<Device> device)
     {
         m_device = device;
         m_product->m_device = device;
     }
-    void setSwapChain(const SwapChain *swapchain)
+
+    void describeAttachment(AttachmentPack pack)
     {
-        m_swapchain = swapchain;
+        m_product->m_a
+    }
+
+    void addAttachmentView(const VkImageView view)
+    {
+        m_product->m_attachmentViews.push_back(view);
     }
 
     std::unique_ptr<RenderPass> build();

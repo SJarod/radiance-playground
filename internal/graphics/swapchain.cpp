@@ -9,10 +9,6 @@ SwapChain::~SwapChain()
 {
     auto deviceHandle = m_device.lock()->getHandle();
 
-    if (m_sampler.has_value())
-    {
-        vkDestroySampler(deviceHandle, **m_sampler, nullptr);
-    }
     vkDestroyImageView(deviceHandle, m_depthImageView, nullptr);
     m_depthImage.reset();
     for (VkImageView &imageView : m_imageViews)
@@ -63,9 +59,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < imageCount)
         imageCount = capabilities.maxImageCount;
 
-    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    if (m_useImagesAsSamplers)
-        usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | m_additionalImageUsage;
     VkSwapchainCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = surfaceHandle,
@@ -158,18 +152,6 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     m_product->m_depthImage->transitionImageLayout(*iltb.buildAndRestart());
 
     m_product->m_depthImageView = m_product->m_depthImage->createImageView2D();
-
-    if (m_useImagesAsSamplers)
-    {
-        SamplerBuilder sb;
-        sb.setDevice(m_product->m_device);
-        sb.setMagFilter(VK_FILTER_LINEAR);
-        sb.setMinFilter(VK_FILTER_LINEAR);
-        for (int i = 0; i < imageCount; ++i)
-        {
-            m_product->m_sampler = sb.buildAndRestart();
-        }
-    }
 
     return std::move(m_product);
 }

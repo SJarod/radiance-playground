@@ -27,8 +27,6 @@ class SwapChain
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
 
-    std::optional<std::unique_ptr<VkSampler>> m_sampler;
-
     std::unique_ptr<Image> m_depthImage;
     VkImageView m_depthImageView;
 
@@ -79,10 +77,6 @@ class SwapChain
     {
         return m_device;
     }
-    [[nodiscard]] inline const std::optional<std::unique_ptr<VkSampler>> &getSampler() const
-    {
-        return m_sampler;
-    }
 };
 
 class SwapChainBuilder
@@ -93,7 +87,7 @@ class SwapChainBuilder
     VkSurfaceFormatKHR m_swapchainSurfaceFormat;
     VkPresentModeKHR m_swapchainPresentMode;
 
-    bool m_useImagesAsSamplers = false;
+    VkImageUsageFlags m_additionalImageUsage = 0;
 
     void restart()
     {
@@ -126,9 +120,9 @@ class SwapChainBuilder
     {
         m_swapchainPresentMode = swapchainPresentMode;
     };
-    void setUseImagesAsSamplers(bool a)
+    void addAdditionalImageUsage(VkImageUsageFlags usage)
     {
-        m_useImagesAsSamplers = a;
+        m_additionalImageUsage |= usage;
     }
 
     std::unique_ptr<SwapChain> build();
