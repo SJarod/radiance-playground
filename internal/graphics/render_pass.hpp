@@ -44,6 +44,10 @@ class RenderPass
     {
         return m_views[imageIndex];
     }
+    [[nodiscard]] const uint32_t getImageCount() const
+    {
+        return static_cast<uint32_t>(m_framebuffers.size());
+    }
 };
 
 class RenderPassBuilder

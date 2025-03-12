@@ -355,7 +355,7 @@ void Application::runLoop()
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
     quadRsb.setMesh(postProcessQuad);
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    quadRsb.setDescriptorSetUpdatePred([&](const RenderPhase *phase, uint32_t imageIndex, const VkDescriptorSet set) {
+    quadRsb.setDescriptorSetUpdatePred([&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
         auto deviceHandle = mainDevice->getHandle();
         const auto &sampler = m_window->getSwapChain()->getSampler();
         if (!sampler.has_value())
@@ -363,7 +363,7 @@ void Application::runLoop()
 
         VkDescriptorImageInfo imageInfo = {
             .sampler = *sampler.value(),
-            .imageView = *phase->getRenderPass()->getImageView(imageIndex),
+            .imageView = *parentPhase->getRenderPass()->getImageView(imageIndex),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkWriteDescriptorSet write = {
@@ -438,9 +438,5 @@ void Application::runLoop()
         }
 
         m_window->swapBuffers();
-
-        static int a = 0;
-        if (a++ == 1)
-            throw;
     }
 }

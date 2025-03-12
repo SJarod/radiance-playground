@@ -22,7 +22,7 @@ class Texture;
 class RenderPhase;
 
 using DescriptorSetUpdatePred =
-    std::function<void(const RenderPhase *phase, uint32_t imageIndex, const VkDescriptorSet &set)>;
+    std::function<void(const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet &set)>;
 
 class RenderStateABC
 {
@@ -79,7 +79,8 @@ class RenderStateABC
     std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
     std::vector<void *> m_directionalLightStorageBuffersMapped;
 
-    DescriptorSetUpdatePred m_descriptorSetUpdatePred;
+    DescriptorSetUpdatePred m_descriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_descriptorSetUpdatePred = nullptr;
 
     RenderStateABC() = default;
 
@@ -88,7 +89,8 @@ class RenderStateABC
 
     virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights);
-    virtual void updateDescriptorSets(const RenderPhase *phase, uint32_t imageIndex);
+    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
+    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex);
     virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) = 0;
@@ -115,6 +117,7 @@ class RenderStateBuilderI
     virtual void addPoolSize(VkDescriptorType poolSizeType) = 0;
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
+    virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
     virtual void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
     virtual std::unique_ptr<RenderStateABC> build() = 0;
@@ -173,10 +176,15 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+    }
     void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
         m_product->m_descriptorSetUpdatePred = pred;
     }
+
 
     void setMesh(std::shared_ptr<Mesh> mesh)
     {
@@ -245,10 +253,15 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     void setTexture(std::weak_ptr<Texture> texture) override
     {
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+    }
     void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
         m_product->m_descriptorSetUpdatePred = pred;
     }
+
 
     std::unique_ptr<RenderStateABC> build() override;
 };
@@ -305,10 +318,15 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+    }
     void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
         m_product->m_descriptorSetUpdatePred = pred;
     }
+
 
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {

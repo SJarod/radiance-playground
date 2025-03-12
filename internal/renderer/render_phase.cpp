@@ -38,6 +38,10 @@ RenderPhase::~RenderPhase()
 
 void RenderPhase::registerRenderState(std::shared_ptr<RenderStateABC> renderState)
 {
+    for (int i = 0; i < m_renderPass->getImageCount(); ++i)
+    {
+        renderState->updateDescriptorSets(m_parentPhase, i);
+    }
     m_renderStates.emplace_back(renderState);
 }
 
@@ -80,7 +84,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
         m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, camera, lights);
-        m_renderStates[i]->updateDescriptorSets(m_parentPhase, imageIndex);
+        m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())
         {

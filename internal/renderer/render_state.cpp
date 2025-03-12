@@ -85,16 +85,26 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, const Camera
     directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::updateDescriptorSets(const RenderPhase *phase, uint32_t imageIndex)
+void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex)
+{
+    if (!m_descriptorSetUpdatePredPerFrame)
+        return;
+
+    for (const auto &set : m_descriptorSets)
+    {
+        m_descriptorSetUpdatePredPerFrame(parentPhase, imageIndex, set);
+    }
+}
+
+void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex)
 {
     if (!m_descriptorSetUpdatePred)
         return;
 
     for (const auto &set : m_descriptorSets)
     {
-        m_descriptorSetUpdatePred(phase, imageIndex, set);
+        m_descriptorSetUpdatePred(parentPhase, imageIndex, set);
     }
-    m_descriptorSetUpdatePred = nullptr;
 }
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,
