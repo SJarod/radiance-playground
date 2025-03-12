@@ -79,6 +79,10 @@ class SwapChain
     {
         return m_device;
     }
+    [[nodiscard]] inline const std::optional<std::unique_ptr<VkSampler>> &getSampler() const
+    {
+        return m_sampler;
+    }
 };
 
 class SwapChainBuilder

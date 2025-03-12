@@ -234,7 +234,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene2D>(mainDevice);
+    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
 
     // material
     UniformDescriptorBuilder phongUdb;
@@ -282,7 +282,6 @@ void Application::runLoop()
     {
         MeshRenderStateBuilder mrsb;
         mrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
-        mrsb.setFrameInFlightCount(3);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -343,19 +342,41 @@ void Application::runLoop()
     MeshBuilder mb;
     mb.setDevice(mainDevice);
     mb.setVertices({{{-1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 0.0f, 0.0f, 1.f}, {0.f, 0.f}},
-                    {{1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {0.f, 1.f}},
+                    {{1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {1.f, 0.f}},
                     {{1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
-                    {{-1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {1.f, 0.f}}});
+                    {{-1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 1.0f, 1.0f, 1.f}, {0.f, 1.f}}});
     mb.setIndices({0, 1, 2, 2, 3, 0});
     std::shared_ptr<Mesh> postProcessQuad = mb.buildAndRestart();
     MeshRenderStateBuilder quadRsb;
+    quadRsb.setDevice(mainDevice);
     quadRsb.setLightDescriptorEnable(false);
     quadRsb.setTextureDescriptorEnable(false);
     quadRsb.setMVPDescriptorEnable(false);
-    quadRsb.setDevice(mainDevice);
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
-    quadRsb.setFrameInFlightCount(3);
     quadRsb.setMesh(postProcessQuad);
+    quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    quadRsb.setDescriptorSetUpdatePred([&](const RenderPhase *phase, uint32_t imageIndex, const VkDescriptorSet set) {
+        auto deviceHandle = mainDevice->getHandle();
+        const auto &sampler = m_window->getSwapChain()->getSampler();
+        if (!sampler.has_value())
+            return;
+
+        VkDescriptorImageInfo imageInfo = {
+            .sampler = *sampler.value(),
+            .imageView = *phase->getRenderPass()->getImageView(imageIndex),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkWriteDescriptorSet write = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &imageInfo,
+        };
+        vkUpdateDescriptorSets(deviceHandle, 1, &write, 0, nullptr);
+    });
     PipelineBuilder postProcessPb;
     PipelineDirector postProcessPd;
     postProcessPd.createColorDepthRasterizerBuilder(postProcessPb);
@@ -368,6 +389,14 @@ void Application::runLoop()
     postProcessPb.setDepthWriteEnable(VK_FALSE);
     postProcessPb.setBlendEnable(VK_FALSE);
     postProcessPb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+    UniformDescriptorBuilder postProcessUdb;
+    postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    });
+    postProcessPb.setUniformDescriptorPack(postProcessUdb.buildAndRestart());
     quadRsb.setPipeline(postProcessPb.build());
     m_postProcessPhase->registerRenderState(quadRsb.build());
 
@@ -409,5 +438,9 @@ void Application::runLoop()
         }
 
         m_window->swapBuffers();
+
+        static int a = 0;
+        if (a++ == 1)
+            throw;
     }
 }

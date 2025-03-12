@@ -52,13 +52,14 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
 
     m_product->m_handle = handle;
 
-    auto imageViews = m_swapchain->getImageViews();
+    const auto &imageViews = m_swapchain->getImageViews();
     m_product->m_framebuffers.resize(imageViews.size());
 
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
-        std::vector<VkImageView> framebufferAttachments { imageViews[i] };
-        
+        std::vector<VkImageView> framebufferAttachments{imageViews[i]};
+        m_product->m_views.push_back(&imageViews[i]);
+
         if (m_depthAttachmentReferences.size() > 0)
             framebufferAttachments.push_back(m_swapchain->getDepthImageView());
 

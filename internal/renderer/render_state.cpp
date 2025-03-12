@@ -13,6 +13,7 @@
 #include "graphics/render_pass.hpp"
 #include "light.hpp"
 #include "mesh.hpp"
+#include "render_phase.hpp"
 #include "skybox.hpp"
 #include "texture.hpp"
 
@@ -82,6 +83,18 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, const Camera
 
     pointLightContainer->pointLightCount = pointLightCount;
     directionalLightContainer->directionalLightCount = directionalLightCount;
+}
+
+void RenderStateABC::updateDescriptorSets(const RenderPhase *phase, uint32_t imageIndex)
+{
+    if (!m_descriptorSetUpdatePred)
+        return;
+
+    for (const auto &set : m_descriptorSets)
+    {
+        m_descriptorSetUpdatePred(phase, imageIndex, set);
+    }
+    m_descriptorSetUpdatePred = nullptr;
 }
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,

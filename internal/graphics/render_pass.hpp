@@ -17,6 +17,7 @@ class RenderPass
 
     VkRenderPass m_handle;
     std::vector<VkFramebuffer> m_framebuffers;
+    std::vector<const VkImageView *> m_views;
 
     RenderPass() = default;
 
@@ -34,9 +35,14 @@ class RenderPass
         return m_handle;
     }
 
-    [[nodiscard]] const VkFramebuffer &getFramebuffer(uint32_t index) const
+    [[nodiscard]] const VkFramebuffer &getFramebuffer(uint32_t imageIndex) const
     {
-        return m_framebuffers[index];
+        return m_framebuffers[imageIndex];
+    }
+
+    [[nodiscard]] const VkImageView *getImageView(uint32_t imageIndex) const
+    {
+        return m_views[imageIndex];
     }
 };
 
