@@ -87,6 +87,9 @@ class RenderStateABC
   public:
     virtual ~RenderStateABC();
 
+    virtual void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC &camera,
+                                      const std::vector<std::shared_ptr<Light>> &lights) { }
+
     virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
@@ -131,6 +134,8 @@ class MeshRenderState : public RenderStateABC
     std::weak_ptr<Mesh> m_mesh;
 
   public:
+    void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC& camera,
+          const std::vector<std::shared_ptr<Light>>& lights) override;
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
 

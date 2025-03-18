@@ -111,6 +111,11 @@ void PipelineBuilder::addDynamicState(VkDynamicState state)
     m_dynamicStates.emplace_back(state);
 }
 
+void PipelineBuilder::addPushConstantRange(VkPushConstantRange pushConstantRange)
+{
+    m_pushConstantRanges.push_back(pushConstantRange);
+}
+
 void PipelineBuilder::setDrawTopology(VkPrimitiveTopology topology, bool bPrimitiveRestartEnable)
 {
     m_topology = topology;

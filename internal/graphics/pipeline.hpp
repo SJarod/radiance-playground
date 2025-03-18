@@ -129,6 +129,7 @@ class PipelineBuilder
     void addVertexShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addFragmentShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addDynamicState(VkDynamicState state);
+    void addPushConstantRange(VkPushConstantRange pushConstantRange);
     void setDrawTopology(VkPrimitiveTopology topology, bool bPrimitiveRestartEnable = false);
     void setExtent(VkExtent2D extent);
     void setDepthClampEnable(VkBool32 a)

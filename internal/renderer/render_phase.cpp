@@ -83,6 +83,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
 
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
+        m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, camera, lights);
         m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, camera, lights);
         m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 

@@ -322,6 +322,21 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
     return std::move(m_product);
 }
 
+void MeshRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+{
+    const Transform& cameraTransform = camera.getTransform();
+    float data[3] = {
+        cameraTransform.position.x,
+        cameraTransform.position.y,
+        cameraTransform.position.z
+    };
+
+    uint32_t offset = 0;
+    uint32_t size = 16;
+
+    vkCmdPushConstants(commandBuffer, m_pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, offset, size, data);
+}
+
 void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     auto meshPtr = m_mesh.lock();

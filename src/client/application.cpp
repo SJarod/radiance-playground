@@ -105,9 +105,10 @@ Application::Application()
     skyboxRpb.setDevice(mainDevice);
     skyboxRpb.setSwapChain(m_window->getSwapChain());
 
-    rpad.configureAttachmentDontCareBuilder(rpab);
+    rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -275,6 +276,11 @@ void Application::runLoop()
     phongPb.addFragmentShaderStage("phong");
     phongPb.setRenderPass(m_phongPhase->getRenderPass());
     phongPb.setExtent(m_window->getSwapChain()->getExtent());
+    phongPb.addPushConstantRange(VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = 16,
+    });
 
     PipelineDirector phongPd;
     phongPd.createColorDepthRasterizerBuilder(phongPb);
