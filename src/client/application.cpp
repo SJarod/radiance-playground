@@ -234,7 +234,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
+    m_scene = std::make_unique<SampleScene2D>(mainDevice);
 
     // material
     UniformDescriptorBuilder phongUdb;
