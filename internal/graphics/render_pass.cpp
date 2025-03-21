@@ -21,6 +21,32 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(deviceHandle, m_handle, nullptr);
 }
 
+void RenderPass::buildFramebuffers(const SwapChain* newSwapchain, bool clearOldFramebuffers)
+{
+    const VkDevice& deviceHandle = m_device.lock()->getHandle();
+
+    if (clearOldFramebuffers)
+    {
+        for (VkFramebuffer& framebuffer : m_framebuffers)
+        {
+            vkDestroyFramebuffer(deviceHandle, framebuffer, nullptr);
+        }
+        
+        m_views.clear();
+    }
+
+    const auto& imageViews = newSwapchain->getImageViews();
+    m_framebuffers.resize(imageViews.size());
+    m_framebufferBuilder.setSwapChain(newSwapchain);
+
+    for (size_t i = 0; i < imageViews.size(); ++i)
+    {
+        m_framebufferBuilder.setImageView(imageViews[i]);
+        m_framebuffers[i] = *m_framebufferBuilder.buildAndRestart();
+        m_views.push_back(&imageViews[i]);
+    }
+}
+
 std::unique_ptr<RenderPass> RenderPassBuilder::build()
 {
     assert(m_device.lock());
@@ -52,31 +78,8 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
 
     m_product->m_handle = handle;
 
-    const auto &imageViews = m_swapchain->getImageViews();
-    m_product->m_framebuffers.resize(imageViews.size());
-
-    for (size_t i = 0; i < imageViews.size(); ++i)
-    {
-        std::vector<VkImageView> framebufferAttachments{imageViews[i]};
-        m_product->m_views.push_back(&imageViews[i]);
-
-        if (m_depthAttachmentReferences.size() > 0)
-            framebufferAttachments.push_back(m_swapchain->getDepthImageView());
-
-        VkFramebufferCreateInfo createInfo = {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .renderPass = handle,
-            .attachmentCount = static_cast<uint32_t>(framebufferAttachments.size()),
-            .pAttachments = framebufferAttachments.data(),
-            .width = m_swapchain->getExtent().width,
-            .height = m_swapchain->getExtent().height,
-            .layers = 1,
-        };
-
-        VkResult res = vkCreateFramebuffer(deviceHandle, &createInfo, nullptr, &m_product->m_framebuffers[i]);
-        if (res != VK_SUCCESS)
-            std::cerr << "Failed to create framebuffer : " << res << std::endl;
-    }
+    m_product->m_framebufferBuilder.setRenderPass(handle);
+    m_product->buildFramebuffers(m_swapchain, false);
 
     return std::move(m_product);
 }
@@ -108,6 +111,8 @@ void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
     m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    m_product->m_framebufferBuilder.setHasDepthAttached(true);
 }
 
 void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)
@@ -135,4 +140,32 @@ void RenderPassAttachmentDirector::configureAttachmentLoadBuilder(RenderPassAtta
     builder.setStoreOp(VK_ATTACHMENT_STORE_OP_STORE);
     builder.setStencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
     builder.setStencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE);
+}
+
+std::unique_ptr<VkFramebuffer> RenderPassFramebufferBuilder::build() 
+{
+    assert(m_device.lock());
+
+    const VkDevice& deviceHandle = m_device.lock()->getHandle();
+
+    std::vector<VkImageView> framebufferAttachments{ m_imageView};
+
+    if (m_hasDepthAttachment)
+        framebufferAttachments.push_back(m_swapchain->getDepthImageView());
+
+    VkFramebufferCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = m_renderPassHandle,
+        .attachmentCount = static_cast<uint32_t>(framebufferAttachments.size()),
+        .pAttachments = framebufferAttachments.data(),
+        .width = m_swapchain->getExtent().width,
+        .height = m_swapchain->getExtent().height,
+        .layers = 1,
+    };
+
+    VkResult res = vkCreateFramebuffer(deviceHandle, &createInfo, nullptr, m_product.get());
+    if (res != VK_SUCCESS)
+        std::cerr << "Failed to create framebuffer : " << res << std::endl;
+
+    return std::move(m_product);
 }

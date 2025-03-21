@@ -125,7 +125,6 @@ void PipelineBuilder::setDrawTopology(VkPrimitiveTopology topology, bool bPrimit
 void PipelineBuilder::setExtent(VkExtent2D extent)
 {
     m_extent = extent;
-    m_product->m_extent = extent;
 }
 
 std::unique_ptr<Pipeline> PipelineBuilder::build()
@@ -368,17 +367,16 @@ void PipelineDirector::createColorDepthRasterizerBuilder(PipelineBuilder &builde
     builder.setBlendConstants(0.f, 0.f, 0.f, 0.f);
 }
 
-void Pipeline::recordBind(const VkCommandBuffer &commandBuffer)
+void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent)
 {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_handle);
 
     VkViewport viewport = {.x = 0.f,
                            .y = 0.f,
-                           .width = static_cast<float>(m_extent.width),
-                           .height = static_cast<float>(m_extent.height),
+                           .width = static_cast<float>(extent.extent.width),
+                           .height = static_cast<float>(extent.extent.height),
                            .minDepth = 0.f,
                            .maxDepth = 1.f};
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    VkRect2D scissor = {.offset = {0, 0}, .extent = m_extent};
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdSetScissor(commandBuffer, 0, 1, &extent);
 }

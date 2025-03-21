@@ -7,6 +7,64 @@
 class Device;
 class SwapChain;
 class RenderPassBuilder;
+class RenderPass;
+
+class RenderPassFramebufferBuilder
+{
+private:
+    std::unique_ptr<VkFramebuffer> m_product;
+
+    VkImageView m_imageView;
+    std::weak_ptr<Device> m_device;
+    const SwapChain* m_swapchain;
+    VkRenderPass m_renderPassHandle;
+    bool m_hasDepthAttachment = false;
+
+    void restart()
+    {
+        m_product = std::unique_ptr<VkFramebuffer>(new VkFramebuffer);
+    }
+    std::unique_ptr<VkFramebuffer> build();
+
+public:
+    RenderPassFramebufferBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        m_device = device;
+    }
+
+    void setSwapChain(const SwapChain* swapchain)
+    {
+        m_swapchain = swapchain;
+    }
+
+    void setImageView(const VkImageView& imageView)
+    {
+        m_imageView = imageView;
+    }
+
+    void setRenderPass(VkRenderPass renderPass)
+    {
+        m_renderPassHandle = renderPass;
+    }
+
+    void setHasDepthAttached(bool value)
+    {
+        m_hasDepthAttachment = value;
+    }
+
+    std::unique_ptr<VkFramebuffer> buildAndRestart()
+    {
+        auto result = build();
+        restart();
+        return result;
+    }
+};
+
 
 class RenderPass
 {
@@ -18,6 +76,8 @@ class RenderPass
     VkRenderPass m_handle;
     std::vector<VkFramebuffer> m_framebuffers;
     std::vector<const VkImageView *> m_views;
+    RenderPassFramebufferBuilder m_framebufferBuilder;
+
 
     RenderPass() = default;
 
@@ -28,7 +88,8 @@ class RenderPass
     RenderPass &operator=(const RenderPass &) = delete;
     RenderPass(RenderPass &&) = delete;
     RenderPass &operator=(RenderPass &&) = delete;
-
+    
+    void buildFramebuffers(const SwapChain* newSwapchain, bool clearOldFramebuffers = false);
   public:
     [[nodiscard]] const VkRenderPass &getHandle() const
     {
@@ -89,10 +150,12 @@ class RenderPassBuilder
     {
         m_device = device;
         m_product->m_device = device;
+        m_product->m_framebufferBuilder.setDevice(device);
     }
     void setSwapChain(const SwapChain *swapchain)
     {
         m_swapchain = swapchain;
+        m_product->m_framebufferBuilder.setSwapChain(swapchain);
     }
 
     std::unique_ptr<RenderPass> build();

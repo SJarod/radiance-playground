@@ -8,6 +8,7 @@
 class RenderPhase;
 class CameraABC;
 class Light;
+class SwapChain;
 
 /**
  * @brief manages the relation ship between each phase (submit semaphores)
@@ -34,6 +35,8 @@ class RenderGraph
                           const std::vector<std::shared_ptr<Light>> &lights);
 
     void swapAllRenderPhasesBackBuffers();
+
+    void updateSwapchainOnRenderPhases(const SwapChain* swapchain);
 
   public:
     [[nodiscard]] VkSemaphore getFirstPhaseCurrentAcquireSemaphore() const;

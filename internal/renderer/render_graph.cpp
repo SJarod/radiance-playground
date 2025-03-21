@@ -50,6 +50,14 @@ void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, con
     processRenderPhaseChain(m_renderPhases, imageIndex, renderArea, mainCamera, lights, lastAcquireSemaphore, nullptr);
 }
 
+void RenderGraph::updateSwapchainOnRenderPhases(const SwapChain* swapchain)
+{
+    for (unsigned int i = 0; i < m_renderPhases.size(); ++i)
+    {
+        m_renderPhases[i]->updateSwapchainOnRenderPass(swapchain);
+    }
+}
+
 void RenderGraph::swapAllRenderPhasesBackBuffers()
 {
     for (auto &phase : m_renderPhases)

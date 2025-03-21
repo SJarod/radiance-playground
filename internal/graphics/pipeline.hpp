@@ -21,14 +21,12 @@ class Pipeline
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_handle;
 
-    VkExtent2D m_extent;
-
     Pipeline() = default;
 
   public:
     ~Pipeline();
 
-    void recordBind(const VkCommandBuffer &commandBuffer);
+    void recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent);
 
   public:
     [[nodiscard]] const VkPipelineLayout &getPipelineLayout() const

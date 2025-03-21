@@ -72,6 +72,8 @@ class RenderPhase
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
 
     void swapBackBuffers();
+    
+    void updateSwapchainOnRenderPass(const SwapChain* newSwapchain);
 
   public:
     [[nodiscard]] const int getSingleFrameRenderCount() const

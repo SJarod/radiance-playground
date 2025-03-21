@@ -96,7 +96,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())
         {
-            pipeline->recordBind(commandBuffer);
+            pipeline->recordBind(commandBuffer, imageIndex, renderArea);
         }
 
         m_renderStates[i]->recordBackBufferDescriptorSetsCommands(commandBuffer, m_backBufferIndex);
@@ -202,4 +202,9 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
     }
 
     return std::move(m_product);
+}
+
+void RenderPhase::updateSwapchainOnRenderPass(const SwapChain* newSwapchain) 
+{
+    m_renderPass->buildFramebuffers(newSwapchain, true);
 }

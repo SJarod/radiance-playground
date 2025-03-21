@@ -47,6 +47,7 @@ class Renderer
     void setSwapChain(const SwapChain *swapchain)
     {
         m_swapchain = swapchain;
+        m_renderGraph->updateSwapchainOnRenderPhases(swapchain);
     }
 };
 
