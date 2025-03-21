@@ -247,6 +247,7 @@ cascade_desc cd0 = cascade_desc(MAX_PROBE_COUNT, MIN_DISCRETE_VALUE_COUNT, MIN_R
 
 void main()
 {
+return;
 	vec3 col = texture(baseImage, fragUV).rgb;
 
 	// create cascades

@@ -165,10 +165,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
         sb.setDevice(m_product->m_device);
         sb.setMagFilter(VK_FILTER_LINEAR);
         sb.setMinFilter(VK_FILTER_LINEAR);
-        for (int i = 0; i < imageCount; ++i)
-        {
-            m_product->m_sampler = sb.buildAndRestart();
-        }
+        m_product->m_sampler = sb.buildAndRestart();
     }
 
     return std::move(m_product);

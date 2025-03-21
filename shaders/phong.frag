@@ -93,7 +93,6 @@ void main()
 		applySingleDirectionalLight(fragLighting, directionalLights[i], normal);
 	}
 
-	//oColor = texture(texSampler, fragUV);
-	//oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);
-	oColor = vec4(reflectionSample, 1.0);
+	oColor = texture(texSampler, fragUV);
+	oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);
 }

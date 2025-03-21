@@ -133,6 +133,8 @@ class MeshRenderState : public RenderStateABC
   private:
     std::weak_ptr<Mesh> m_mesh;
 
+    bool m_pushViewPosition = true;
+
   public:
     void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC& camera,
           const std::vector<std::shared_ptr<Light>>& lights) override;
@@ -212,6 +214,10 @@ class MeshRenderStateBuilder : public RenderStateBuilderI
     void setMVPDescriptorEnable(bool a)
     {
         m_mvpDescriptorEnable = a;
+    }
+    void setPushViewPositionEnable(bool a)
+    {
+        m_product->m_pushViewPosition = a;
     }
 
     std::unique_ptr<RenderStateABC> build() override;

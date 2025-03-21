@@ -76,9 +76,10 @@ Application::Application()
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
-    RenderPassBuilder phongRpb;
-    phongRpb.setDevice(mainDevice);
-    phongRpb.setSwapChain(m_window->getSwapChain());
+    // Opaque
+    RenderPassBuilder opaqueRpb;
+    opaqueRpb.setDevice(mainDevice);
+    opaqueRpb.setSwapChain(m_window->getSwapChain());
 
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
@@ -87,20 +88,21 @@ Application::Application()
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto clearColorAttachment = rpab.buildAndRestart();
-    phongRpb.addColorAttachment(*clearColorAttachment);
+    opaqueRpb.addColorAttachment(*clearColorAttachment);
 
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto clearDepthAttachment = rpab.buildAndRestart();
-    phongRpb.addDepthAttachment(*clearDepthAttachment);
+    opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder phongRb;
-    phongRb.setDevice(mainDevice);
-    phongRb.setRenderPass(phongRpb.build());
-    auto phongPhase = phongRb.build();
-    m_phongPhase = phongPhase.get();
+    RenderPhaseBuilder opaqueRb;
+    opaqueRb.setDevice(mainDevice);
+    opaqueRb.setRenderPass(opaqueRpb.build());
+    auto opaquePhase = opaqueRb.build();
+    m_opaquePhase = opaquePhase.get();
 
+    // Skybox
     RenderPassBuilder skyboxRpb;
     skyboxRpb.setDevice(mainDevice);
     skyboxRpb.setSwapChain(m_window->getSwapChain());
@@ -108,7 +110,7 @@ Application::Application()
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -163,7 +165,7 @@ Application::Application()
     rb.setDevice(mainDevice);
     rb.setSwapChain(m_window->getSwapChain());
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
-    renderGraph->addRenderPhase(std::move(phongPhase));
+    renderGraph->addRenderPhase(std::move(opaquePhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
@@ -274,7 +276,7 @@ void Application::runLoop()
     phongPb.setDevice(mainDevice);
     phongPb.addVertexShaderStage("phong");
     phongPb.addFragmentShaderStage("phong");
-    phongPb.setRenderPass(m_phongPhase->getRenderPass());
+    phongPb.setRenderPass(m_opaquePhase->getRenderPass());
     phongPb.setExtent(m_window->getSwapChain()->getExtent());
     phongPb.addPushConstantRange(VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -287,6 +289,38 @@ void Application::runLoop()
     phongPb.setUniformDescriptorPack(phongUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
+
+    UniformDescriptorBuilder environmentMapUdb;
+    environmentMapUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    environmentMapUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder environmentMapPb;
+    environmentMapPb.setDevice(mainDevice);
+    environmentMapPb.addVertexShaderStage("environment_map");
+    environmentMapPb.addFragmentShaderStage("environment_map");
+    environmentMapPb.setRenderPass(m_opaquePhase->getRenderPass());
+    environmentMapPb.setExtent(m_window->getSwapChain()->getExtent());
+    environmentMapPb.addPushConstantRange(VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = 16,
+        });
+
+    PipelineDirector environmentMapPd;
+    environmentMapPd.createColorDepthRasterizerBuilder(environmentMapPb);
+    environmentMapPb.setUniformDescriptorPack(environmentMapUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> environmentMapPipeline = environmentMapPb.build();
 
     auto objects = m_scene->getObjects();
 
@@ -308,9 +342,17 @@ void Application::runLoop()
 
         mrsb.setMesh(objects[i]);
 
-        mrsb.setPipeline(phongPipeline);
+        // Check if the mesh is the quad
+        if (i != 1)
+            mrsb.setPipeline(phongPipeline);
+        else
+        {
+            mrsb.setTextureDescriptorEnable(false);
+            mrsb.setLightDescriptorEnable(false);
+            mrsb.setPipeline(environmentMapPipeline);
+        }
 
-        m_phongPhase->registerRenderState(mrsb.build());
+        m_opaquePhase->registerRenderState(mrsb.build());
     }
 
     // skybox
@@ -334,7 +376,7 @@ void Application::runLoop()
     skyboxPb.setDevice(mainDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
-    skyboxPb.setRenderPass(m_phongPhase->getRenderPass());
+    skyboxPb.setRenderPass(m_opaquePhase->getRenderPass());
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
@@ -370,6 +412,7 @@ void Application::runLoop()
     quadRsb.setLightDescriptorEnable(false);
     quadRsb.setTextureDescriptorEnable(false);
     quadRsb.setMVPDescriptorEnable(false);
+    quadRsb.setPushViewPositionEnable(false);
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
     quadRsb.setMesh(postProcessQuad);
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);

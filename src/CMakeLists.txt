@@ -18,6 +18,8 @@ set(SHADER_SOURCES
 	shaders/unlit.frag
 	shaders/phong.vert
 	shaders/phong.frag
+	shaders/environment_map.vert
+	shaders/environment_map.frag
 	shaders/skybox.vert
 	shaders/skybox.frag
 	shaders/screen.vert

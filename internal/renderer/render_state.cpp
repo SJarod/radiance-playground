@@ -32,57 +32,69 @@ RenderStateABC::~RenderStateABC()
 void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, const CameraABC &camera,
                                           const std::vector<std::shared_ptr<Light>> &lights)
 {
-    if (m_mvpUniformBuffersMapped.size() == 0)
-        return;
+    if (m_mvpUniformBuffersMapped.size() > 0)
+    {
+        MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[backBufferIndex]);
+        mvpData->proj = camera.getProjectionMatrix();
+        mvpData->model = glm::identity<glm::mat4>();
+        mvpData->view = camera.getViewMatrix();
+    }
 
-    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
-    mvpData->proj = camera.getProjectionMatrix();
-    mvpData->model = glm::identity<glm::mat4>();
-    mvpData->view = camera.getViewMatrix();
+    PointLightContainer* pointLightContainer = nullptr;
+    if (m_pointLightStorageBuffersMapped.size() > 0)
+        pointLightContainer = static_cast<PointLightContainer*>(m_pointLightStorageBuffersMapped[backBufferIndex]);
 
-    PointLightContainer *pointLightContainer =
-        static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[backBufferIndex]);
-    DirectionalLightContainer *directionalLightContainer =
-        static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[backBufferIndex]);
+    DirectionalLightContainer* directionalLightContainer = nullptr;
+    if (m_directionalLightStorageBuffersMapped.size() > 0)
+        directionalLightContainer = static_cast<DirectionalLightContainer*>(m_directionalLightStorageBuffersMapped[backBufferIndex]);
 
     int pointLightCount = 0;
     int directionalLightCount = 0;
     for (int i = 0; i < lights.size(); i++)
     {
         const Light *light = lights[i].get();
-        if (const PointLight *pointLight = dynamic_cast<const PointLight *>(light))
+        if (pointLightContainer)
         {
-            PointLightContainer::PointLight pointLightData{
-                .diffuseColor = pointLight->diffuseColor,
-                .diffusePower = pointLight->diffusePower,
-                .specularColor = pointLight->specularColor,
-                .specularPower = pointLight->specularPower,
-                .position = pointLight->position,
-            };
+            if (const PointLight* pointLight = dynamic_cast<const PointLight*>(light))
+            {
+                PointLightContainer::PointLight pointLightData{
+                    .diffuseColor = pointLight->diffuseColor,
+                    .diffusePower = pointLight->diffusePower,
+                    .specularColor = pointLight->specularColor,
+                    .specularPower = pointLight->specularPower,
+                    .position = pointLight->position,
+                };
 
-            pointLightContainer->pointLights[pointLightCount] = pointLightData;
-            pointLightCount++;
-            continue;
+                pointLightContainer->pointLights[pointLightCount] = pointLightData;
+                pointLightCount++;
+                continue;
+            }
         }
 
-        if (const DirectionalLight *directionalLight = dynamic_cast<const DirectionalLight *>(light))
+        if (pointLightContainer)
         {
-            DirectionalLightContainer::DirectionalLight directionalLightData{
-                .diffuseColor = directionalLight->diffuseColor,
-                .diffusePower = directionalLight->diffusePower,
-                .specularColor = directionalLight->specularColor,
-                .specularPower = directionalLight->specularPower,
-                .direction = directionalLight->direction,
-            };
+            if (const DirectionalLight* directionalLight = dynamic_cast<const DirectionalLight*>(light))
+            {
+                DirectionalLightContainer::DirectionalLight directionalLightData{
+                    .diffuseColor = directionalLight->diffuseColor,
+                    .diffusePower = directionalLight->diffusePower,
+                    .specularColor = directionalLight->specularColor,
+                    .specularPower = directionalLight->specularPower,
+                    .direction = directionalLight->direction,
+                };
 
-            directionalLightContainer->directionalLights[directionalLightCount] = directionalLightData;
-            directionalLightCount++;
-            continue;
+                directionalLightContainer->directionalLights[directionalLightCount] = directionalLightData;
+                directionalLightCount++;
+                continue;
+            }
         }
     }
 
-    pointLightContainer->pointLightCount = pointLightCount;
-    directionalLightContainer->directionalLightCount = directionalLightCount;
+    if (pointLightContainer)
+        pointLightContainer->pointLightCount = pointLightCount;
+
+    if (directionalLightCount)
+        directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
 void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex)
@@ -324,17 +336,20 @@ std::unique_ptr<RenderStateABC> MeshRenderStateBuilder::build()
 
 void MeshRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
 {
-    const Transform& cameraTransform = camera.getTransform();
-    float data[3] = {
-        cameraTransform.position.x,
-        cameraTransform.position.y,
-        cameraTransform.position.z
-    };
+    if (m_pushViewPosition)
+    {
+        const Transform& cameraTransform = camera.getTransform();
+        float data[3] = {
+            cameraTransform.position.x,
+            cameraTransform.position.y,
+            cameraTransform.position.z
+        };
 
-    uint32_t offset = 0;
-    uint32_t size = 16;
+        uint32_t offset = 0;
+        uint32_t size = 16;
 
-    vkCmdPushConstants(commandBuffer, m_pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, offset, size, data);
+        vkCmdPushConstants(commandBuffer, m_pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, offset, size, data);
+    }
 }
 
 void MeshRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)

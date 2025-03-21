@@ -22,8 +22,8 @@ class Application
     std::vector<std::shared_ptr<Device>> m_devices;
 
     std::shared_ptr<Renderer> m_renderer;
-    RenderPhase *m_phongPhase;
-    RenderPhase *m_skyboxPhase;
+    RenderPhase *m_opaquePhase;
+    RenderPhase* m_skyboxPhase;
     RenderPhase *m_postProcessPhase;
     RenderPhase *m_imguiPhase;
 
