@@ -169,8 +169,7 @@ Application::Application()
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
@@ -179,6 +178,28 @@ Application::Application()
     imguiRb.setRenderPass(imguiRpb.build());
     auto imguiPhase = imguiRb.build();
     m_imguiPhase = imguiPhase.get();
+
+    RenderPassBuilder probesDebugRpb;
+    probesDebugRpb.setDevice(mainDevice);
+    probesDebugRpb.setSwapChain(m_window->getSwapChain());
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    auto probesDebugColorAttachment = rpab.buildAndRestart();
+    probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto probesDebugDepthAttachment = rpab.buildAndRestart();
+    probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
+
+    RenderPhaseBuilder probesDebugRb;
+    probesDebugRb.setDevice(mainDevice);
+    probesDebugRb.setRenderPass(probesDebugRpb.build());
+    auto probesDebugPhase = probesDebugRb.build();
+    m_probesDebugPhase = probesDebugPhase.get();
 
     RendererBuilder rb;
     rb.setDevice(mainDevice);
@@ -189,6 +210,7 @@ Application::Application()
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
+    renderGraph->addRenderPhase(std::move(probesDebugPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
 }

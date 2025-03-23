@@ -27,6 +27,7 @@ class Application
     RenderPhase* m_skyboxPhase;
     RenderPhase* m_postProcessPhase;
     RenderPhase *m_imguiPhase;
+    RenderPhase *m_probesDebugPhase;
 
     std::unique_ptr<SceneABC> m_scene;
 
