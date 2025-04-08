@@ -41,8 +41,6 @@ layout(std430, binding = 3) readonly buffer DirectionalLightsData
 	DirectionalLight directionalLights[];
 };
 
-layout(binding = 4) uniform samplerCube environmentMap;
-
 layout(push_constant, std430) uniform pc
 {
     vec3 viewPos;
@@ -78,8 +76,6 @@ void main()
 	vec3 normal = normalize(fragNormal);
 
 	vec3 viewDirection = normalize(fragPos - viewPos);
-	vec3 viewReflection = reflect(viewDirection, normal);
-	vec3 reflectionSample = texture(environmentMap, viewReflection).rgb;
 
 	LightingResult fragLighting = { vec3(0.0), vec3(0.0), vec3(0.0) };
 

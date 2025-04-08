@@ -62,7 +62,7 @@ Application::Application()
         m_devices.emplace_back(db.build());
     }
 
-    std::weak_ptr<Device> mainDevice = m_devices[1];
+    std::weak_ptr<Device> mainDevice = m_devices[0];
 
     SwapChainBuilder scb;
     scb.setDevice(mainDevice);
@@ -76,13 +76,30 @@ Application::Application()
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
+    RenderPassAttachmentBuilder rpab;
+    RenderPassAttachmentDirector rpad;
+
+    // Irradiance convolution
+    RenderPassBuilder irradianceConvolutionRpb;
+    irradianceConvolutionRpb.setDevice(mainDevice);
+    irradianceConvolutionRpb.setSwapChain(m_window->getSwapChain());
+    rpad.configureAttachmentDontCareBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto irradianceColorAttachment = rpab.buildAndRestart();
+    irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
+
+    RenderPhaseBuilder irradianceConvolutionRb;
+    irradianceConvolutionRb.setDevice(mainDevice);
+    irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
+    irradianceConvolutionRb.setSingleFrameRenderCount(6u);
+    auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
+    m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
+
     // Opaque
     RenderPassBuilder opaqueRpb;
     opaqueRpb.setDevice(mainDevice);
     opaqueRpb.setSwapChain(m_window->getSwapChain());
-
-    RenderPassAttachmentBuilder rpab;
-    RenderPassAttachmentDirector rpad;
 
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -165,6 +182,7 @@ Application::Application()
     rb.setDevice(mainDevice);
     rb.setSwapChain(m_window->getSwapChain());
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
+    renderGraph->addOneTimeRenderPhase(std::move(irradianceConvolutionPhase));
     renderGraph->addRenderPhase(std::move(opaquePhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
@@ -175,7 +193,7 @@ Application::Application()
 
 Application::~Application()
 {
-    vkDeviceWaitIdle(m_devices[1]->getHandle());
+    vkDeviceWaitIdle(m_devices[0]->getHandle());
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -194,11 +212,11 @@ Application::~Application()
 
 void Application::initImgui()
 {
-    VkDevice deviceHandle = m_devices[1]->getHandle();
+    VkDevice deviceHandle = m_devices[0]->getHandle();
 
     ImGuiRenderStateBuilder imguirsb;
 
-    imguirsb.setDevice(m_devices[1]);
+    imguirsb.setDevice(m_devices[0]);
     imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
     ImGui::CreateContext();
@@ -214,9 +232,9 @@ void Application::initImgui()
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = m_context->getInstanceHandle();
-    init_info.PhysicalDevice = m_devices[1]->getPhysicalHandle();
+    init_info.PhysicalDevice = m_devices[0]->getPhysicalHandle();
     init_info.Device = deviceHandle;
-    init_info.Queue = m_devices[1]->getGraphicsQueue();
+    init_info.Queue = m_devices[0]->getGraphicsQueue();
     init_info.DescriptorPool = render_state->getDescriptorPool();
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
@@ -231,13 +249,42 @@ void Application::initImgui()
 
 void Application::runLoop()
 {
-    std::shared_ptr<Device> mainDevice = m_devices[1];
+    std::shared_ptr<Device> mainDevice = m_devices[0];
 
     m_window->makeContextCurrent();
 
     bool show_demo_window = true;
 
     m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
+
+    UniformDescriptorBuilder irradianceConvolutionUdb;
+
+    irradianceConvolutionUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+
+    irradianceConvolutionUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder irradianceConvolutionPb;
+    irradianceConvolutionPb.setDevice(mainDevice);
+    irradianceConvolutionPb.addVertexShaderStage("skybox");
+    irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
+    irradianceConvolutionPb.setRenderPass(m_irradianceConvolutionPhase->getRenderPass());
+    irradianceConvolutionPb.setExtent(m_window->getSwapChain()->getExtent());
+
+    PipelineDirector irradianceConvolutionPd;
+    irradianceConvolutionPd.createColorDepthRasterizerBuilder(irradianceConvolutionPb);
+    irradianceConvolutionPb.setUniformDescriptorPack(irradianceConvolutionUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> irradianceConvolutionPipeline = irradianceConvolutionPb.build();
 
     // material
     UniformDescriptorBuilder phongUdb;
@@ -308,7 +355,7 @@ void Application::runLoop()
     environmentMapPb.setDevice(mainDevice);
     environmentMapPb.addVertexShaderStage("environment_map");
     environmentMapPb.addFragmentShaderStage("environment_map");
-    environmentMapPb.setRenderPass(m_opaquePhase->getRenderPass());
+    environmentMapPb.setRenderPass(m_skyboxPhase->getRenderPass());
     environmentMapPb.setExtent(m_window->getSwapChain()->getExtent());
     environmentMapPb.addPushConstantRange(VkPushConstantRange{
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -376,7 +423,7 @@ void Application::runLoop()
     skyboxPb.setDevice(mainDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
-    skyboxPb.setRenderPass(m_opaquePhase->getRenderPass());
+    skyboxPb.setRenderPass(m_skyboxPhase->getRenderPass());
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
@@ -386,6 +433,18 @@ void Application::runLoop()
 
     if (skybox)
     {
+        EnvironmentCaptureRenderStateBuilder irsb;
+        irsb.setFrameInFlightCount(1);
+        irsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        irsb.setDevice(mainDevice);
+        irsb.setSkybox(skybox);
+        irsb.setTexture(skybox->getTexture());
+
+        irsb.setPipeline(irradianceConvolutionPipeline);
+
+        m_irradianceConvolutionPhase->registerRenderState(irsb.build());
+
         SkyboxRenderStateBuilder srsb;
         srsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);

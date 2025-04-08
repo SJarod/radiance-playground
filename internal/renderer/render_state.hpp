@@ -18,6 +18,7 @@ class Light;
 class MeshRenderStateBuilder;
 class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
+class EnvironmentCaptureRenderStateBuilder;
 class Texture;
 class RenderPhase;
 
@@ -87,10 +88,10 @@ class RenderStateABC
   public:
     virtual ~RenderStateABC();
 
-    virtual void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC &camera,
+    virtual void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights) { }
 
-    virtual void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+    virtual void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
@@ -136,7 +137,7 @@ class MeshRenderState : public RenderStateABC
     bool m_pushViewPosition = true;
 
   public:
-    void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, const CameraABC& camera,
+    void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera,
           const std::vector<std::shared_ptr<Light>>& lights) override;
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
@@ -290,7 +291,7 @@ class SkyboxRenderState : public RenderStateABC
     std::weak_ptr<Skybox> m_skybox;
 
   public:
-    void updateUniformBuffers(uint32_t imageIndex, const CameraABC &camera,
+    void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC &camera,
                               const std::vector<std::shared_ptr<Light>> &lights) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
@@ -307,6 +308,8 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     uint32_t m_frameInFlightCount;
 
     std::weak_ptr<Texture> m_texture;
+
+    bool m_textureDescriptorEnable = true;
 
     void restart() override
     {
@@ -347,6 +350,88 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {
         m_product->m_skybox = skybox;
+    }
+
+    void setTextureDescriptorEnable(bool a)
+    {
+        m_textureDescriptorEnable = a;
+    }
+
+    std::unique_ptr<RenderStateABC> build() override;
+};
+
+class EnvironmentCaptureRenderState : public RenderStateABC
+{
+    friend EnvironmentCaptureRenderStateBuilder;
+
+private:
+    std::weak_ptr<Skybox> m_skybox;
+
+public:
+    void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC& camera,
+        const std::vector<std::shared_ptr<Light>>& lights) override;
+
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
+};
+
+class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
+{
+private:
+    std::unique_ptr<EnvironmentCaptureRenderState> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    std::vector<VkDescriptorPoolSize> m_poolSizes;
+    uint32_t m_frameInFlightCount;
+
+    std::weak_ptr<Texture> m_texture;
+
+    bool m_textureDescriptorEnable = true;
+
+    void restart() override
+    {
+        m_product = std::unique_ptr<EnvironmentCaptureRenderState>(new EnvironmentCaptureRenderState);
+    }
+
+public:
+    EnvironmentCaptureRenderStateBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device) override
+    {
+        m_device = device;
+        m_product->m_device = device;
+    }
+    void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
+    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void setFrameInFlightCount(uint32_t a) override
+    {
+        m_frameInFlightCount = a;
+    }
+    void setTexture(std::weak_ptr<Texture> texture) override
+    {
+        m_texture = texture;
+    }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePred = pred;
+    }
+
+
+    void setSkybox(std::shared_ptr<Skybox> skybox)
+    {
+        m_product->m_skybox = skybox;
+    }
+
+    void setTextureDescriptorEnable(bool a)
+    {
+        m_textureDescriptorEnable = a;
     }
 
     std::unique_ptr<RenderStateABC> build() override;

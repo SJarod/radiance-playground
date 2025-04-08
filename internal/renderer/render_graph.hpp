@@ -17,10 +17,18 @@ class RenderGraph
 {
   private:
   // TODO : better way to retrieve each phase to register new render states
-    std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
+      bool m_shouldRenderOneTimePhases = true;
+      std::vector<std::unique_ptr<RenderPhase>> m_oneTimeRenderPhases;
+      std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
 
   public:
+    void addOneTimeRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
     void addRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
+
+    void processRenderPhaseChain(const std::vector<std::unique_ptr<RenderPhase>>& toProcess, 
+        uint32_t imageIndex, VkRect2D renderArea, const CameraABC& mainCamera,
+        const std::vector<std::shared_ptr<Light>>& lights,
+        const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore);
 
     void processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
                           const std::vector<std::shared_ptr<Light>> &lights);

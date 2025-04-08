@@ -45,9 +45,16 @@ void RenderPhase::registerRenderState(std::shared_ptr<RenderStateABC> renderStat
     m_renderStates.emplace_back(renderState);
 }
 
-void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &camera,
-                                   const std::vector<std::shared_ptr<Light>> &lights)
+void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, VkRect2D renderArea, const CameraABC &camera,
+                                   const std::vector<std::shared_ptr<Light>> &lights) const
 {
+    if (singleFrameRenderIndex > 0)
+    {
+        VkFence currentFence = getCurrentFence();
+        vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
+    }
+
     const VkCommandBuffer &commandBuffer = getCurrentBackBuffer().commandBuffer;
 
     vkResetCommandBuffer(commandBuffer, 0);
@@ -83,8 +90,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
 
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
-        m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, camera, lights);
-        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, camera, lights);
+        m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
+        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, camera, lights);
         m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())
@@ -103,9 +110,9 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, con
         std::cerr << "Failed to record command buffer : " << res << std::endl;
 }
 
-void RenderPhase::submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride)
+void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) const
 {
-    VkSemaphore waitSemaphores[] = {acquireSemaphoreOverride ? *acquireSemaphoreOverride
+    VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
                                                              : getCurrentBackBuffer().acquireSemaphore};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore()};

@@ -44,6 +44,8 @@ class RenderPhase
 
     std::vector<std::shared_ptr<RenderStateABC>> m_renderStates;
 
+    uint32_t m_singleFrameRendeerCount = 1u;
+
     int m_backBufferIndex = 0;
     std::vector<BackBufferT> m_backBuffers;
 
@@ -65,13 +67,18 @@ class RenderPhase
 
     void registerRenderState(std::shared_ptr<RenderStateABC> renderState);
 
-    void recordBackBuffer(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &camera,
-                          const std::vector<std::shared_ptr<Light>> &lights);
-    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride);
+    void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, VkRect2D renderArea, const CameraABC &camera,
+                          const std::vector<std::shared_ptr<Light>> &lights) const;
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
 
     void swapBackBuffers();
 
   public:
+    [[nodiscard]] const int getSingleFrameRenderCount() const
+    {
+          return m_singleFrameRendeerCount;
+    }
+
     [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore() const
     {
         return getCurrentBackBuffer().acquireSemaphore;
@@ -126,6 +133,10 @@ class RenderPhaseBuilder
     void setBufferingType(uint32_t type)
     {
         m_bufferingType = type;
+    }
+    void setSingleFrameRenderCount(uint32_t renderCount)
+    {
+        m_product->m_singleFrameRendeerCount = renderCount;
     }
 
     std::unique_ptr<RenderPhase> build();
