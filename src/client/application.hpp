@@ -12,6 +12,7 @@ class Device;
 class Renderer;
 class SceneABC;
 class RenderPhase;
+class Texture;
 
 class Application
 {
@@ -28,6 +29,8 @@ class Application
     RenderPhase* m_postProcessPhase;
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
+
+    std::shared_ptr<Texture> irradianceMap;
 
     std::unique_ptr<SceneABC> m_scene;
 

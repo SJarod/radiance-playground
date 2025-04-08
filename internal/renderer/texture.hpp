@@ -44,6 +44,16 @@ class Texture
     {
         return m_imageView;
     }
+
+    [[nodiscard]] inline const uint32_t& getWidth() const
+    {
+        return m_width;
+    }
+
+    [[nodiscard]] inline const uint32_t& getHeight() const
+    {
+        return m_height;
+    }
 };
 
 class TextureBuilder
@@ -124,6 +134,7 @@ class CubemapBuilder
     VkFormat m_format;
     VkImageTiling m_tiling;
     VkFilter m_samplerFilter;
+    bool m_isResolveTexture;
 
     std::string m_rightTextureFilename;
     std::string m_leftTextureFilename;
@@ -214,6 +225,11 @@ class CubemapBuilder
         m_samplerFilter = a;
     }
 
+    void setResolveEnable(int isResolveTexture)
+    {
+        m_isResolveTexture = isResolveTexture;
+    }
+
     std::unique_ptr<Texture> buildAndRestart();
 };
 
@@ -222,4 +238,6 @@ class TextureDirector
   public:
     void configureSRGBTextureBuilder(TextureBuilder &builder);
     void configureSRGBTextureBuilder(CubemapBuilder &builder);
+    void configureUNORMTextureBuilder(TextureBuilder &builder);
+    void configureUNORMTextureBuilder(CubemapBuilder &builder);
 };

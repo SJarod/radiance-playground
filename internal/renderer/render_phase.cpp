@@ -78,6 +78,10 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         .depthStencil = {1.f, 0},
     };
     std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
+
+    renderArea.extent.width = std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
+    renderArea.extent.height = std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
+
     VkRenderPassBeginInfo renderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = m_renderPass->getHandle(),
@@ -206,5 +210,5 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
 
 void RenderPhase::updateSwapchainOnRenderPass(const SwapChain* newSwapchain) 
 {
-    m_renderPass->buildFramebuffers(newSwapchain, true);
+    m_renderPass->buildFramebuffers(newSwapchain->getImageViews(), newSwapchain->getDepthImageView(), newSwapchain->getExtent(), true);
 }

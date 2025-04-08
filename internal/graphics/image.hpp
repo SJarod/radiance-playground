@@ -181,6 +181,7 @@ class ImageDirector
     void createDepthImage2DBuilder(ImageBuilder &builder);
     void configureSampledImage2DBuilder(ImageBuilder &builder);
     void configureSampledImage3DBuilder(ImageBuilder &builder);
+    void configureSampledResolveImage3DBuilder(ImageBuilder &builder);
 };
 
 class ImageLayoutTransitionBuilder

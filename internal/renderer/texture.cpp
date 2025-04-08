@@ -102,10 +102,11 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
     std::array<std::string, 6> filepath = {m_rightTextureFilename,  m_leftTextureFilename,  m_topTextureFilename,
                                            m_bottomTextureFilename, m_frontTextureFilename, m_backTextureFilename};
 
-    size_t currentTotalSize = 0u;
+    size_t currentTotalSize = m_product->m_width * m_product->m_height * 6u * 4;
 
     if (m_bLoadFromFile)
     {
+        size_t cursor = 0u;
         for (int i = 0; i < filepath.size(); i++)
         {
             const char *currentFilepath = filepath[i].c_str();
@@ -121,12 +122,18 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
             size_t currentImageSize = m_product->m_width * m_product->m_height * 4;
 
             m_product->m_imageData.resize(m_product->m_imageData.size() + currentImageSize);
-            memcpy(m_product->m_imageData.data() + currentTotalSize, textureData, currentImageSize);
+            memcpy(m_product->m_imageData.data() + cursor, textureData, currentImageSize);
 
             stbi_image_free(textureData);
 
-            currentTotalSize += currentImageSize;
+            cursor += currentImageSize;
         }
+
+        currentTotalSize = m_product->m_width * m_product->m_height * 6u * 4;
+    }
+    else
+    {
+        m_product->m_imageData.reserve(currentTotalSize);
     }
 
     size_t totalSize = currentTotalSize;
@@ -142,7 +149,16 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     ImageBuilder ib;
     ImageDirector id;
-    id.configureSampledImage3DBuilder(ib);
+
+    if (!m_isResolveTexture)
+    {
+        id.configureSampledImage3DBuilder(ib);
+    }
+    else
+    {
+        id.configureSampledResolveImage3DBuilder(ib);
+    }
+
     ib.setDevice(m_device);
     ib.setFormat(m_format);
     ib.setWidth(m_product->m_width);
@@ -192,6 +208,20 @@ void TextureDirector::configureSRGBTextureBuilder(TextureBuilder &builder)
 void TextureDirector::configureSRGBTextureBuilder(CubemapBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
+    builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
+    builder.setSamplerFilter(VK_FILTER_NEAREST);
+}
+
+void TextureDirector::configureUNORMTextureBuilder(TextureBuilder& builder)
+{
+    builder.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
+    builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
+    builder.setSamplerFilter(VK_FILTER_NEAREST);
+}
+
+void TextureDirector::configureUNORMTextureBuilder(CubemapBuilder& builder)
+{
+    builder.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
     builder.setSamplerFilter(VK_FILTER_NEAREST);
 }

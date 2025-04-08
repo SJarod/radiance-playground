@@ -271,6 +271,14 @@ void ImageDirector::configureSampledImage3DBuilder(ImageBuilder &builder)
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
+void ImageDirector::configureSampledResolveImage3DBuilder(ImageBuilder& builder)
+{
+    createImageBuilderCube(builder);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
 void ImageLayoutTransitionBuilder::restart()
 {
     m_product = std::unique_ptr<ImageLayoutTransition>(new ImageLayoutTransition);

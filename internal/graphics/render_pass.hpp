@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 
 #include <vulkan/vulkan.h>
 
@@ -8,20 +9,24 @@ class Device;
 class SwapChain;
 class RenderPassBuilder;
 class RenderPass;
+class Texture;
 
 class RenderPassFramebufferBuilder
 {
 private:
     std::unique_ptr<VkFramebuffer> m_product;
 
-    VkImageView m_imageView;
+    VkImageView m_colorAttachment;
+    std::optional<VkImageView> m_depthAttachment;
     std::weak_ptr<Device> m_device;
-    const SwapChain* m_swapchain;
     VkRenderPass m_renderPassHandle;
     bool m_hasDepthAttachment = false;
+    VkExtent2D m_extent;
+    std::vector<VkImageView> m_attachments;
 
     void restart()
     {
+        m_extent = { 0, 0 };
         m_product = std::unique_ptr<VkFramebuffer>(new VkFramebuffer);
     }
     std::unique_ptr<VkFramebuffer> build();
@@ -37,14 +42,14 @@ public:
         m_device = device;
     }
 
-    void setSwapChain(const SwapChain* swapchain)
+    void setColorAttachment(const VkImageView& colorAttachment)
     {
-        m_swapchain = swapchain;
+        m_colorAttachment = colorAttachment;
     }
 
-    void setImageView(const VkImageView& imageView)
+    void setDepthAttachment(const VkImageView& depthAttachment)
     {
-        m_imageView = imageView;
+        m_depthAttachment = depthAttachment;
     }
 
     void setRenderPass(VkRenderPass renderPass)
@@ -55,6 +60,16 @@ public:
     void setHasDepthAttached(bool value)
     {
         m_hasDepthAttachment = value;
+    }
+
+    void setExtent(const VkExtent2D& extents)
+    {
+        m_extent = extents;
+    }
+
+    void addAttachment(const VkImageView& attachment)
+    {
+        m_attachments.push_back(attachment);
     }
 
     std::unique_ptr<VkFramebuffer> buildAndRestart()
@@ -78,6 +93,7 @@ class RenderPass
     std::vector<const VkImageView *> m_views;
     RenderPassFramebufferBuilder m_framebufferBuilder;
 
+    VkRect2D m_minRenderArea;
 
     RenderPass() = default;
 
@@ -89,7 +105,7 @@ class RenderPass
     RenderPass(RenderPass &&) = delete;
     RenderPass &operator=(RenderPass &&) = delete;
     
-    void buildFramebuffers(const SwapChain* newSwapchain, bool clearOldFramebuffers = false);
+    void buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, bool clearOldFramebuffers = false);
   public:
     [[nodiscard]] const VkRenderPass &getHandle() const
     {
@@ -109,6 +125,11 @@ class RenderPass
     {
         return static_cast<uint32_t>(m_framebuffers.size());
     }
+
+    [[nodiscard]] const VkRect2D getMinRenderArea() const
+    {
+        return m_minRenderArea;
+    }
 };
 
 class RenderPassBuilder
@@ -119,13 +140,16 @@ class RenderPassBuilder
     std::vector<VkAttachmentDescription> m_attachments;
 
     std::vector<VkAttachmentReference> m_colorAttachmentReferences;
-    std::vector<VkAttachmentReference> m_depthAttachmentReferences;
+    std::optional<VkAttachmentReference> m_depthAttachmentReference;
+
+    std::vector<VkImageView> m_imageViews;
+    std::optional<VkImageView> m_depthAttachment;
+    VkExtent2D m_extent;
 
     VkSubpassDescription m_subpass = {};
     VkSubpassDependency m_subpassDependency = {};
 
     std::weak_ptr<Device> m_device;
-    const SwapChain *m_swapchain;
 
     void restart()
     {
@@ -152,13 +176,27 @@ class RenderPassBuilder
         m_product->m_device = device;
         m_product->m_framebufferBuilder.setDevice(device);
     }
-    void setSwapChain(const SwapChain *swapchain)
+    void setImageViews(const std::vector<VkImageView>& imageViews)
     {
-        m_swapchain = swapchain;
-        m_product->m_framebufferBuilder.setSwapChain(swapchain);
+        m_imageViews = imageViews;
+    }
+    void setDepthAttachment(const VkImageView& depthAttachment)
+    {
+        m_depthAttachment = depthAttachment;
+    }
+    void setExtent(const VkExtent2D& extent)
+    {
+        m_extent = extent;
     }
 
     std::unique_ptr<RenderPass> build();
+};
+
+class RenderPassDirector
+{
+  public:
+      void configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment = true);
+      void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap);
 };
 
 class RenderPassAttachmentBuilder

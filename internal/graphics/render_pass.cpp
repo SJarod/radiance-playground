@@ -4,6 +4,7 @@
 
 #include "device.hpp"
 #include "swapchain.hpp"
+#include "renderer/texture.hpp"
 
 #include "render_pass.hpp"
 
@@ -21,7 +22,7 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(deviceHandle, m_handle, nullptr);
 }
 
-void RenderPass::buildFramebuffers(const SwapChain* newSwapchain, bool clearOldFramebuffers)
+void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, bool clearOldFramebuffers)
 {
     const VkDevice& deviceHandle = m_device.lock()->getHandle();
 
@@ -35,13 +36,19 @@ void RenderPass::buildFramebuffers(const SwapChain* newSwapchain, bool clearOldF
         m_views.clear();
     }
 
-    const auto& imageViews = newSwapchain->getImageViews();
+    m_minRenderArea.offset = { 0, 0 };
+    m_minRenderArea.extent = extent;
+
     m_framebuffers.resize(imageViews.size());
-    m_framebufferBuilder.setSwapChain(newSwapchain);
 
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
-        m_framebufferBuilder.setImageView(imageViews[i]);
+        m_framebufferBuilder.setExtent(extent);
+        m_framebufferBuilder.setColorAttachment(imageViews[i]);
+
+        if (depthAttachment.has_value())
+            m_framebufferBuilder.setDepthAttachment(depthAttachment.value());
+
         m_framebuffers[i] = *m_framebufferBuilder.buildAndRestart();
         m_views.push_back(&imageViews[i]);
     }
@@ -50,13 +57,12 @@ void RenderPass::buildFramebuffers(const SwapChain* newSwapchain, bool clearOldF
 std::unique_ptr<RenderPass> RenderPassBuilder::build()
 {
     assert(m_device.lock());
-    assert(m_swapchain);
 
     const VkDevice &deviceHandle = m_device.lock()->getHandle();
 
     m_subpass.colorAttachmentCount = static_cast<uint32_t>(m_colorAttachmentReferences.size());
     m_subpass.pColorAttachments = m_colorAttachmentReferences.data();
-    m_subpass.pDepthStencilAttachment = m_depthAttachmentReferences.data();
+    m_subpass.pDepthStencilAttachment = m_depthAttachmentReference.has_value() ? &m_depthAttachmentReference.value() : nullptr;;
 
     VkRenderPassCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -79,7 +85,7 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
     m_product->m_handle = handle;
 
     m_product->m_framebufferBuilder.setRenderPass(handle);
-    m_product->buildFramebuffers(m_swapchain, false);
+    m_product->buildFramebuffers(m_imageViews, m_depthAttachment, m_extent);
 
     return std::move(m_product);
 }
@@ -106,13 +112,28 @@ void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
     };
 
     m_attachments.emplace_back(attachment);
-    m_depthAttachmentReferences.emplace_back(depthAttachmentRef);
+    m_depthAttachmentReference = depthAttachmentRef;
 
     m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     m_product->m_framebufferBuilder.setHasDepthAttached(true);
+}
+
+void RenderPassDirector::configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment)
+{
+    builder.setExtent(swapchain.getExtent());
+    builder.setImageViews(swapchain.getImageViews());
+    
+    if (hasDepthAttachment)
+        builder.setDepthAttachment(swapchain.getDepthImageView());
+}
+
+void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap)
+{
+    builder.setExtent({ cubemap.getWidth(), cubemap.getHeight() });
+    builder.setImageViews({ cubemap.getImageView() });
 }
 
 void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)
@@ -148,18 +169,18 @@ std::unique_ptr<VkFramebuffer> RenderPassFramebufferBuilder::build()
 
     const VkDevice& deviceHandle = m_device.lock()->getHandle();
 
-    std::vector<VkImageView> framebufferAttachments{ m_imageView};
+    std::vector<VkImageView> framebufferAttachments{ m_colorAttachment };
 
-    if (m_hasDepthAttachment)
-        framebufferAttachments.push_back(m_swapchain->getDepthImageView());
+    if (m_depthAttachment.has_value())
+        framebufferAttachments.push_back(m_depthAttachment.value());
 
     VkFramebufferCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = m_renderPassHandle,
         .attachmentCount = static_cast<uint32_t>(framebufferAttachments.size()),
         .pAttachments = framebufferAttachments.data(),
-        .width = m_swapchain->getExtent().width,
-        .height = m_swapchain->getExtent().height,
+        .width = m_extent.width,
+        .height = m_extent.height,
         .layers = 1,
     };
 

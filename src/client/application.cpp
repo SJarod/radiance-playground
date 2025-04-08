@@ -78,15 +78,28 @@ Application::Application()
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
+    TextureDirector td;
+
+    CubemapBuilder irradianceMapBuilder;
+    irradianceMapBuilder.setDevice(mainDevice);
+    irradianceMapBuilder.setWidth(32);
+    irradianceMapBuilder.setHeight(32);
+    irradianceMapBuilder.setResolveEnable(true);
+    td.configureUNORMTextureBuilder(irradianceMapBuilder);
+    irradianceMap = irradianceMapBuilder.buildAndRestart();
+
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
+
+    RenderPassDirector rpd;
 
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
     irradianceConvolutionRpb.setDevice(mainDevice);
-    irradianceConvolutionRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto irradianceColorAttachment = rpab.buildAndRestart();
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
@@ -101,7 +114,7 @@ Application::Application()
     // Opaque
     RenderPassBuilder opaqueRpb;
     opaqueRpb.setDevice(mainDevice);
-    opaqueRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureSwapChainRenderPassBuilder(opaqueRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -124,7 +137,7 @@ Application::Application()
     // Skybox
     RenderPassBuilder skyboxRpb;
     skyboxRpb.setDevice(mainDevice);
-    skyboxRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureSwapChainRenderPassBuilder(skyboxRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -148,7 +161,7 @@ Application::Application()
 
     RenderPassBuilder postProcessRpb;
     postProcessRpb.setDevice(mainDevice);
-    postProcessRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -165,7 +178,7 @@ Application::Application()
 
     RenderPassBuilder imguiRpb;
     imguiRpb.setDevice(mainDevice);
-    imguiRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureSwapChainRenderPassBuilder(imguiRpb, *m_window->getSwapChain(), false);
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -181,7 +194,7 @@ Application::Application()
 
     RenderPassBuilder probesDebugRpb;
     probesDebugRpb.setDevice(mainDevice);
-    probesDebugRpb.setSwapChain(m_window->getSwapChain());
+    rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -454,7 +467,7 @@ void Application::runLoop()
         mrsb.setTexture(objects[i]->getMesh()->getTexture());
         
         if (skybox)
-            mrsb.setEnvironmentMap(skybox->getTexture());
+            mrsb.setEnvironmentMap(irradianceMap);
         
         mrsb.setModel(objects[i]);
 
