@@ -22,11 +22,14 @@ private:
     VkRenderPass m_renderPassHandle;
     bool m_hasDepthAttachment = false;
     VkExtent2D m_extent;
+    uint32_t m_layers;
+
     std::vector<VkImageView> m_attachments;
 
     void restart()
     {
         m_extent = { 0, 0 };
+        m_layers = 0u;
         m_product = std::unique_ptr<VkFramebuffer>(new VkFramebuffer);
     }
     std::unique_ptr<VkFramebuffer> build();
@@ -67,6 +70,11 @@ public:
         m_extent = extents;
     }
 
+    void setLayerCount(const uint32_t count)
+    {
+        m_layers = count;
+    }
+
     void addAttachment(const VkImageView& attachment)
     {
         m_attachments.push_back(attachment);
@@ -105,7 +113,7 @@ class RenderPass
     RenderPass(RenderPass &&) = delete;
     RenderPass &operator=(RenderPass &&) = delete;
     
-    void buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, bool clearOldFramebuffers = false);
+    void buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, uint32_t layerCount, bool clearOldFramebuffers = false);
   public:
     [[nodiscard]] const VkRenderPass &getHandle() const
     {
@@ -145,6 +153,8 @@ class RenderPassBuilder
     std::vector<VkImageView> m_imageViews;
     std::optional<VkImageView> m_depthAttachment;
     VkExtent2D m_extent;
+    uint32_t m_layers;
+    bool m_multiviewEnable = false;
 
     VkSubpassDescription m_subpass = {};
     VkSubpassDependency m_subpassDependency = {};
@@ -188,7 +198,15 @@ class RenderPassBuilder
     {
         m_extent = extent;
     }
-
+    void setLayerCount(const uint32_t& count)
+    {
+        m_layers = count;
+    }
+    void setMultiviewUsageEnable(const bool enable)
+    {
+        m_multiviewEnable = enable;
+    }
+   
     std::unique_ptr<RenderPass> build();
 };
 
@@ -196,7 +214,7 @@ class RenderPassDirector
 {
   public:
       void configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment = true);
-      void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap);
+      void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview);
 };
 
 class RenderPassAttachmentBuilder

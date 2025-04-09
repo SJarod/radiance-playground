@@ -26,6 +26,7 @@ class Device
     // physical device
     VkPhysicalDevice m_physicalHandle;
     VkPhysicalDeviceFeatures2 m_features;
+    VkPhysicalDeviceMultiviewFeatures m_multiviewFeature;
     VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;
     VkPhysicalDeviceProperties m_props;
@@ -157,8 +158,16 @@ class DeviceBuilder
     {
         m_product->m_physicalHandle = a;
 
+        m_product->m_multiviewFeature = VkPhysicalDeviceMultiviewFeatures{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+            .multiview = true,
+            .multiviewGeometryShader = false,
+            .multiviewTessellationShader = false
+        };
+
         m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+            .pNext = &m_product->m_multiviewFeature
         };
 
         m_product->m_features = {

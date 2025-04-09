@@ -22,7 +22,7 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(deviceHandle, m_handle, nullptr);
 }
 
-void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, bool clearOldFramebuffers)
+void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, uint32_t layerCount, bool clearOldFramebuffers)
 {
     const VkDevice& deviceHandle = m_device.lock()->getHandle();
 
@@ -44,6 +44,7 @@ void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, c
     for (size_t i = 0; i < imageViews.size(); ++i)
     {
         m_framebufferBuilder.setExtent(extent);
+        m_framebufferBuilder.setLayerCount(layerCount);
         m_framebufferBuilder.setColorAttachment(imageViews[i]);
 
         if (depthAttachment.has_value())
@@ -75,7 +76,26 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
     };
 
     VkRenderPass handle;
-    VkResult res = vkCreateRenderPass(deviceHandle, &createInfo, nullptr, &handle);
+    VkResult res;
+
+    if (m_multiviewEnable == false)
+    {
+        res = vkCreateRenderPass(deviceHandle, &createInfo, nullptr, &handle);
+    }
+    else
+    {
+        std::vector<uint32_t> viewMasks = { 0b00111111 };
+        VkRenderPassMultiviewCreateInfo multiviewCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
+            .subpassCount = 1,
+            .pViewMasks = viewMasks.data(),
+        };
+
+        createInfo.pNext = &multiviewCreateInfo;
+
+        res = vkCreateRenderPass(deviceHandle, &createInfo, nullptr, &handle);
+    }
+
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to create render pass : " << res << std::endl;
@@ -85,7 +105,7 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
     m_product->m_handle = handle;
 
     m_product->m_framebufferBuilder.setRenderPass(handle);
-    m_product->buildFramebuffers(m_imageViews, m_depthAttachment, m_extent);
+    m_product->buildFramebuffers(m_imageViews, m_depthAttachment, m_extent, m_multiviewEnable ? 1u : m_layers);
 
     return std::move(m_product);
 }
@@ -124,16 +144,21 @@ void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
 void RenderPassDirector::configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment)
 {
     builder.setExtent(swapchain.getExtent());
+    builder.setLayerCount(1u);
     builder.setImageViews(swapchain.getImageViews());
     
     if (hasDepthAttachment)
         builder.setDepthAttachment(swapchain.getDepthImageView());
 }
 
-void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap)
+void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview)
 {
     builder.setExtent({ cubemap.getWidth(), cubemap.getHeight() });
     builder.setImageViews({ cubemap.getImageView() });
+    builder.setLayerCount(6u);
+
+    if (useMultiview)
+        builder.setMultiviewUsageEnable(useMultiview);
 }
 
 void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)
@@ -181,7 +206,7 @@ std::unique_ptr<VkFramebuffer> RenderPassFramebufferBuilder::build()
         .pAttachments = framebufferAttachments.data(),
         .width = m_extent.width,
         .height = m_extent.height,
-        .layers = 1,
+        .layers = m_layers,
     };
 
     VkResult res = vkCreateFramebuffer(deviceHandle, &createInfo, nullptr, m_product.get());

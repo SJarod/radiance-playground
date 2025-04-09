@@ -61,6 +61,7 @@ Application::Application()
         db.setPhysicalDevice(physicalDevice);
         db.setSurface(m_window->getSurface());
         db.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        db.addDeviceExtension(VK_KHR_MULTIVIEW_EXTENSION_NAME);
         m_devices.emplace_back(db.build());
     }
 
@@ -96,7 +97,7 @@ Application::Application()
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
     irradianceConvolutionRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap);
+    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap, true);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -359,7 +360,7 @@ void Application::runLoop()
 
     PipelineBuilder irradianceConvolutionPb;
     irradianceConvolutionPb.setDevice(mainDevice);
-    irradianceConvolutionPb.addVertexShaderStage("skybox");
+    irradianceConvolutionPb.addVertexShaderStage("multiview_skybox");
     irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
     irradianceConvolutionPb.setRenderPass(m_irradianceConvolutionPhase->getRenderPass());
     irradianceConvolutionPb.setExtent(m_window->getSwapChain()->getExtent());

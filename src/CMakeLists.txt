@@ -22,6 +22,7 @@ set(SHADER_SOURCES
 	shaders/environment_map.frag
 	shaders/skybox.vert
 	shaders/skybox.frag
+	shaders/multiview_skybox.vert
 	shaders/irradiance_convolution.frag
 	shaders/screen.vert
 	shaders/postprocess.frag
