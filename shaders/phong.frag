@@ -8,6 +8,7 @@ layout(location = 3) in vec3 fragPos;
 layout(location = 0) out vec4 oColor;
 
 layout(binding = 1) uniform sampler2D texSampler;
+layout(binding = 4) uniform samplerCube irradianceMap;
 
 struct PointLight
 {
@@ -71,6 +72,14 @@ void applySingleDirectionalLight(inout LightingResult fragLighting, in Direction
 	fragLighting.specular += vec3(0.0);
 }
 
+void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal)
+{
+	vec3 irradiance = texture(irradianceMap, normal).rgb;
+
+	fragLighting.diffuse += irradiance;
+	fragLighting.specular += vec3(0.0);
+}
+
 void main()
 {
 	vec3 normal = normalize(fragNormal);
@@ -88,6 +97,8 @@ void main()
 	{
 		applySingleDirectionalLight(fragLighting, directionalLights[i], normal);
 	}
+
+	applyImageBasedIrradiance(fragLighting, normal);
 
 	oColor = texture(texSampler, fragUV);
 	oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);
