@@ -182,6 +182,7 @@ Application::Application()
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
@@ -198,12 +199,14 @@ Application::Application()
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     auto probesDebugColorAttachment = rpab.buildAndRestart();
     probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
 
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto probesDebugDepthAttachment = rpab.buildAndRestart();
     probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
