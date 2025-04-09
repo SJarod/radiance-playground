@@ -176,7 +176,15 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     m_product->m_image->copyBufferToImageCube(stagingBuffer->getHandle());
 
-    iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
+    if (!m_isResolveTexture)
+    {
+        iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
+    }
+    else
+    {
+        iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL>(iltb);
+    }
+
     iltb.setImage(*m_product->m_image);
     iltb.setLayerCount(6U);
     m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());

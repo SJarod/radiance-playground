@@ -134,7 +134,7 @@ class CubemapBuilder
     VkFormat m_format;
     VkImageTiling m_tiling;
     VkFilter m_samplerFilter;
-    bool m_isResolveTexture;
+    bool m_isResolveTexture = false;
 
     std::string m_rightTextureFilename;
     std::string m_leftTextureFilename;

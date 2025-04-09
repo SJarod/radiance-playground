@@ -99,7 +99,6 @@ Application::Application()
     rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto irradianceColorAttachment = rpab.buildAndRestart();
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
