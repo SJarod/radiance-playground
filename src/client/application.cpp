@@ -569,7 +569,7 @@ void Application::runLoop()
 
         VkDescriptorImageInfo imageInfo = {
             .sampler = *sampler.value(),
-            .imageView = *parentPhase->getRenderPass()->getImageView(imageIndex),
+            .imageView = parentPhase->getRenderPass()->getImageView(imageIndex),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkWriteDescriptorSet write = {

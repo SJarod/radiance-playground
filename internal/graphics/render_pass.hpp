@@ -90,7 +90,7 @@ class RenderPass
 
     VkRenderPass m_handle;
     std::vector<VkFramebuffer> m_framebuffers;
-    std::vector<const VkImageView *> m_views;
+    std::vector<VkImageView> m_views;
     RenderPassFramebufferBuilder m_framebufferBuilder;
 
     VkRect2D m_minRenderArea;
@@ -117,7 +117,7 @@ class RenderPass
         return m_framebuffers[imageIndex];
     }
 
-    [[nodiscard]] const VkImageView *getImageView(uint32_t imageIndex) const
+    [[nodiscard]] const VkImageView &getImageView(uint32_t imageIndex) const
     {
         return m_views[imageIndex];
     }

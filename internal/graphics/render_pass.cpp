@@ -50,7 +50,7 @@ void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, c
             m_framebufferBuilder.setDepthAttachment(depthAttachment.value());
 
         m_framebuffers[i] = *m_framebufferBuilder.buildAndRestart();
-        m_views.push_back(&imageViews[i]);
+        m_views.push_back(imageViews[i]);
     }
 }
 
