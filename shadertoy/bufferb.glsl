@@ -1,59 +1,105 @@
+
 /// RADIANCE APPLY
 /// INDIRECT LIGHTING
 
+cascade_desc retrieve_cascade_desc(int cascadeIndex)
+{
+    vec4 d = texelFetch(iChannel0, ivec2(0, cascadeIndex * 2), 0);
+    return cascade_desc(int(d.x), int(d.y), d.z);
+}
+
+vec2 retrieve_probe_position(int cascadeIndex, int probeIndex)
+{
+    // from buffer C
+    return texelFetch(iChannel0, ivec2(probeIndex, (cascadeIndex * 2) + 1), 0).xy;
+}
+
+vec4 retrieve_radiance_interval(int cascadeIndex, int probeIndex, int intervalIndex, int intervalCount)
+{
+    // from buffer D
+    return texelFetch(iChannel1, ivec2(probeIndex * intervalCount + intervalIndex, cascadeIndex), 0);
+}
+
+int[4] get_surrounding_probe_indices_from_uv(vec2 uv, int cascadeIndex)
+{
+    cascade_desc desc = retrieve_cascade_desc(cascadeIndex);
+
+    int probeCount = int(desc.p);
+    int probeRowCount = int(sqrt(float(probeCount)));
+    int intervalCount = int(desc.q);
+    
+    // closest probe at position "bottom left"
+    float probeIndexOffset = 1.0/(float(probeRowCount)*2.0);
+
+    // 4 probes in 2D
+    // 8 probes in 3D
+
+    // bottom left
+    int p0Index = int((uv.y - probeIndexOffset) * float(probeRowCount)) + int((uv.x - probeIndexOffset) * float(probeRowCount)) * probeRowCount;
+    // top left
+    int p1Index = p0Index + 1;
+    // bottom right
+    int p2Index = p0Index + probeRowCount;
+    // top right
+    int p3Index = p0Index + probeRowCount + 1;
+
+    return int[4](p0Index, p1Index, p2Index, p3Index);
+}
+
 vec4 radiance_apply(in vec2 uv)
 {
-	vec4 totalRadiance = vec4(vec3(0.0), 1.0);
-    for (int i = 0; i < MAX_CASCADE_COUNT; ++i)
+    // all intervals squashed together
+	vec4 totalRadiance = vec4(0.0);
+    
+    int lastCascadeIndex = MAX_CASCADE_COUNT - 1;
+    cascade_desc lastDesc = retrieve_cascade_desc(lastCascadeIndex);
+    
+    // max number of interval
+    // iterating on the intervals from probes of the last cascade
+    for (int i = 0; i < lastDesc.q; ++i)
     {
-        vec4 desc = texelFetch(iChannel1, ivec2(0, i * 2), 0);
-        int probeCount = int(desc.x);
-        int probeRowCount = int(sqrt(float(probeCount)));
-        int intervalCount = int(desc.y);
-        
-        // closest probe at position "bottom left"
-        float probeIndexOffset = 1.0/(float(probeRowCount)*2.0);
-        int p0Index = int((uv.y - probeIndexOffset) * float(probeRowCount)) + int((uv.x - probeIndexOffset) * float(probeRowCount)) * probeRowCount;
-        int p1Index = p0Index + 1;
-        int p2Index = p0Index + probeRowCount;
-        int p3Index = p0Index + probeRowCount + 1;
-        
-        // 4 probes in 2D
-        // 8 probes in 3D
-        probe p0, p1, p2, p3;
-        // bottom left
-        p0.position = texelFetch(iChannel1, ivec2(p0Index, (i * 2) + 1), 0).xy;
-        // top left
-        p1.position = texelFetch(iChannel1, ivec2(p1Index, (i * 2) + 1), 0).xy;
-        // bottom right
-        p2.position = texelFetch(iChannel1, ivec2(p2Index, (i * 2) + 1), 0).xy;
-        // top right
-        p3.position = texelFetch(iChannel1, ivec2(p3Index, (i * 2) + 1), 0).xy;
-        
-        // range of position between probes
-        float xrange = p2.position.x - p0.position.x;
-        float yrange = p1.position.y - p0.position.y;
-        // linear interpolation between the probes (two values in 2D)
-        // (three values in 3D)
-        float lerpx = (uv.x - p0.position.x) / xrange;
-        float lerpy = (uv.y - p0.position.y) / yrange;
-        
-        vec4 mergedRadiance = vec4(vec3(0.0), 1.0);
         float transparency = 1.0;
-        for (int j = 0; j < intervalCount; ++j)
+        vec4 mergedRadiance = vec4(0.0);
+
+        // number of cascades
+        // merging intervals from different cascade
+        for (int j = 0; j < MAX_CASCADE_COUNT; ++j)
         {
-            int intervalIndex = p0Index*intervalCount + j;
+            // computing the right interval index in function of
+            // the wanted final interval and the cascade index
+            int intervalIndex = i / int(pow(2.0, float(MAX_CASCADE_COUNT - 1 - j)));
+
+            int[4] probeIndices = get_surrounding_probe_indices_from_uv(uv, j);
+            cascade_desc desc = retrieve_cascade_desc(j);
             
-            vec4 interval0 = texelFetch(iChannel2, ivec2(intervalIndex, i), 0);
-            vec4 interval1 = texelFetch(iChannel2, ivec2(intervalIndex + intervalCount, i), 0);
-            vec4 interval2 = texelFetch(iChannel2, ivec2(intervalIndex + probeRowCount * intervalCount, i), 0);
-            vec4 interval3 = texelFetch(iChannel2, ivec2(intervalIndex + probeRowCount * intervalCount + intervalCount, i), 0);
+            probe p0, p1, p2, p3;
+            p0.position = retrieve_probe_position(j, probeIndices[0]);
+            p1.position = retrieve_probe_position(j, probeIndices[1]);
+            p2.position = retrieve_probe_position(j, probeIndices[2]);
+            p3.position = retrieve_probe_position(j, probeIndices[3]);
+
+            // range of position between probes
+            float xrange = p2.position.x - p0.position.x;
+            float yrange = p1.position.y - p0.position.y;
+            // linear interpolation between the probes (two values in 2D)
+            // (three values in 3D)
+            float lerpx = (uv.x - p0.position.x) / xrange;
+            float lerpy = (uv.y - p0.position.y) / yrange;
+
+            vec4 interval0 = retrieve_radiance_interval(j, probeIndices[0], intervalIndex, desc.q);
+            vec4 interval1 = retrieve_radiance_interval(j, probeIndices[1], intervalIndex, desc.q);
+            vec4 interval2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex, desc.q);
+            vec4 interval3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex, desc.q);
             
-            mergedRadiance += bilerp(interval0, interval1, interval2, interval3, vec2(lerpy, lerpx)) * transparency;
+            vec4 bilerped = bilerp(interval0, interval1, interval2, interval3, vec2(lerpy, lerpx));
+            mergedRadiance += bilerped * transparency;
+            
+            // save current transparency for next cascade
+            transparency *= bilerped.a;
         }
-        totalRadiance += mergedRadiance / float(intervalCount) * INTENSITY;
+        totalRadiance += mergedRadiance;
     }
-	return totalRadiance * INV_MAX_CASCADE_COUNT;
+	return totalRadiance / float(lastDesc.q) * INTENSITY;
 }
 
 /// PROBE VISUALIZATION
@@ -64,13 +110,13 @@ void render_probes(inout vec4 col, in vec2 uv)
     {
         float probeRadius = float(i + 1) / 100.0;
 
-        vec4 desc = texelFetch(iChannel1, ivec2(0, i * 2), 0);
+        vec4 desc = texelFetch(iChannel0, ivec2(0, i * 2), 0);
         int probeCount = int(desc.x);
         int intervalCount = int(desc.y);
         
         for (int j = 0; j < probeCount; ++j)
         {
-            vec2 probePos = texelFetch(iChannel1, ivec2(j, i * 2 + 1), 0).xy;
+            vec2 probePos = texelFetch(iChannel0, ivec2(j, i * 2 + 1), 0).xy;
             vec4 probeColor = vec4(0.0);
             probeColor.r = length(probePos);
             probeColor.g = float(j + 1) / float(MAX_PROBE_COUNT + 1);
