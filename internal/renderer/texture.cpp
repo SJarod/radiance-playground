@@ -12,7 +12,7 @@
 Texture::~Texture()
 {
     m_image.reset();
-    if (!m_device.lock())
+    if (m_device.expired())
         return;
 
     auto deviceHandle = m_device.lock()->getHandle();
@@ -88,6 +88,15 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 
     m_product->m_imageView = m_product->m_image->createImageView2D();
 
+    auto devicePtr = m_device.lock();
+    static int viewCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE_VIEW,
+        .objectHandle = (uint64_t)m_product->m_imageView,
+        .pObjectName = std::string("Texture Image View" + std::to_string(viewCount++)).c_str(),
+    });
+
     // depth view
 
     if (m_depthImageEnable)
@@ -115,7 +124,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     sb.setDevice(m_device);
     sb.setMagFilter(m_samplerFilter);
     sb.setMinFilter(m_samplerFilter);
-    m_product->m_sampler = sb.buildAndRestart();
+    m_product->m_sampler = sb.build();
 
     auto result = std::move(m_product);
     restart();
@@ -289,7 +298,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
     sb.setDevice(m_device);
     sb.setMagFilter(m_samplerFilter);
     sb.setMinFilter(m_samplerFilter);
-    m_product->m_sampler = sb.buildAndRestart();
+    m_product->m_sampler = sb.build();
 
     auto result = std::move(m_product);
     restart();

@@ -8,6 +8,8 @@ target_sources(${component}
     scripts/move_camera.cpp
     scripts/probes.hpp
     scripts/probes.cpp
+    scripts/radiance_cascades.hpp
+    scripts/radiance_cascades.cpp
 
     application.cpp
     application.hpp

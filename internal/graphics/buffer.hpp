@@ -42,6 +42,11 @@ class Buffer
     {
         return m_memory;
     }
+
+    [[nodiscrad]] inline const size_t getSize() const
+    {
+        return m_size;
+    }
 };
 
 class BufferBuilder
@@ -93,8 +98,8 @@ class BufferDirector
 {
   public:
     void configureStagingBufferBuilder(BufferBuilder &builder);
-    void createVertexBufferBuilder(BufferBuilder &builder);
-    void createIndexBufferBuilder(BufferBuilder &builder);
-    void createUniformBufferBuilder(BufferBuilder& builder);
-    void createStorageBufferBuilder(BufferBuilder &builder);
+    void configureVertexBufferBuilder(BufferBuilder &builder);
+    void configureIndexBufferBuilder(BufferBuilder &builder);
+    void configureUniformBufferBuilder(BufferBuilder &builder);
+    void configureStorageBufferBuilder(BufferBuilder &builder);
 };

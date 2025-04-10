@@ -2,6 +2,7 @@ set(component renderer)
 
 add_library(${component} STATIC "")
 
+
 target_sources(${component}
     PRIVATE
     render_state.hpp

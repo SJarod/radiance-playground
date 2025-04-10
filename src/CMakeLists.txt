@@ -27,6 +27,7 @@ set(SHADER_SOURCES
 	shaders/postprocess.frag
 	shaders/probe_grid_debug.frag
 	shaders/probe_grid_debug.vert
+	shaders/radiance_cascades.frag
 )
 
 set(RUNTIME_OUTPUT_DIR $<TARGET_FILE_DIR:${component}>)

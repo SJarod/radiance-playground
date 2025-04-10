@@ -8,7 +8,7 @@
 
 Image::~Image()
 {
-    if (!m_device.lock())
+    if (m_device.expired())
         return;
 
     auto deviceHandle = m_device.lock()->getHandle();
@@ -198,6 +198,13 @@ std::unique_ptr<Image> ImageBuilder::build()
         std::cerr << "Failed to create image : " << res << std::endl;
         return nullptr;
     }
+    static int imageCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE,
+        .objectHandle = (uint64_t)m_product->m_handle,
+        .pObjectName = std::string("Image " + std::to_string(imageCount++)).c_str(),
+    });
 
     VkMemoryRequirements memReq;
     vkGetImageMemoryRequirements(deviceHandle, m_product->m_handle, &memReq);
@@ -215,6 +222,13 @@ std::unique_ptr<Image> ImageBuilder::build()
         std::cerr << "Failed to allocate memory : " << res << std::endl;
         return nullptr;
     }
+    static int imageMemoryCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_DEVICE_MEMORY,
+        .objectHandle = (uint64_t)m_product->m_memory,
+        .pObjectName = std::string("Image Memory " + std::to_string(imageMemoryCount++)).c_str(),
+    });
 
     vkBindImageMemory(deviceHandle, m_product->m_handle, m_product->m_memory, 0);
 
@@ -266,12 +280,13 @@ void ImageDirector::configureSampledImage2DBuilder(ImageBuilder &builder)
 void ImageDirector::configureSampledImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
-    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
     builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -279,7 +294,7 @@ void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder& builder)
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
     builder.setFormat(VK_FORMAT_D32_SFLOAT_S8_UINT);
@@ -289,10 +304,11 @@ void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder& builder)
     builder.setAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }
 
-void ImageDirector::configureSampledResolveImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureSampledResolveImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
-    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
@@ -319,7 +335,7 @@ std::unique_ptr<ImageLayoutTransition> ImageLayoutTransitionBuilder::buildAndRes
     return result;
 }
 
-std::unique_ptr<VkSampler> SamplerBuilder::buildAndRestart()
+std::unique_ptr<VkSampler> SamplerBuilder::build()
 {
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
@@ -349,8 +365,14 @@ std::unique_ptr<VkSampler> SamplerBuilder::buildAndRestart()
         std::cerr << "Failed to create image sampler : " << res << std::endl;
         return nullptr;
     }
+    static int samplerCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_SAMPLER,
+        .objectHandle = (uint64_t)(*m_product),
+        .pObjectName = std::string("Image Sampler " + std::to_string(samplerCount++)).c_str(),
+    });
 
     auto result = std::move(m_product);
-    restart();
     return result;
 }

@@ -7,12 +7,21 @@
 
 class Device;
 class RenderPass;
-class PipelineBuilder;
+class BasePipelineBuilder;
+enum class PipelineType
+{
+    GRAPHICS = 0,
+    COMPUTE = 1,
+    COUNT = 2,
+};
+template <PipelineType TType> class PipelineBuilder;
 class UniformDescriptor;
 
 class Pipeline
 {
-    friend PipelineBuilder;
+    friend BasePipelineBuilder;
+    friend PipelineBuilder<PipelineType::GRAPHICS>;
+    friend PipelineBuilder<PipelineType::COMPUTE>;
 
   private:
     std::weak_ptr<Device> m_device;
@@ -47,9 +56,9 @@ class Pipeline
     }
 };
 
-class PipelineBuilder
+class BasePipelineBuilder
 {
-  private:
+  protected:
     std::unique_ptr<Pipeline> m_product;
 
     std::weak_ptr<Device> m_device;
@@ -58,6 +67,41 @@ class PipelineBuilder
     std::vector<VkShaderModule> m_modules;
     std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageCreateInfos;
 
+    // descriptor set layout
+    std::vector<VkPushConstantRange> m_pushConstantRanges;
+
+    std::vector<std::shared_ptr<UniformDescriptor>> m_uniformDescriptorPacks;
+
+    const RenderPass *m_renderPass;
+
+    virtual void restart();
+
+  public:
+    virtual ~BasePipelineBuilder() = default;
+
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        this->m_device = device;
+        m_product->m_device = device;
+    }
+
+    void addUniformDescriptorPack(std::shared_ptr<UniformDescriptor> desc)
+    {
+        m_uniformDescriptorPacks.push_back(desc);
+    }
+    void setRenderPass(const RenderPass *a)
+    {
+        m_renderPass = a;
+    }
+};
+
+template <PipelineType TType> class PipelineBuilder : public BasePipelineBuilder
+{
+};
+
+template <> class PipelineBuilder<PipelineType::GRAPHICS> : public BasePipelineBuilder
+{
+  private:
     // dynamic states
     std::vector<VkDynamicState> m_dynamicStates;
 
@@ -112,14 +156,7 @@ class PipelineBuilder
     VkLogicOp m_logicOp;
     float m_blendConstants[4];
 
-    // descriptor set layout
-    std::vector<VkPushConstantRange> m_pushConstantRanges;
-
-    std::vector<std::shared_ptr<UniformDescriptor>> m_uniformDescriptorPacks;
-
-    const RenderPass *m_renderPass;
-
-    void restart();
+    void restart() override;
 
   public:
     PipelineBuilder()
@@ -127,11 +164,6 @@ class PipelineBuilder
         restart();
     }
 
-    void setDevice(std::weak_ptr<Device> device)
-    {
-        this->m_device = device;
-        m_product->m_device = device;
-    }
     void addVertexShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addFragmentShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addDynamicState(VkDynamicState state);
@@ -285,20 +317,29 @@ class PipelineBuilder
         m_blendConstants[2] = c;
         m_blendConstants[3] = d;
     }
-    void addUniformDescriptorPack(std::shared_ptr<UniformDescriptor> desc)
-    {
-        m_uniformDescriptorPacks.push_back(desc);
-    }
-    void setRenderPass(const RenderPass *a)
-    {
-        m_renderPass = a;
-    }
 
     std::unique_ptr<Pipeline> build();
 };
 
-class PipelineDirector
+template <> class PipelineBuilder<PipelineType::COMPUTE> : public BasePipelineBuilder
+{
+  private:
+  public:
+    void addComputeShaderStage(const char *shaderName, const char *entryPoint = "main");
+};
+
+template <PipelineType TType> class PipelineDirector
+{
+};
+
+template <> class PipelineDirector<PipelineType::GRAPHICS>
 {
   public:
-    void createColorDepthRasterizerBuilder(PipelineBuilder &build);
+    void configureColorDepthRasterizerBuilder(PipelineBuilder<PipelineType::GRAPHICS> &builder);
+};
+
+template <> class PipelineDirector<PipelineType::COMPUTE>
+{
+  public:
+    void configureComputeBuilder(PipelineBuilder<PipelineType::COMPUTE> &builder);
 };

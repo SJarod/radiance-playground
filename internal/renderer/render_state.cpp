@@ -7,16 +7,16 @@
 #include "imgui.h"
 
 #include "engine/camera.hpp"
-#include "engine/uniform.hpp"
 #include "engine/probe_grid.hpp"
+#include "engine/uniform.hpp"
 #include "graphics/buffer.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/render_pass.hpp"
 #include "light.hpp"
 #include "mesh.hpp"
-#include "render_phase.hpp"
 #include "model.hpp"
+#include "render_phase.hpp"
 #include "skybox.hpp"
 #include "texture.hpp"
 
@@ -34,26 +34,17 @@ const glm::vec3 captureViewCenter[] =
    glm::vec3( 0.f, 0.f,-1.f),
 };
 
-const glm::vec3 captureViewUp[] =
-{
-   glm::vec3(0.f, 1.f, 0.f),
-   glm::vec3(0.f, 1.f, 0.f),
-   glm::vec3(0.f, 0.f,-1.f),
-   glm::vec3(0.f, 0.f, 1.f),
-   glm::vec3(0.f, 1.f, 0.f),
-   glm::vec3(0.f, 1.f, 0.f)
-};
+const glm::vec3 captureViewUp[] = {glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, 0.f, -1.f),
+                                   glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, 1.f, 0.f)};
 
-const glm::mat4 captureViews[] =
-{
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[0], captureViewUp[0]),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[1], captureViewUp[1]),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[2], captureViewUp[2]),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[3], captureViewUp[3]),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[4], captureViewUp[4]),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[5], captureViewUp[5]),
+const glm::mat4 captureViews[] = {
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[0], captureViewUp[0]),
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[1], captureViewUp[1]),
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[2], captureViewUp[2]),
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[3], captureViewUp[3]),
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[4], captureViewUp[4]),
+    glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[5], captureViewUp[5]),
 };
-
 
 const glm::mat4 capturePartialProj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1000.f);
 
@@ -72,7 +63,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
 {
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
-        MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[backBufferIndex]);
+        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
         mvpData->model = glm::identity<glm::mat4>();
 
         if (!captureModeEnabled)
@@ -80,9 +71,9 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
             mvpData->proj = camera.getProjectionMatrix();
             mvpData->views[0] = camera.getViewMatrix();
         }
-        else 
+        else
         {
-            const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
+            const glm::vec3 &probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
             mvpData->proj = capturePartialProj;
             mvpData->proj[1][1] *= -1;
@@ -94,12 +85,12 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
 
     if (m_probeStorageBuffersMapped.size() > 0)
     {
-        const std::vector<std::unique_ptr<Probe>> & probes = probeGrid->getProbes();
-        ProbeContainer* probeContainer = static_cast<ProbeContainer*>(m_probeStorageBuffersMapped[backBufferIndex]);
+        const std::vector<std::unique_ptr<Probe>> &probes = probeGrid->getProbes();
+        ProbeContainer *probeContainer = static_cast<ProbeContainer *>(m_probeStorageBuffersMapped[backBufferIndex]);
 
         for (int i = 0; i < probes.size(); i++)
         {
-            const Probe* probe = probes[i].get();
+            const Probe *probe = probes[i].get();
 
             ProbeContainer::Probe probeData{
                 .position = probe->position,
@@ -113,13 +104,14 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         probeContainer->cornerPosition = probeGrid->getCornerPosition();
     }
 
-    PointLightContainer* pointLightContainer = nullptr;
+    PointLightContainer *pointLightContainer = nullptr;
     if (m_pointLightStorageBuffersMapped.size() > 0)
-        pointLightContainer = static_cast<PointLightContainer*>(m_pointLightStorageBuffersMapped[backBufferIndex]);
+        pointLightContainer = static_cast<PointLightContainer *>(m_pointLightStorageBuffersMapped[backBufferIndex]);
 
-    DirectionalLightContainer* directionalLightContainer = nullptr;
+    DirectionalLightContainer *directionalLightContainer = nullptr;
     if (m_directionalLightStorageBuffersMapped.size() > 0)
-        directionalLightContainer = static_cast<DirectionalLightContainer*>(m_directionalLightStorageBuffersMapped[backBufferIndex]);
+        directionalLightContainer =
+            static_cast<DirectionalLightContainer *>(m_directionalLightStorageBuffersMapped[backBufferIndex]);
 
     int pointLightCount = 0;
     int directionalLightCount = 0;
@@ -128,7 +120,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         const Light *light = lights[i].get();
         if (pointLightContainer)
         {
-            if (const PointLight* pointLight = dynamic_cast<const PointLight*>(light))
+            if (const PointLight *pointLight = dynamic_cast<const PointLight *>(light))
             {
                 PointLightContainer::PointLight pointLightData{
                     .diffuseColor = pointLight->diffuseColor,
@@ -147,7 +139,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
 
         if (pointLightContainer)
         {
-            if (const DirectionalLight* directionalLight = dynamic_cast<const DirectionalLight*>(light))
+            if (const DirectionalLight *directionalLight = dynamic_cast<const DirectionalLight *>(light))
             {
                 DirectionalLightContainer::DirectionalLight directionalLightData{
                     .diffuseColor = directionalLight->diffuseColor,
@@ -171,13 +163,14 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex)
+void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
+                                                  uint32_t backBufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePredPerFrame)
     {
         for (const auto &instanceSet : m_instanceDescriptorSets)
         {
-            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, instanceSet);
+            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, instanceSet, backBufferIndex);
         }
     }
 
@@ -185,10 +178,10 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
     {
         for (const auto &materialSetsPerMesh : m_materialDescriptorSetsPerSubObject)
         {
-            for (const auto& materialSet : materialSetsPerMesh)
+            for (const auto &materialSet : materialSetsPerMesh)
             {
 
-                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, materialSet);
+                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, materialSet, backBufferIndex);
             }
         }
     }
@@ -198,7 +191,7 @@ void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32
 {
     if (m_instanceDescriptorSetUpdatePred)
     {
-        for (const auto& set : m_instanceDescriptorSets)
+        for (const auto &set : m_instanceDescriptorSets)
         {
             m_instanceDescriptorSetUpdatePred(parentPhase, imageIndex, set);
         }
@@ -206,14 +199,15 @@ void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32
 
     if (m_materialDescriptorSetUpdatePred)
     {
-        for (const auto& set : m_instanceDescriptorSets)
+        for (const auto &set : m_instanceDescriptorSets)
         {
             m_materialDescriptorSetUpdatePred(parentPhase, imageIndex, set);
         }
     }
 }
 
-void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex, uint32_t backBufferIndex)
+void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,
+                                                            uint32_t subObjectIndex, uint32_t backBufferIndex)
 {
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -224,7 +218,8 @@ void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffe
 
     if (subObjectIndex < m_materialDescriptorSetsPerSubObject.size())
     {
-        if (m_materialDescriptorSetEnable && backBufferIndex < m_materialDescriptorSetsPerSubObject[subObjectIndex].size())
+        if (m_materialDescriptorSetEnable &&
+            backBufferIndex < m_materialDescriptorSetsPerSubObject[subObjectIndex].size())
         {
             descriptorSets.push_back(m_materialDescriptorSetsPerSubObject[subObjectIndex][backBufferIndex]);
         }
@@ -270,11 +265,13 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
 
     if (instanceDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount, instanceDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                              instanceDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -282,7 +279,8 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             .pSetLayouts = instanceSetLayouts.data(),
         };
         m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, m_product->m_instanceDescriptorSets.data());
+        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
+                                       m_product->m_instanceDescriptorSets.data());
         if (res != VK_SUCCESS)
         {
             std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
@@ -290,11 +288,13 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         }
     }
 
-    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
+    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
 
     if (materialDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount, materialDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount,
+                                                              materialDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo materialDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -309,7 +309,8 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
             materialDescriptorSets.resize(m_frameInFlightCount);
 
-            res = vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
             if (res != VK_SUCCESS)
             {
                 std::cerr << "Failed to allocate material descriptor sets : " << res << std::endl;
@@ -328,7 +329,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createUniformBufferBuilder(bb);
+            bd.configureUniformBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::MVP));
             bb.setDevice(m_device);
             m_product->m_mvpUniformBuffers[i] = bb.build();
@@ -347,14 +348,13 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::ProbeContainer));
             bb.setDevice(m_device);
             m_product->m_probeStorageBuffers[i] = bb.build();
 
             vkMapMemory(deviceHandle, m_product->m_probeStorageBuffers[i]->getMemory(), 0,
-                sizeof(RenderStateABC::ProbeContainer), 0,
-                &m_product->m_probeStorageBuffersMapped[i]);
+                        sizeof(RenderStateABC::ProbeContainer), 0, &m_product->m_probeStorageBuffersMapped[i]);
         }
     }
 
@@ -366,7 +366,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::PointLightContainer));
             bb.setDevice(m_device);
             m_product->m_pointLightStorageBuffers[i] = bb.build();
@@ -382,7 +382,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
             bb.setDevice(m_device);
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
@@ -415,7 +415,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
     {
         if (m_mvpDescriptorEnable)
         {
-            VkDescriptorBufferInfo& mvpBufferInfo = mvpBufferInfos.emplace_back();
+            VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
             mvpBufferInfo.buffer = m_product->m_mvpUniformBuffers[i]->getHandle();
             mvpBufferInfo.offset = 0;
             mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
@@ -432,7 +432,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
 
         if (m_probeDescriptorEnable)
         {
-            VkDescriptorBufferInfo& probeBufferInfo = probeBufferInfos.emplace_back();
+            VkDescriptorBufferInfo &probeBufferInfo = probeBufferInfos.emplace_back();
             probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
             probeBufferInfo.offset = 0;
             probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
@@ -444,12 +444,12 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                 .pBufferInfo = &probeBufferInfo,
-                });
+            });
         }
 
         if (m_lightDescriptorEnable)
         {
-            VkDescriptorBufferInfo& pointLightBufferInfo = pointLightBufferInfos.emplace_back();
+            VkDescriptorBufferInfo &pointLightBufferInfo = pointLightBufferInfos.emplace_back();
             pointLightBufferInfo.buffer = m_product->m_pointLightStorageBuffers[i]->getHandle();
             pointLightBufferInfo.offset = 0;
             pointLightBufferInfo.range = sizeof(RenderStateABC::PointLightContainer);
@@ -462,9 +462,9 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                 .pBufferInfo = &pointLightBufferInfo,
             });
-            
-            VkDescriptorBufferInfo& directionalLightBufferInfo = directionalLightBufferInfos.emplace_back();
-			directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
+
+            VkDescriptorBufferInfo &directionalLightBufferInfo = directionalLightBufferInfos.emplace_back();
+            directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
             directionalLightBufferInfo.offset = 0;
             directionalLightBufferInfo.range = sizeof(RenderStateABC::DirectionalLightContainer);
             udb.addSetWrites(VkWriteDescriptorSet{
@@ -487,7 +487,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             {
                 std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
 
-                VkDescriptorImageInfo& envMapImageInfo = envMapImageArrayInfos.emplace_back();
+                VkDescriptorImageInfo &envMapImageInfo = envMapImageArrayInfos.emplace_back();
                 envMapImageInfo.sampler = *texPtr->getSampler();
                 envMapImageInfo.imageView = texPtr->getImageView();
                 envMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -524,7 +524,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
                 {
                     std::shared_ptr<Texture> texPtr = currentTexture.lock();
 
-                    VkDescriptorImageInfo& diffuseImageInfo = diffuseImageInfos.emplace_back();
+                    VkDescriptorImageInfo &diffuseImageInfo = diffuseImageInfos.emplace_back();
                     diffuseImageInfo.sampler = *texPtr->getSampler();
                     diffuseImageInfo.imageView = texPtr->getImageView();
                     diffuseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -550,21 +550,20 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void ModelRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderCount, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+void ModelRenderState::updatePushConstants(const VkCommandBuffer &commandBuffer, uint32_t imageIndex,
+                                           uint32_t singleFrameRenderCount, const CameraABC &camera,
+                                           const std::vector<std::shared_ptr<Light>> &lights)
 {
     if (m_pushViewPosition)
     {
-        const Transform& cameraTransform = camera.getTransform();
-        float data[3] = {
-            cameraTransform.position.x,
-            cameraTransform.position.y,
-            cameraTransform.position.z
-        };
+        const Transform &cameraTransform = camera.getTransform();
+        float data[3] = {cameraTransform.position.x, cameraTransform.position.y, cameraTransform.position.z};
 
         uint32_t offset = 0;
         uint32_t size = 16;
 
-        vkCmdPushConstants(commandBuffer, m_pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, offset, size, data);
+        vkCmdPushConstants(commandBuffer, m_pipeline->getPipelineLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, offset, size,
+                           data);
     }
 }
 
@@ -572,7 +571,7 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
 {
     auto modelPtr = m_model.lock();
     auto meshPtr = modelPtr->getMesh(subObjectIndex);
-  
+
     VkBuffer vbos[] = {meshPtr->getVertexBufferHandle()};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
@@ -582,11 +581,12 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
 
 void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, captureModeEnabled);
+    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights,
+                                         probeGrid, captureModeEnabled);
 
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
-        MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
+        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
         auto modelPtr = m_model.lock();
 
         mvpData->model = modelPtr->getTransform().getTransformMatrix();
@@ -677,11 +677,13 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
 
     if (instanceDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount, instanceDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                              instanceDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -689,7 +691,8 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
             .pSetLayouts = instanceSetLayouts.data(),
         };
         m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, m_product->m_instanceDescriptorSets.data());
+        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
+                                       m_product->m_instanceDescriptorSets.data());
         if (res != VK_SUCCESS)
         {
             std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
@@ -697,11 +700,13 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
         }
     }
 
-    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
+    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
 
     if (materialDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount, materialDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount,
+                                                              materialDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo materialDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -713,10 +718,11 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
         m_product->m_materialDescriptorSetsPerSubObject.resize(materialInstanceCount);
         for (uint32_t i = 0u; i < materialInstanceCount; i++)
         {
-            auto& materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
+            auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
             materialDescriptorSets.resize(m_frameInFlightCount);
 
-            res = vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
             if (res != VK_SUCCESS)
             {
                 std::cerr << "Failed to allocate material descriptor sets : " << res << std::endl;
@@ -733,7 +739,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
+        bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
@@ -803,7 +809,7 @@ void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singl
     }
     else
     {
-        const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
+        const glm::vec3 &probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
         mvpData->proj = capturePartialProj;
         mvpData->proj[1][1] *= -1;
@@ -813,7 +819,8 @@ void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singl
     }
 }
 
-void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex)
+void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer,
+                                                           uint32_t subObjectIndex)
 {
     auto skyboxPtr = m_skybox.lock();
 
@@ -822,7 +829,6 @@ void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }
-
 
 void EnvironmentCaptureRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
@@ -833,7 +839,7 @@ void EnvironmentCaptureRenderStateBuilder::addPoolSize(VkDescriptorType poolSize
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
         .descriptorCount = m_frameInFlightCount,
-        });
+    });
 }
 
 std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
@@ -857,11 +863,13 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
 
     if (instanceDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount, instanceDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                              instanceDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -869,7 +877,8 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
             .pSetLayouts = instanceSetLayouts.data(),
         };
         m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, m_product->m_instanceDescriptorSets.data());
+        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
+                                       m_product->m_instanceDescriptorSets.data());
         if (res != VK_SUCCESS)
         {
             std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
@@ -877,11 +886,13 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
         }
     }
 
-    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout = m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
+    std::optional<VkDescriptorSetLayout> materialDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(1u);
 
     if (materialDescriptorSetLayout.has_value())
     {
-        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount, materialDescriptorSetLayout.value());
+        std::vector<VkDescriptorSetLayout> materialSetLayouts(m_frameInFlightCount,
+                                                              materialDescriptorSetLayout.value());
         VkDescriptorSetAllocateInfo materialDescriptorSetAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
             .descriptorPool = m_product->m_descriptorPool,
@@ -893,10 +904,11 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
         m_product->m_materialDescriptorSetsPerSubObject.resize(materialInstanceCount);
         for (uint32_t i = 0u; i < materialInstanceCount; i++)
         {
-            auto& materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
+            auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
             materialDescriptorSets.resize(m_frameInFlightCount);
 
-            res = vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &materialDescriptorSetAllocInfo, materialDescriptorSets.data());
             if (res != VK_SUCCESS)
             {
                 std::cerr << "Failed to allocate material descriptor sets : " << res << std::endl;
@@ -913,13 +925,13 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
+        bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
         vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-            &m_product->m_mvpUniformBuffersMapped[i]);
+                    &m_product->m_mvpUniformBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_instanceDescriptorSets.size(); ++i)
@@ -939,7 +951,7 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .pBufferInfo = &mvpBufferInfo,
-            });
+        });
 
         if (m_textureDescriptorEnable)
         {
@@ -960,7 +972,7 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .pImageInfo = &imageInfo,
-                });
+            });
         }
 
         std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
@@ -975,7 +987,7 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, ui
 {
     uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
 
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[bufferIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[bufferIndex]);
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
@@ -985,7 +997,7 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, ui
     }
     else
     {
-        const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
+        const glm::vec3 &probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
         mvpData->proj = capturePartialProj;
         mvpData->proj[1][1] *= -1;
@@ -995,12 +1007,13 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, ui
     }
 }
 
-void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex)
+void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer,
+                                                                       uint32_t subObjectIndex)
 {
     auto skyboxPtr = m_skybox.lock();
 
-    VkBuffer vbos[] = { skyboxPtr->getVertexBufferHandle() };
-    VkDeviceSize offsets[] = { 0 };
+    VkBuffer vbos[] = {skyboxPtr->getVertexBufferHandle()};
+    VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
     vkCmdDraw(commandBuffer, skyboxPtr->getVertexCount(), 1, 0, 0);
 }
@@ -1069,7 +1082,7 @@ std::unique_ptr<RenderStateABC> ProbeGridRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
+        bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
@@ -1085,7 +1098,7 @@ std::unique_ptr<RenderStateABC> ProbeGridRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createStorageBufferBuilder(bb);
+        bd.configureStorageBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::ProbeContainer));
         bb.setDevice(m_device);
         m_product->m_probeStorageBuffers[i] = bb.build();
