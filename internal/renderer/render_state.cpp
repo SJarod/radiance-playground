@@ -1,4 +1,5 @@
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
 #include "backends/imgui_impl_glfw.h"
@@ -685,8 +686,11 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, ui
        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
     };
 
-    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[imageIndex]);
-    mvpData->proj = camera.getProjectionMatrix();
+    uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
+
+    MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[bufferIndex]);
+    mvpData->proj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1.f);
+    mvpData->proj[1][1] *= -1;
     mvpData->model = glm::identity<glm::mat4>();
     mvpData->view = captureViews[singleFrameRenderIndex];
 }
