@@ -102,4 +102,8 @@ void main()
 
 	oColor = texture(texSampler, fragUV);
 	oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);
+
+#ifdef DEBUG_IRRADIANCE_MAP
+	oColor = texture(irradianceMap, normal);
+#endif
 }
