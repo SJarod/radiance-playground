@@ -23,6 +23,9 @@ class Texture
     VkImageView m_imageView;
     std::unique_ptr<VkSampler> m_sampler;
 
+    std::optional<std::unique_ptr<Image>> m_depthImage;
+    std::optional<VkImageView> m_depthImageView;
+
     std::vector<unsigned char> m_imageData;
 
     Texture() = default;
@@ -44,7 +47,21 @@ class Texture
     {
         return m_imageView;
     }
-
+    [[nodiscard]] inline const std::optional<VkImageView> &getDepthImageView() const
+    {
+        return m_depthImageView;
+    }
+    [[nodiscard]] inline VkFormat getImageFormat() const
+    {
+        return m_image->getFormat();
+    }
+    [[nodiscard]] inline std::optional<VkFormat> getDepthImageFormat() const
+    {
+        if (m_depthImage.has_value())
+            return m_depthImage.value()->getFormat();
+        
+        return std::nullopt;
+    }
     [[nodiscard]] inline const uint32_t& getWidth() const
     {
         return m_width;
@@ -66,9 +83,11 @@ class TextureBuilder
     VkFormat m_format;
     VkImageTiling m_tiling;
     VkFilter m_samplerFilter;
+    std::optional<VkImageLayout> m_initialLayout;
 
     std::string m_textureFilename;
     bool m_bLoadFromFile = false;
+    bool m_depthImageEnable = false;
 
     void restart()
     {
@@ -120,6 +139,14 @@ class TextureBuilder
     {
         m_samplerFilter = a;
     }
+    void setInitialLayout(VkImageLayout a)
+    {
+        m_initialLayout = a;
+    }
+    void setDepthImageEnable(bool enable)
+    {
+        m_depthImageEnable = enable;
+    }
 
     std::unique_ptr<Texture> buildAndRestart();
 };
@@ -134,7 +161,10 @@ class CubemapBuilder
     VkFormat m_format;
     VkImageTiling m_tiling;
     VkFilter m_samplerFilter;
+    std::optional<VkImageLayout> m_initialLayout;
     bool m_isResolveTexture = false;
+    bool m_isSamplableTexture = true;
+    bool m_createFromUserData = true;
 
     std::string m_rightTextureFilename;
     std::string m_leftTextureFilename;
@@ -143,6 +173,7 @@ class CubemapBuilder
     std::string m_frontTextureFilename;
     std::string m_backTextureFilename;
     bool m_bLoadFromFile = false;
+    bool m_depthImageEnable = false;
 
     void restart()
     {
@@ -224,10 +255,25 @@ class CubemapBuilder
     {
         m_samplerFilter = a;
     }
-
+    void setInitialLayout(VkImageLayout a)
+    {
+        m_initialLayout = a;
+    }
     void setResolveEnable(int isResolveTexture)
     {
         m_isResolveTexture = isResolveTexture;
+    }
+    void setSamplableEnable(int isSamplableTexture)
+    {
+        m_isSamplableTexture = isSamplableTexture;
+    }
+    void setCreateFromUserData(bool enable)
+    {
+        m_createFromUserData = enable;
+    }
+    void setDepthImageEnable(bool enable)
+    {
+        m_depthImageEnable = enable;
     }
 
     std::unique_ptr<Texture> buildAndRestart();

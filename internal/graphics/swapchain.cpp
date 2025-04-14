@@ -145,7 +145,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
 
     ImageBuilder ib;
     ImageDirector id;
-    id.createDepthImage2DBuilder(ib);
+    id.configureDepthImage2DBuilder(ib);
     ib.setDevice(m_product->m_device);
     ib.setWidth(m_product->m_extent.width);
     ib.setHeight(m_product->m_extent.height);

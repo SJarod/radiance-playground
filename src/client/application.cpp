@@ -79,25 +79,86 @@ Application::Application()
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
 
+    RenderPassAttachmentBuilder rpab;
+    RenderPassAttachmentDirector rpad;
+    RenderPassDirector rpd;
+
     TextureDirector td;
 
+    // Capture environment map
+    CubemapBuilder captureEnvMapBuilder;
+    captureEnvMapBuilder.setDevice(mainDevice);
+    captureEnvMapBuilder.setWidth(128);
+    captureEnvMapBuilder.setHeight(128);
+    captureEnvMapBuilder.setCreateFromUserData(false);
+    captureEnvMapBuilder.setDepthImageEnable(true);
+    td.configureUNORMTextureBuilder(captureEnvMapBuilder);
+    capturedEnvMap = captureEnvMapBuilder.buildAndRestart();
+    
+    // Opaque capture
+    RenderPassBuilder opaqueCaptureRpb;
+    opaqueCaptureRpb.setDevice(mainDevice);
+    rpd.configureCubemapRenderPassBuilder(opaqueCaptureRpb, *capturedEnvMap, true);
+    
+    rpad.configureAttachmentClearBuilder(rpab);
+    rpab.setFormat(capturedEnvMap->getImageFormat());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto opaqueCaptureColorAttachment = rpab.buildAndRestart();
+    opaqueCaptureRpb.addColorAttachment(*opaqueCaptureColorAttachment);
+    
+    rpad.configureAttachmentClearBuilder(rpab);
+    rpab.setFormat(capturedEnvMap->getDepthImageFormat().value());
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
+    opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
+    
+    RenderPhaseBuilder opaqueCaptureRb;
+    opaqueCaptureRb.setDevice(mainDevice);
+    opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
+    opaqueCaptureRb.setCaptureEnable(true);
+    auto opaqueCapturePhase = opaqueCaptureRb.build();
+    m_opaqueCapturePhase = opaqueCapturePhase.get();
+    
+    // Skybox capture
+    RenderPassBuilder skyboxCaptureRpb;
+    skyboxCaptureRpb.setDevice(mainDevice);
+    rpd.configureCubemapRenderPassBuilder(skyboxCaptureRpb, *capturedEnvMap, true);
+    
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    auto skyboxCaptureColorAttachment = rpab.buildAndRestart();
+    skyboxCaptureRpb.addColorAttachment(*skyboxCaptureColorAttachment);
+    
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
+    skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
+    
+    RenderPhaseBuilder skyboxCaptureRb;
+    skyboxCaptureRb.setDevice(mainDevice);
+    skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
+    skyboxCaptureRb.setCaptureEnable(true);
+    auto skyboxCapturePhase = skyboxCaptureRb.build();
+    m_skyboxCapturePhase = skyboxCapturePhase.get();
+
+    // Irradiance cubemap
     CubemapBuilder irradianceMapBuilder;
     irradianceMapBuilder.setDevice(mainDevice);
     irradianceMapBuilder.setWidth(32);
     irradianceMapBuilder.setHeight(32);
+    irradianceMapBuilder.setCreateFromUserData(false);
     irradianceMapBuilder.setResolveEnable(true);
     td.configureUNORMTextureBuilder(irradianceMapBuilder);
     irradianceMap = irradianceMapBuilder.buildAndRestart();
 
-    RenderPassAttachmentBuilder rpab;
-    RenderPassAttachmentDirector rpad;
-
-    RenderPassDirector rpd;
-
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
     irradianceConvolutionRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap, true);
+    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap, true, false);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -107,7 +168,7 @@ Application::Application()
     RenderPhaseBuilder irradianceConvolutionRb;
     irradianceConvolutionRb.setDevice(mainDevice);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
-    irradianceConvolutionRb.setSingleFrameRenderCount(6u);
+    irradianceConvolutionRb.setCaptureEnable(true);
     auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
     m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
 
@@ -221,6 +282,8 @@ Application::Application()
     rb.setDevice(mainDevice);
     rb.setSwapChain(m_window->getSwapChain());
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
+    renderGraph->addOneTimeRenderPhase(std::move(opaqueCapturePhase));
+    renderGraph->addOneTimeRenderPhase(std::move(skyboxCapturePhase));
     renderGraph->addOneTimeRenderPhase(std::move(irradianceConvolutionPhase));
     renderGraph->addRenderPhase(std::move(opaquePhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
@@ -360,7 +423,7 @@ void Application::runLoop()
 
     PipelineBuilder irradianceConvolutionPb;
     irradianceConvolutionPb.setDevice(mainDevice);
-    irradianceConvolutionPb.addVertexShaderStage("multiview_skybox");
+    irradianceConvolutionPb.addVertexShaderStage("skybox");
     irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
     irradianceConvolutionPb.setRenderPass(m_irradianceConvolutionPhase->getRenderPass());
     irradianceConvolutionPb.setExtent(m_window->getSwapChain()->getExtent());
@@ -422,6 +485,56 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
+    UniformDescriptorBuilder phongCaptureUdb;
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder phongCapturePb;
+    phongCapturePb.setDevice(mainDevice);
+    phongCapturePb.addVertexShaderStage("phong");
+    phongCapturePb.addFragmentShaderStage("phong");
+    phongCapturePb.setRenderPass(m_opaqueCapturePhase->getRenderPass());
+    phongCapturePb.setExtent(m_window->getSwapChain()->getExtent());
+    phongCapturePb.addPushConstantRange(VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = 16,
+        });
+
+    PipelineDirector phongCapturePd;
+    phongCapturePd.createColorDepthRasterizerBuilder(phongCapturePb);
+    phongCapturePb.setUniformDescriptorPack(phongCaptureUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> phongCapturePipeline = phongCapturePb.build();
+
     UniformDescriptorBuilder environmentMapUdb;
     environmentMapUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 0,
@@ -454,6 +567,38 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> environmentMapPipeline = environmentMapPb.build();
 
+    UniformDescriptorBuilder environmentMapCaptureUdb;
+    environmentMapCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    environmentMapCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder environmentMapCapturePb;
+    environmentMapCapturePb.setDevice(mainDevice);
+    environmentMapCapturePb.addVertexShaderStage("environment_map");
+    environmentMapCapturePb.addFragmentShaderStage("environment_map");
+    environmentMapCapturePb.setRenderPass(m_skyboxCapturePhase->getRenderPass());
+    environmentMapCapturePb.setExtent(m_window->getSwapChain()->getExtent());
+    environmentMapCapturePb.addPushConstantRange(VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = 16,
+        });
+
+    PipelineDirector environmentMapCapturePd;
+    environmentMapCapturePd.createColorDepthRasterizerBuilder(environmentMapCapturePb);
+    environmentMapCapturePb.setUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> environmentMapCapturePipeline = environmentMapCapturePb.build();
+
     auto objects = m_scene->getObjects();
 
     std::shared_ptr<Skybox> skybox = m_scene->getSkybox();
@@ -468,23 +613,45 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.setDevice(mainDevice);
         mrsb.setTexture(objects[i]->getMesh()->getTexture());
-        
-        if (skybox)
-            mrsb.setEnvironmentMap(irradianceMap);
-        
-        mrsb.setModel(objects[i]);
+     
+        ModelRenderStateBuilder captureMrsb;
+        captureMrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        captureMrsb.setDevice(mainDevice);
+        captureMrsb.setTexture(objects[i]->getMesh()->getTexture());
 
-        // Check if the mesh is the quad
-        if (i != 1)
+        mrsb.setModel(objects[i]);
+        captureMrsb.setModel(objects[i]);
+
+        // Check if the mesh is the quad  or the sphere
+        if (i != 1 && i != 2)
+        {
             mrsb.setPipeline(phongPipeline);
+            captureMrsb.setPipeline(phongCapturePipeline);
+
+            mrsb.setEnvironmentMap(irradianceMap);
+            captureMrsb.setEnvironmentMap(irradianceMap);
+        }
         else
         {
             mrsb.setTextureDescriptorEnable(false);
             mrsb.setLightDescriptorEnable(false);
             mrsb.setPipeline(environmentMapPipeline);
+
+            captureMrsb.setTextureDescriptorEnable(false);
+            captureMrsb.setLightDescriptorEnable(false);
+            captureMrsb.setPipeline(environmentMapCapturePipeline);
+
+            mrsb.setEnvironmentMap(irradianceMap);
+            captureMrsb.setEnvironmentMap(irradianceMap);
         }
 
         m_opaquePhase->registerRenderState(mrsb.build());
+        m_opaqueCapturePhase->registerRenderState(captureMrsb.build());
     }
 
     // skybox
@@ -516,6 +683,35 @@ void Application::runLoop()
 
     std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
 
+    // skybox
+    UniformDescriptorBuilder skyboxOpaqueUdb;
+    skyboxOpaqueUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    skyboxOpaqueUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder skyboxCapturePb;
+    PipelineDirector skyboxCapturePd;
+    skyboxCapturePd.createColorDepthRasterizerBuilder(skyboxCapturePb);
+    skyboxCapturePb.setDevice(mainDevice);
+    skyboxCapturePb.addVertexShaderStage("skybox");
+    skyboxCapturePb.addFragmentShaderStage("skybox");
+    skyboxCapturePb.setRenderPass(m_skyboxCapturePhase->getRenderPass());
+    skyboxCapturePb.setExtent(m_window->getSwapChain()->getExtent());
+    skyboxCapturePb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
+
+    skyboxCapturePb.setUniformDescriptorPack(skyboxOpaqueUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> skyboxCapturePipeline = skyboxCapturePb.build();
+
     if (skybox)
     {
         EnvironmentCaptureRenderStateBuilder irsb;
@@ -524,10 +720,8 @@ void Application::runLoop()
         irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         irsb.setDevice(mainDevice);
         irsb.setSkybox(skybox);
-        irsb.setTexture(skybox->getTexture());
-
+        irsb.setTexture(capturedEnvMap);
         irsb.setPipeline(irradianceConvolutionPipeline);
-
         m_irradianceConvolutionPhase->registerRenderState(irsb.build());
 
         SkyboxRenderStateBuilder srsb;
@@ -537,10 +731,18 @@ void Application::runLoop()
         srsb.setDevice(mainDevice);
         srsb.setSkybox(skybox);
         srsb.setTexture(skybox->getTexture());
-
         srsb.setPipeline(skyboxPipeline);
-
         m_skyboxPhase->registerRenderState(srsb.build());
+
+        SkyboxRenderStateBuilder captureSrsb;
+        captureSrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+        captureSrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        captureSrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        captureSrsb.setDevice(mainDevice);
+        captureSrsb.setSkybox(skybox);
+        captureSrsb.setTexture(skybox->getTexture());
+        captureSrsb.setPipeline(skyboxCapturePipeline);
+        m_skyboxCapturePhase->registerRenderState(captureSrsb.build());
     }
 
     MeshBuilder mb;

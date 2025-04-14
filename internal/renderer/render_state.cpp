@@ -21,6 +21,18 @@
 
 #include "render_state.hpp"
 
+const glm::mat4 captureViews[] =
+{
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 1.f, 0.f), glm::vec3(0.f, 0.f,-1.f)),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f,-1.f, 0.f), glm::vec3(0.f, 0.f, 1.f)),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f)),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 0.f,-1.f), glm::vec3(0.f, 1.f, 0.f))
+};
+
+const glm::mat4 capturePartialProj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1.f);
+
 RenderStateABC::~RenderStateABC()
 {
     if (!m_device.lock())
@@ -32,14 +44,26 @@ RenderStateABC::~RenderStateABC()
 }
 
 void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
-                                          const std::vector<std::shared_ptr<Light>> &lights)
+                                          const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled)
 {
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
         MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[backBufferIndex]);
         mvpData->proj = camera.getProjectionMatrix();
         mvpData->model = glm::identity<glm::mat4>();
-        mvpData->view = camera.getViewMatrix();
+
+        if (!captureModeEnabled)
+        {
+            mvpData->views[0] = camera.getViewMatrix();
+        }
+        else 
+        {
+            mvpData->proj = capturePartialProj;
+            mvpData->proj[1][1] *= -1;
+
+            for (int i = 0; i < 6; i++)
+                mvpData->views[i] = captureViews[i];
+        }
     }
 
     PointLightContainer* pointLightContainer = nullptr;
@@ -366,9 +390,9 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
-void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights)
+void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, camera, lights);
+    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, camera, lights, captureModeEnabled);
 
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
@@ -540,12 +564,24 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
 }
 
 void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
-                                             const std::vector<std::shared_ptr<Light>> &lights)
+                                             const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled)
 {
     MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->proj = camera.getProjectionMatrix();
     mvpData->model = glm::identity<glm::mat4>();
-    mvpData->view = camera.getViewMatrix();
+
+    if (!captureModeEnabled)
+    {
+        mvpData->views[0] = camera.getViewMatrix();
+    }
+    else
+    {
+        mvpData->proj = capturePartialProj;
+        mvpData->proj[1][1] *= -1;
+
+        for (int i = 0; i < 6; i++)
+            mvpData->views[i] = captureViews[i];
+    }
 }
 
 void SkyboxRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
@@ -674,25 +710,24 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
 }
 
 void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera,
-    const std::vector<std::shared_ptr<Light>>& lights)
+    const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled)
 {
-    glm::mat4 captureViews[] =
-    {
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-       glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
-    };
-
     uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
 
     MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[bufferIndex]);
     mvpData->proj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1.f);
     mvpData->proj[1][1] *= -1;
     mvpData->model = glm::identity<glm::mat4>();
-    mvpData->view = captureViews[singleFrameRenderIndex];
+
+    if (!captureModeEnabled)
+    {
+        mvpData->views[0] = camera.getViewMatrix();
+    }
+    else
+    {
+        for (int i = 0; i < 6; i++)
+            mvpData->views[i] = captureViews[i];
+    }
 }
 
 void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer)

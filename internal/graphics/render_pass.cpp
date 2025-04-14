@@ -151,7 +151,7 @@ void RenderPassDirector::configureSwapChainRenderPassBuilder(RenderPassBuilder &
         builder.setDepthAttachment(swapchain.getDepthImageView());
 }
 
-void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview)
+void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview, bool hasDepthAttachment)
 {
     builder.setExtent({ cubemap.getWidth(), cubemap.getHeight() });
     builder.setImageViews({ cubemap.getImageView() });
@@ -159,6 +159,9 @@ void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &bu
 
     if (useMultiview)
         builder.setMultiviewUsageEnable(useMultiview);
+
+    if (hasDepthAttachment && cubemap.getDepthImageView().has_value())
+        builder.setDepthAttachment(cubemap.getDepthImageView().value());
 }
 
 void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)

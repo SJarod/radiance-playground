@@ -23,13 +23,16 @@ class Application
     std::vector<std::shared_ptr<Device>> m_devices;
 
     std::shared_ptr<Renderer> m_renderer;
+    RenderPhase *m_opaqueCapturePhase;
+    RenderPhase *m_skyboxCapturePhase;
     RenderPhase *m_irradianceConvolutionPhase;
     RenderPhase *m_opaquePhase;
-    RenderPhase* m_skyboxPhase;
-    RenderPhase* m_postProcessPhase;
+    RenderPhase *m_skyboxPhase;
+    RenderPhase *m_postProcessPhase;
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
 
+    std::shared_ptr<Texture> capturedEnvMap;
     std::shared_ptr<Texture> irradianceMap;
 
     std::unique_ptr<SceneABC> m_scene;

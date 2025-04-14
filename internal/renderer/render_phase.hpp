@@ -49,6 +49,8 @@ class RenderPhase
     int m_backBufferIndex = 0;
     std::vector<BackBufferT> m_backBuffers;
 
+    bool m_isCapturePhase = false;
+
     RenderPhase() = default;
 
   private:
@@ -139,6 +141,10 @@ class RenderPhaseBuilder
     void setSingleFrameRenderCount(uint32_t renderCount)
     {
         m_product->m_singleFrameRendeerCount = renderCount;
+    }
+    void setCaptureEnable(bool enable)
+    {
+        m_product->m_isCapturePhase = enable;
     }
 
     std::unique_ptr<RenderPhase> build();

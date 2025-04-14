@@ -1,5 +1,7 @@
 #version 450
 
+#define USE_NORMAL_AS_UV
+
 layout(location = 0) in vec3 fragNormal;
 layout(location = 3) in vec3 fragPos;
 
@@ -16,9 +18,13 @@ void main()
 {
 	vec3 normal = normalize(fragNormal);
 
+#ifdef USE_NORMAL_AS_UV
+	vec3 sampleColor = texture(environmentMap, normal).rgb;
+#else
 	vec3 viewDirection = normalize(fragPos - viewPos);
 	vec3 viewReflection = reflect(viewDirection, normal);
-	vec3 reflectionSample = texture(environmentMap, viewReflection).rgb;
+	vec3 sampleColor = texture(environmentMap, viewReflection).rgb;
+#endif
 
-	oColor = vec4(reflectionSample, 1.0);
+	oColor = vec4(sampleColor, 1.0);
 }

@@ -64,7 +64,7 @@ class RenderStateABC
     struct MVP
     {
         glm::mat4 model;
-        glm::mat4 view;
+        glm::mat4 views[6];
         glm::mat4 proj;
     };
 
@@ -93,7 +93,7 @@ class RenderStateABC
                                       const std::vector<std::shared_ptr<Light>> &lights) { }
 
     virtual void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC &camera,
-                                      const std::vector<std::shared_ptr<Light>> &lights);
+                                      const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
@@ -143,7 +143,7 @@ class ModelRenderState : public RenderStateABC
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
     
     void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights) override;
+        const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled) override;
 };
 
 class ModelRenderStateBuilder : public RenderStateBuilderI
@@ -296,7 +296,7 @@ class SkyboxRenderState : public RenderStateABC
 
   public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC &camera,
-                              const std::vector<std::shared_ptr<Light>> &lights) override;
+                              const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
@@ -373,7 +373,7 @@ private:
 
 public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t renderIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights) override;
+        const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
 };

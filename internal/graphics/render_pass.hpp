@@ -214,7 +214,7 @@ class RenderPassDirector
 {
   public:
       void configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment = true);
-      void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview);
+      void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview, bool hasDepthAttachment = true);
 };
 
 class RenderPassAttachmentBuilder

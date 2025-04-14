@@ -95,7 +95,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
         m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, camera, lights);
+        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, camera, lights, m_isCapturePhase);
         m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())

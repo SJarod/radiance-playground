@@ -176,12 +176,14 @@ class ImageBuilder
 class ImageDirector
 {
   public:
-    void createImage2DBuilder(ImageBuilder &builder);
-    void createImageBuilderCube(ImageBuilder &builder);
-    void createDepthImage2DBuilder(ImageBuilder &builder);
+    void configureImage2DBuilder(ImageBuilder &builder);
+    void configureImageCubeBuilder(ImageBuilder &builder);
+    void configureDepthImage2DBuilder(ImageBuilder& builder);
+    void configureDepthImageCubeBuilder(ImageBuilder &builder);
     void configureSampledImage2DBuilder(ImageBuilder &builder);
-    void configureSampledImage3DBuilder(ImageBuilder &builder);
-    void configureSampledResolveImage3DBuilder(ImageBuilder &builder);
+    void configureSampledImageCubeBuilder(ImageBuilder& builder);
+    void configureNonSampledImageCubeBuilder(ImageBuilder &builder);
+    void configureSampledResolveImageCubeBuilder(ImageBuilder &builder);
 };
 
 class ImageLayoutTransitionBuilder

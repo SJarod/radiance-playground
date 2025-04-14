@@ -63,6 +63,10 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     ib.setWidth(m_product->m_width);
     ib.setHeight(m_product->m_height);
     ib.setTiling(m_tiling);
+
+    if (m_initialLayout.has_value())
+        ib.setInitialLayout(m_initialLayout.value());
+
     m_product->m_image = ib.build();
 
     ImageLayoutTransitionBuilder iltb;
@@ -81,6 +85,27 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     // image view
 
     m_product->m_imageView = m_product->m_image->createImageView2D();
+
+    // depth view
+
+    if (m_depthImageEnable)
+    {
+        ImageBuilder depthIb;
+        ImageDirector depthId;
+        depthId.configureDepthImage2DBuilder(depthIb);
+        depthIb.setDevice(m_product->m_device);
+        depthIb.setWidth(m_product->m_width);
+        depthIb.setHeight(m_product->m_height);
+        m_product->m_depthImage = depthIb.build();
+
+        ImageLayoutTransitionBuilder depthIltb;
+        ImageLayoutTransitionDirector depthIltd;
+        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(depthIltb);
+        depthIltb.setImage(*m_product->m_depthImage.value());
+        m_product->m_depthImage.value()->transitionImageLayout(*depthIltb.buildAndRestart());
+
+        m_product->m_depthImageView = m_product->m_depthImage.value()->createImageView2D();
+    }
 
     // sampler
 
@@ -104,94 +129,157 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
 
     size_t currentTotalSize = m_product->m_width * m_product->m_height * 6u * 4;
 
-    if (m_bLoadFromFile)
+    if (m_createFromUserData)
     {
-        size_t cursor = 0u;
-        for (int i = 0; i < filepath.size(); i++)
+        if (m_bLoadFromFile)
         {
-            const char *currentFilepath = filepath[i].c_str();
-            int texWidth, texHeight, texChannels;
-            stbi_uc *textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-            if (!textureData)
+            size_t cursor = 0u;
+            for (int i = 0; i < filepath.size(); i++)
             {
-                std::cerr << "Failed to load texture : " << m_rightTextureFilename << std::endl;
-                return nullptr;
+                const char* currentFilepath = filepath[i].c_str();
+                int texWidth, texHeight, texChannels;
+                stbi_uc* textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+                if (!textureData)
+                {
+                    std::cerr << "Failed to load texture : " << m_rightTextureFilename << std::endl;
+                    return nullptr;
+                }
+                m_product->m_width = texWidth;
+                m_product->m_height = texHeight;
+                size_t currentImageSize = m_product->m_width * m_product->m_height * 4;
+
+                m_product->m_imageData.resize(m_product->m_imageData.size() + currentImageSize);
+                memcpy(m_product->m_imageData.data() + cursor, textureData, currentImageSize);
+
+                stbi_image_free(textureData);
+
+                cursor += currentImageSize;
             }
-            m_product->m_width = texWidth;
-            m_product->m_height = texHeight;
-            size_t currentImageSize = m_product->m_width * m_product->m_height * 4;
 
-            m_product->m_imageData.resize(m_product->m_imageData.size() + currentImageSize);
-            memcpy(m_product->m_imageData.data() + cursor, textureData, currentImageSize);
-
-            stbi_image_free(textureData);
-
-            cursor += currentImageSize;
+            currentTotalSize = m_product->m_width * m_product->m_height * 6u * 4;
+        }
+        else
+        {
+            m_product->m_imageData.reserve(currentTotalSize);
         }
 
-        currentTotalSize = m_product->m_width * m_product->m_height * 6u * 4;
+        size_t totalSize = currentTotalSize;
+
+        BufferBuilder bb;
+        BufferDirector bd;
+        bd.configureStagingBufferBuilder(bb);
+        bb.setDevice(m_device);
+        bb.setSize(totalSize);
+        std::unique_ptr<Buffer> stagingBuffer = bb.build();
+
+        stagingBuffer->copyDataToMemory(m_product->m_imageData.data());
+
+        ImageBuilder ib;
+        ImageDirector id;
+
+        if (!m_isResolveTexture)
+        {
+            id.configureSampledImageCubeBuilder(ib);
+        }
+        else
+        {
+            id.configureSampledResolveImageCubeBuilder(ib);
+        }
+
+        ib.setDevice(m_device);
+        ib.setFormat(m_format);
+        ib.setWidth(m_product->m_width);
+        ib.setHeight(m_product->m_height);
+        ib.setTiling(m_tiling);
+
+        if (m_initialLayout.has_value())
+            ib.setInitialLayout(m_initialLayout.value());
+
+        m_product->m_image = ib.build();
+
+        ImageLayoutTransitionBuilder iltb;
+        ImageLayoutTransitionDirector iltd;
+
+        iltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
+        iltb.setImage(*m_product->m_image);
+        iltb.setLayerCount(6U);
+        m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
+
+        m_product->m_image->copyBufferToImageCube(stagingBuffer->getHandle());
+
+        if (!m_isResolveTexture)
+        {
+            iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
+        }
+        else
+        {
+            iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL>(iltb);
+        }
+
+        iltb.setImage(*m_product->m_image);
+        iltb.setLayerCount(6U);
+        m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
+
+        // image view
+
+        m_product->m_imageView = m_product->m_image->createImageViewCube();
     }
     else
     {
-        m_product->m_imageData.reserve(currentTotalSize);
+        ImageBuilder ib;
+        ImageDirector id;
+
+        if (!m_isResolveTexture)
+        {
+            if (m_isSamplableTexture)
+            {
+                id.configureSampledImageCubeBuilder(ib);
+            }
+            else
+            {
+                id.configureNonSampledImageCubeBuilder(ib);
+            }
+        }
+        else
+        {
+            id.configureSampledResolveImageCubeBuilder(ib);
+        }
+
+        ib.setDevice(m_device);
+        ib.setFormat(m_format);
+        ib.setWidth(m_product->m_width);
+        ib.setHeight(m_product->m_height);
+        ib.setTiling(m_tiling);
+
+        if (m_initialLayout.has_value())
+            ib.setInitialLayout(m_initialLayout.value());
+
+        m_product->m_image = ib.build();
+
+        m_product->m_imageView = m_product->m_image->createImageViewCube();
     }
 
-    size_t totalSize = currentTotalSize;
+    // depth view
 
-    BufferBuilder bb;
-    BufferDirector bd;
-    bd.configureStagingBufferBuilder(bb);
-    bb.setDevice(m_device);
-    bb.setSize(totalSize);
-    std::unique_ptr<Buffer> stagingBuffer = bb.build();
-
-    stagingBuffer->copyDataToMemory(m_product->m_imageData.data());
-
-    ImageBuilder ib;
-    ImageDirector id;
-
-    if (!m_isResolveTexture)
+    if (m_depthImageEnable)
     {
-        id.configureSampledImage3DBuilder(ib);
+        ImageBuilder depthIb;
+        ImageDirector depthId;
+        depthId.configureDepthImageCubeBuilder(depthIb);
+        depthIb.setDevice(m_product->m_device);
+        depthIb.setWidth(m_product->m_width);
+        depthIb.setHeight(m_product->m_height);
+        m_product->m_depthImage = depthIb.build();
+
+        ImageLayoutTransitionBuilder depthIltb;
+        ImageLayoutTransitionDirector depthIltd;
+        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(depthIltb);
+        depthIltb.setImage(*m_product->m_depthImage.value());
+        depthIltb.setLayerCount(6U);
+        m_product->m_depthImage.value()->transitionImageLayout(*depthIltb.buildAndRestart());
+
+        m_product->m_depthImageView = m_product->m_depthImage.value()->createImageViewCube();
     }
-    else
-    {
-        id.configureSampledResolveImage3DBuilder(ib);
-    }
-
-    ib.setDevice(m_device);
-    ib.setFormat(m_format);
-    ib.setWidth(m_product->m_width);
-    ib.setHeight(m_product->m_height);
-    ib.setTiling(m_tiling);
-    m_product->m_image = ib.build();
-
-    ImageLayoutTransitionBuilder iltb;
-    ImageLayoutTransitionDirector iltd;
-
-    iltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL>(iltb);
-    iltb.setImage(*m_product->m_image);
-    iltb.setLayerCount(6U);
-    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
-
-    m_product->m_image->copyBufferToImageCube(stagingBuffer->getHandle());
-
-    if (!m_isResolveTexture)
-    {
-        iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL>(iltb);
-    }
-    else
-    {
-        iltd.configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL>(iltb);
-    }
-
-    iltb.setImage(*m_product->m_image);
-    iltb.setLayerCount(6U);
-    m_product->m_image->transitionImageLayout(*iltb.buildAndRestart());
-
-    // image view
-
-    m_product->m_imageView = m_product->m_image->createImageViewCube();
 
     // sampler
 

@@ -160,7 +160,7 @@ VkImageView Image::createImageViewCube()
     VkImageView imageView;
     VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &imageView);
     if (res != VK_SUCCESS)
-        std::cerr << "Failed to create 3D image view : " << res << std::endl;
+        std::cerr << "Failed to create cube image view : " << res << std::endl;
 
     return imageView;
 }
@@ -221,7 +221,7 @@ std::unique_ptr<Image> ImageBuilder::build()
     return std::move(m_product);
 }
 
-void ImageDirector::createImage2DBuilder(ImageBuilder &builder)
+void ImageDirector::configureImage2DBuilder(ImageBuilder &builder)
 {
     builder.setFlags(0);
     builder.setImageType(VK_IMAGE_TYPE_2D);
@@ -233,7 +233,7 @@ void ImageDirector::createImage2DBuilder(ImageBuilder &builder)
     builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
-void ImageDirector::createImageBuilderCube(ImageBuilder &builder)
+void ImageDirector::configureImageCubeBuilder(ImageBuilder &builder)
 {
     builder.setFlags(VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
     builder.setImageType(VK_IMAGE_TYPE_2D);
@@ -245,9 +245,9 @@ void ImageDirector::createImageBuilderCube(ImageBuilder &builder)
     builder.setInitialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
-void ImageDirector::createDepthImage2DBuilder(ImageBuilder &builder)
+void ImageDirector::configureDepthImage2DBuilder(ImageBuilder &builder)
 {
-    createImage2DBuilder(builder);
+    configureImage2DBuilder(builder);
     builder.setFormat(VK_FORMAT_D32_SFLOAT_S8_UINT);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
     builder.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -257,23 +257,41 @@ void ImageDirector::createDepthImage2DBuilder(ImageBuilder &builder)
 
 void ImageDirector::configureSampledImage2DBuilder(ImageBuilder &builder)
 {
-    createImage2DBuilder(builder);
+    configureImage2DBuilder(builder);
     builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureSampledImage3DBuilder(ImageBuilder &builder)
+void ImageDirector::configureSampledImageCubeBuilder(ImageBuilder &builder)
 {
-    createImageBuilderCube(builder);
-    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    configureImageCubeBuilder(builder);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureSampledResolveImage3DBuilder(ImageBuilder& builder)
+void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder& builder)
 {
-    createImageBuilderCube(builder);
+    configureImageCubeBuilder(builder);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder& builder)
+{
+    configureImageCubeBuilder(builder);
+    builder.setFormat(VK_FORMAT_D32_SFLOAT_S8_UINT);
+    builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
+    builder.setUsage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    builder.setAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+}
+
+void ImageDirector::configureSampledResolveImageCubeBuilder(ImageBuilder& builder)
+{
+    configureImageCubeBuilder(builder);
     builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);

@@ -69,7 +69,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     light->diffusePower = 1.0;
     light->specularColor = glm::vec3(1.0);
     light->specularPower = 1.0;
-    //m_lights.push_back(light);
+    m_lights.push_back(light);
 
     std::shared_ptr<DirectionalLight> light1 = std::make_shared<DirectionalLight>();
     light1->direction = glm::vec3(1.0, 0.0, 0.0);
@@ -77,7 +77,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     light1->diffusePower = 5.0;
     light1->specularColor = glm::vec3(1.0);
     light1->specularPower = 1.0;
-   // m_lights.push_back(light1);
+    m_lights.push_back(light1);
 
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
