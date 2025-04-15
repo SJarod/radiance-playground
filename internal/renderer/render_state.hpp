@@ -29,6 +29,18 @@ using DescriptorSetUpdatePred =
 class RenderStateABC
 {
   protected:
+    struct ProbeContainer
+    {
+        struct Probe
+        {
+            glm::vec3 position;
+            float pad0[1];
+        };
+
+        int probeCount;
+        alignas(16) Probe probes[8];
+    };
+
     struct PointLightContainer
     {
         struct PointLight
@@ -76,6 +88,8 @@ class RenderStateABC
     std::vector<VkDescriptorSet> m_descriptorSets;
     std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
     std::vector<void *> m_mvpUniformBuffersMapped;
+    std::vector<std::unique_ptr<Buffer>> m_probeStorageBuffers;
+    std::vector<void*> m_probeStorageBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_pointLightStorageBuffers;
     std::vector<void *> m_pointLightStorageBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
@@ -157,8 +171,9 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     uint32_t m_frameInFlightCount;
 
     std::weak_ptr<Texture> m_texture;
-    std::weak_ptr<Texture> m_environmentMap;
+    std::vector<std::weak_ptr<Texture>> m_environmentMaps;
 
+    bool m_probeDescriptorEnable = true;
     bool m_lightDescriptorEnable = true;
     bool m_textureDescriptorEnable = true;
     bool m_mvpDescriptorEnable = true;
@@ -189,9 +204,11 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
-    void setEnvironmentMap(std::weak_ptr<Texture> texture)
+    void setEnvironmentMaps(const std::vector<std::shared_ptr<Texture>>& textures)
     {
-        m_environmentMap = texture;
+        m_environmentMaps.reserve(textures.size());
+        for (const std::shared_ptr<Texture>& texture : textures)
+            m_environmentMaps.push_back(texture);
     }
     void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
@@ -208,6 +225,10 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_product->m_model = mesh;
     }
 
+    void setProbeDescriptorEnable(bool a)
+    {
+        m_probeDescriptorEnable = a;
+    }
     void setLightDescriptorEnable(bool a)
     {
         m_lightDescriptorEnable = a;

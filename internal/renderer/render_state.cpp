@@ -8,6 +8,7 @@
 
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
+#include "engine/probe_grid.hpp"
 #include "graphics/buffer.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
@@ -15,11 +16,13 @@
 #include "light.hpp"
 #include "mesh.hpp"
 #include "render_phase.hpp"
-#include "model.hpp";
+#include "model.hpp"
 #include "skybox.hpp"
 #include "texture.hpp"
 
 #include "render_state.hpp"
+
+constexpr int maxProbeCount = 8;
 
 const glm::mat4 captureViews[] =
 {
@@ -46,6 +49,10 @@ RenderStateABC::~RenderStateABC()
 void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
                                           const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled)
 {
+    ProbeGridBuilder gridBuilder;
+    std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
+    const std::vector<Probe> probes = grid->getProbes();
+
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
         MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[backBufferIndex]);
@@ -58,12 +65,35 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         }
         else 
         {
+            const glm::vec3 probePosition = probes[singleFrameRenderIndex].position;
+            const glm::mat4 probeTranslate = glm::translate(glm::identity<glm::mat4>(), probePosition);
+
             mvpData->proj = capturePartialProj;
             mvpData->proj[1][1] *= -1;
 
             for (int i = 0; i < 6; i++)
-                mvpData->views[i] = captureViews[i];
+                mvpData->views[i] = captureViews[i] * probeTranslate;
         }
+    }
+
+    if (m_probeStorageBuffersMapped.size() > 0)
+    {
+        ProbeContainer* probeContainer = static_cast<ProbeContainer*>(m_probeStorageBuffersMapped[backBufferIndex]);
+
+        int probeCount = 0;
+        for (int i = 0; i < probes.size(); i++)
+        {
+            const Probe& probe = probes[i];
+
+            ProbeContainer::Probe probeData{
+                .position = probe.position,
+            };
+
+            probeContainer->probes[probeCount] = probeData;
+            probeCount++;
+        }
+
+        probeContainer->probeCount = probeCount;
     }
 
     PointLightContainer* pointLightContainer = nullptr;
@@ -224,6 +254,26 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         }
     }
 
+    if (m_probeDescriptorEnable)
+    {
+        m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
+        m_product->m_probeStorageBuffersMapped.resize(m_frameInFlightCount);
+
+        for (int i = 0; i < m_product->m_probeStorageBuffers.size(); ++i)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.createStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::ProbeContainer));
+            bb.setDevice(m_device);
+            m_product->m_probeStorageBuffers[i] = bb.build();
+
+            vkMapMemory(deviceHandle, m_product->m_probeStorageBuffers[i]->getMemory(), 0,
+                sizeof(RenderStateABC::ProbeContainer), 0,
+                &m_product->m_probeStorageBuffersMapped[i]);
+        }
+    }
+
     if (m_lightDescriptorEnable)
     {
         m_product->m_pointLightStorageBuffers.resize(m_frameInFlightCount);
@@ -286,7 +336,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
 	        if (!m_texture.expired())
 	        {
-	            auto texPtr = m_texture.lock();
+                std::shared_ptr<Texture> texPtr = m_texture.lock();
 	            diffuseImageInfo.sampler = *texPtr->getSampler();
 	            diffuseImageInfo.imageView = texPtr->getImageView();
 
@@ -301,11 +351,28 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
                 });
 	        }
     	}
-    	
-    	VkDescriptorBufferInfo pointLightBufferInfo;
-        VkDescriptorBufferInfo directionalLightBufferInfo;
+
+        if (m_probeDescriptorEnable)
+        {
+            VkDescriptorBufferInfo probeBufferInfo;
+            probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
+            probeBufferInfo.offset = 0;
+            probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
+            udb.addSetWrites(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_product->m_descriptorSets[i],
+                .dstBinding = 5,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .pBufferInfo = &probeBufferInfo,
+                });
+        }
+
         if (m_lightDescriptorEnable)
         {
+    	    VkDescriptorBufferInfo pointLightBufferInfo;
+            VkDescriptorBufferInfo directionalLightBufferInfo;
             pointLightBufferInfo.buffer = m_product->m_pointLightStorageBuffers[i]->getHandle();
             pointLightBufferInfo.offset = 0;
             pointLightBufferInfo.range = sizeof(RenderStateABC::PointLightContainer);
@@ -332,23 +399,33 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
                 .pBufferInfo = &directionalLightBufferInfo,
             });
         }
-        VkDescriptorImageInfo envMapImageInfo = {
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        if (!m_environmentMap.expired())
+
+        std::vector<VkDescriptorImageInfo> envMapImageInfos;
+        if (m_environmentMaps.size() > 0)
         {
-            auto texPtr = m_environmentMap.lock();
-            envMapImageInfo.sampler = *texPtr->getSampler();
-            envMapImageInfo.imageView = texPtr->getImageView();
+            // Max probe count per draw (may be higher)
+            envMapImageInfos.reserve(maxProbeCount);
+            for (int i = 0; i < maxProbeCount; i++)
+            {
+                std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
+
+                const VkDescriptorImageInfo envMapImageInfo = {
+                    .sampler = *texPtr->getSampler(),
+                    .imageView = texPtr->getImageView(),
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+
+                envMapImageInfos.push_back(envMapImageInfo);
+            }
 
             udb.addSetWrites(VkWriteDescriptorSet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .dstSet = m_product->m_descriptorSets[i],
                 .dstBinding = 4,
                 .dstArrayElement = 0,
-                .descriptorCount = 1,
+                .descriptorCount = static_cast<uint32_t>(envMapImageInfos.size()),
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &envMapImageInfo,
+                .pImageInfo = envMapImageInfos.data(),
             });
         }
 

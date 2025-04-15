@@ -31,6 +31,8 @@
 
 #include "application.hpp"
 
+constexpr int maxProbeCount = 8;
+
 Application::Application()
 {
     WindowGLFW::init();
@@ -86,28 +88,31 @@ Application::Application()
     TextureDirector td;
 
     // Capture environment map
-    CubemapBuilder captureEnvMapBuilder;
-    captureEnvMapBuilder.setDevice(mainDevice);
-    captureEnvMapBuilder.setWidth(128);
-    captureEnvMapBuilder.setHeight(128);
-    captureEnvMapBuilder.setCreateFromUserData(false);
-    captureEnvMapBuilder.setDepthImageEnable(true);
-    td.configureUNORMTextureBuilder(captureEnvMapBuilder);
-    capturedEnvMap = captureEnvMapBuilder.buildAndRestart();
+    for (int i = 0; i < maxProbeCount; i++)
+    {
+        CubemapBuilder captureEnvMapBuilder;
+        captureEnvMapBuilder.setDevice(mainDevice);
+        captureEnvMapBuilder.setWidth(128);
+        captureEnvMapBuilder.setHeight(128);
+        captureEnvMapBuilder.setCreateFromUserData(false);
+        captureEnvMapBuilder.setDepthImageEnable(true);
+        td.configureUNORMTextureBuilder(captureEnvMapBuilder);
+        capturedEnvMaps.push_back(captureEnvMapBuilder.buildAndRestart());
+    }
     
     // Opaque capture
     RenderPassBuilder opaqueCaptureRpb;
     opaqueCaptureRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(opaqueCaptureRpb, *capturedEnvMap, true);
+    rpd.configureCubemapRenderPassBuilder(opaqueCaptureRpb, *capturedEnvMaps[0], true);
     
     rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(capturedEnvMap->getImageFormat());
+    rpab.setFormat(capturedEnvMaps[0]->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto opaqueCaptureColorAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addColorAttachment(*opaqueCaptureColorAttachment);
     
     rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(capturedEnvMap->getDepthImageFormat().value());
+    rpab.setFormat(capturedEnvMaps[0]->getDepthImageFormat().value());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
@@ -122,7 +127,7 @@ Application::Application()
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
     skyboxCaptureRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(skyboxCaptureRpb, *capturedEnvMap, true);
+    rpd.configureCubemapRenderPassBuilder(skyboxCaptureRpb, *capturedEnvMaps[0], true);
     
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -146,19 +151,22 @@ Application::Application()
     m_skyboxCapturePhase = skyboxCapturePhase.get();
 
     // Irradiance cubemap
-    CubemapBuilder irradianceMapBuilder;
-    irradianceMapBuilder.setDevice(mainDevice);
-    irradianceMapBuilder.setWidth(32);
-    irradianceMapBuilder.setHeight(32);
-    irradianceMapBuilder.setCreateFromUserData(false);
-    irradianceMapBuilder.setResolveEnable(true);
-    td.configureUNORMTextureBuilder(irradianceMapBuilder);
-    irradianceMap = irradianceMapBuilder.buildAndRestart();
+    for (int i = 0; i < maxProbeCount; i++)
+    {
+        CubemapBuilder irradianceMapBuilder;
+        irradianceMapBuilder.setDevice(mainDevice);
+        irradianceMapBuilder.setWidth(32);
+        irradianceMapBuilder.setHeight(32);
+        irradianceMapBuilder.setCreateFromUserData(false);
+        irradianceMapBuilder.setResolveEnable(true);
+        td.configureUNORMTextureBuilder(irradianceMapBuilder);
+        irradianceMaps.push_back(irradianceMapBuilder.buildAndRestart());
+    }
 
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
     irradianceConvolutionRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMap, true, false);
+    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMaps[0], true, false);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -463,9 +471,15 @@ void Application::runLoop()
     phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = maxProbeCount,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 5,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-    });
+        });
 
     PipelineBuilder phongPb;
     phongPb.setDevice(mainDevice);
@@ -513,6 +527,12 @@ void Application::runLoop()
     phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = maxProbeCount,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 5,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
@@ -545,7 +565,7 @@ void Application::runLoop()
     environmentMapUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
+        .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
@@ -577,7 +597,7 @@ void Application::runLoop()
     environmentMapCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
+        .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
@@ -601,6 +621,8 @@ void Application::runLoop()
 
     auto objects = m_scene->getObjects();
 
+    std::vector<std::shared_ptr<Texture>> maps(maxProbeCount, irradianceMaps[0]);
+
     std::shared_ptr<Skybox> skybox = m_scene->getSkybox();
     for (int i = 0; i < objects.size(); ++i)
     {
@@ -611,6 +633,7 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.setDevice(mainDevice);
         mrsb.setTexture(objects[i]->getMesh()->getTexture());
      
@@ -621,33 +644,36 @@ void Application::runLoop()
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.setDevice(mainDevice);
         captureMrsb.setTexture(objects[i]->getMesh()->getTexture());
 
         mrsb.setModel(objects[i]);
         captureMrsb.setModel(objects[i]);
 
-        // Check if the mesh is the quad  or the sphere
-        if (i != 1 && i != 2)
+        // Check if the mesh is the quad, the sphere or the cube
+        if (i != 1 && i != 2 && i != 3)
         {
             mrsb.setPipeline(phongPipeline);
             captureMrsb.setPipeline(phongCapturePipeline);
 
-            mrsb.setEnvironmentMap(irradianceMap);
-            captureMrsb.setEnvironmentMap(irradianceMap);
+            mrsb.setEnvironmentMaps(maps);
+            captureMrsb.setEnvironmentMaps(maps);
         }
         else
         {
             mrsb.setTextureDescriptorEnable(false);
+            mrsb.setProbeDescriptorEnable(false);
             mrsb.setLightDescriptorEnable(false);
             mrsb.setPipeline(environmentMapPipeline);
 
             captureMrsb.setTextureDescriptorEnable(false);
+            captureMrsb.setProbeDescriptorEnable(false);
             captureMrsb.setLightDescriptorEnable(false);
             captureMrsb.setPipeline(environmentMapCapturePipeline);
 
-            mrsb.setEnvironmentMap(irradianceMap);
-            captureMrsb.setEnvironmentMap(irradianceMap);
+            mrsb.setEnvironmentMaps(maps);
+            captureMrsb.setEnvironmentMaps(maps);
         }
 
         m_opaquePhase->registerRenderState(mrsb.build());
@@ -714,15 +740,18 @@ void Application::runLoop()
 
     if (skybox)
     {
-        EnvironmentCaptureRenderStateBuilder irsb;
-        irsb.setFrameInFlightCount(1);
-        irsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        irsb.setDevice(mainDevice);
-        irsb.setSkybox(skybox);
-        irsb.setTexture(capturedEnvMap);
-        irsb.setPipeline(irradianceConvolutionPipeline);
-        m_irradianceConvolutionPhase->registerRenderState(irsb.build());
+        for (int i = 0; i < maxProbeCount; i++)
+        {
+            EnvironmentCaptureRenderStateBuilder irsb;
+            irsb.setFrameInFlightCount(1);
+            irsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+            irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            irsb.setDevice(mainDevice);
+            irsb.setSkybox(skybox);
+            irsb.setTexture(capturedEnvMaps[0]);
+            irsb.setPipeline(irradianceConvolutionPipeline);
+            m_irradianceConvolutionPhase->registerRenderState(irsb.build());
+        }
 
         SkyboxRenderStateBuilder srsb;
         srsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
@@ -759,6 +788,7 @@ void Application::runLoop()
     std::shared_ptr<Model> postProcessQuadModel = modelBuilder.build();
     ModelRenderStateBuilder quadRsb;
     quadRsb.setDevice(mainDevice);
+    quadRsb.setProbeDescriptorEnable(false);
     quadRsb.setLightDescriptorEnable(false);
     quadRsb.setTextureDescriptorEnable(false);
     quadRsb.setMVPDescriptorEnable(false);

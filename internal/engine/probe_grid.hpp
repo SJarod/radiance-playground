@@ -1,14 +1,13 @@
 
 #include <memory>
 #include <vector>
+#include <glm/glm.hpp>
 
 class ProbeGridBuilder;
 
 struct Probe 
 {
-	float x;
-	float y;
-	float z;
+	glm::vec3 position;
 };
 
 class ProbeGrid 
@@ -18,6 +17,11 @@ class ProbeGrid
 private:
 	std::vector<Probe> m_probes;
 
+public:
+	const std::vector<Probe>& getProbes() const
+	{
+		return m_probes;
+	}
 };
 
 class ProbeGridBuilder 
@@ -27,7 +31,7 @@ private:
 
 	float m_probeSpacing = 1.f;
 	float m_gridBaseHeight = 0.f;
-	float m_gridMaxHeight = 10.f;
+	float m_gridMaxHeight = 2.f;
 
 	void restart() 
 	{
@@ -38,6 +42,16 @@ public:
 	ProbeGridBuilder() 
 	{
 		restart();
+	}
+
+	void setGridBaseHeight(float baseHeight)
+	{
+		m_gridBaseHeight = baseHeight;
+	}
+
+	void setGridMaxHeight(float maxHeight)
+	{
+		m_gridMaxHeight = maxHeight;
 	}
 
 	std::unique_ptr<ProbeGrid> build();

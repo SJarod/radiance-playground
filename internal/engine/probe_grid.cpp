@@ -9,11 +9,7 @@ std::unique_ptr<ProbeGrid> ProbeGridBuilder::build()
 		{
 			for (float z = 0; z < m_gridMaxHeight; z += m_probeSpacing)
 			{
-				m_product->m_probes.push_back({
-					.x = x,
-					.y = currentLayerHeight,
-					.z = z,
-					});
+				m_product->m_probes.push_back({ glm::vec3(x, currentLayerHeight, z)	});
 			}
 		}
 	}

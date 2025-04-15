@@ -32,8 +32,8 @@ class Application
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
 
-    std::shared_ptr<Texture> capturedEnvMap;
-    std::shared_ptr<Texture> irradianceMap;
+    std::vector<std::shared_ptr<Texture>> capturedEnvMaps;
+    std::vector<std::shared_ptr<Texture>> irradianceMaps;
 
     std::unique_ptr<SceneABC> m_scene;
 
