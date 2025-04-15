@@ -35,7 +35,7 @@ class Renderer
 
   public:
     VkResult renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
-                         const std::vector<std::shared_ptr<Light>> &lights);
+                         const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes);
 
   public:
     [[nodiscard]] int getFrameInFlightCount() const

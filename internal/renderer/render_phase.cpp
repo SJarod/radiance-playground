@@ -11,6 +11,7 @@
 
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
+#include "engine/probe_grid.hpp"
 
 #include "render_state.hpp"
 
@@ -38,15 +39,19 @@ RenderPhase::~RenderPhase()
 
 void RenderPhase::registerRenderState(std::shared_ptr<RenderStateABC> renderState)
 {
-    for (int i = 0; i < m_renderPass->getImageCount(); ++i)
+    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
-        renderState->updateDescriptorSets(m_parentPhase, i);
+        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        {
+            renderState->updateDescriptorSets(m_parentPhase, imageIndex);
+        }
     }
+    
     m_renderStates.emplace_back(renderState);
 }
 
-void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, VkRect2D renderArea, const CameraABC &camera,
-                                   const std::vector<std::shared_ptr<Light>> &lights) const
+void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
+                                   const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes) const
 {
     if (singleFrameRenderIndex > 0)
     {
@@ -85,7 +90,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     VkRenderPassBeginInfo renderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = m_renderPass->getHandle(),
-        .framebuffer = m_renderPass->getFramebuffer(imageIndex),
+        .framebuffer = m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
         .renderArea = renderArea,
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),
@@ -95,7 +100,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     for (int i = 0; i < m_renderStates.size(); ++i)
     {
         m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, camera, lights, m_isCapturePhase);
+        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, m_isCapturePhase);
         m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
         if (const auto &pipeline = m_renderStates[i]->getPipeline())
@@ -210,5 +215,7 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
 
 void RenderPhase::updateSwapchainOnRenderPass(const SwapChain* newSwapchain) 
 {
-    m_renderPass->buildFramebuffers(newSwapchain->getImageViews(), newSwapchain->getDepthImageView(), newSwapchain->getExtent(), true);
+    const std::vector<std::vector<VkImageView>>& imageViewPool = { newSwapchain->getImageViews() };
+    const std::vector<VkImageView>& depthImageViewPool = { newSwapchain->getDepthImageView() };
+    m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
 }

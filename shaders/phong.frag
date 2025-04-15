@@ -19,6 +19,26 @@ vec3 trilerp(in vec3 a, in vec3 b, in vec3 c, in vec3 d, in vec3 e, in vec3 f, i
 	return lerp(abcd, efgh, t[2]);
 }
 
+vec3 lerpClamped(in vec3 a, in vec3 b, in float t)
+{
+	return mix(a, b, clamp(t, 0.0, 1.0));
+}
+
+vec3 bilerpClamped(in vec3 a, in vec3 b, in vec3 c, in vec3 d, in vec2 t)
+{
+	const vec3 ab = lerpClamped(a, b, t[0]);
+	const vec3 cd = lerpClamped(c, d, t[0]);
+	return lerpClamped(ab, cd, t[1]);
+}
+
+vec3 trilerpClamped(in vec3 a, in vec3 b, in vec3 c, in vec3 d, in vec3 e, in vec3 f, in vec3 g, in vec3 h, in vec3 t)
+{
+	const vec3 abcd = bilerpClamped(a, b, c, d, vec2(t[0], t[1]));
+	const vec3 efgh = bilerpClamped(e, f, g, h, vec2(t[0], t[1]));
+	return lerpClamped(abcd, efgh, t[2]);
+}
+
+
 layout(location = 0) in vec3 fragNormal;
 layout(location = 1) in vec3 fragColor;
 layout(location = 2) in vec2 fragUV;
@@ -36,7 +56,6 @@ struct Probe
 
 layout(std430, binding = 5) readonly buffer ProbesData
 {
-	int probeCount;
 	Probe probes[];
 };
 
@@ -105,12 +124,6 @@ void applySingleDirectionalLight(inout LightingResult fragLighting, in Direction
 void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal)
 {
 	const vec3 probePos000 = probes[0].position;
-	const vec3 probePos010 = probes[1].position;
-	const vec3 probePos100 = probes[2].position;
-	const vec3 probePos110 = probes[3].position;
-	const vec3 probePos001 = probes[4].position;
-	const vec3 probePos011 = probes[5].position;
-	const vec3 probePos101 = probes[6].position;
 	const vec3 probePos111 = probes[7].position;
 
 	const vec3 t = (fragPos - probePos000) / (probePos111 - probePos000);
@@ -124,7 +137,7 @@ void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal
 	const vec3 irradiance101 = texture(irradianceMaps[6], normal).rgb;
 	const vec3 irradiance111 = texture(irradianceMaps[7], normal).rgb;
 	
-	vec3 interpIrradiance = trilerp(irradiance000, irradiance010, irradiance100, irradiance110,
+	vec3 interpIrradiance = trilerpClamped(irradiance000, irradiance010, irradiance100, irradiance110,
 									irradiance001, irradiance011, irradiance101, irradiance111, t);
 
 	fragLighting.diffuse += interpIrradiance;

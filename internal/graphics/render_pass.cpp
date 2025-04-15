@@ -15,43 +15,55 @@ RenderPass::~RenderPass()
 
     const VkDevice &deviceHandle = m_device.lock()->getHandle();
 
-    for (VkFramebuffer &framebuffer : m_framebuffers)
+    for (size_t i = 0; i < m_pooledFramebuffers.size(); i++)
     {
-        vkDestroyFramebuffer(deviceHandle, framebuffer, nullptr);
-    }
-    vkDestroyRenderPass(deviceHandle, m_handle, nullptr);
-}
-
-void RenderPass::buildFramebuffers(const std::vector<VkImageView>& imageViews, const std::optional<VkImageView>& depthAttachment, VkExtent2D extent, uint32_t layerCount, bool clearOldFramebuffers)
-{
-    const VkDevice& deviceHandle = m_device.lock()->getHandle();
-
-    if (clearOldFramebuffers)
-    {
-        for (VkFramebuffer& framebuffer : m_framebuffers)
+        for (VkFramebuffer& framebuffer : m_pooledFramebuffers[i])
         {
             vkDestroyFramebuffer(deviceHandle, framebuffer, nullptr);
         }
-        
-        m_views.clear();
     }
+    
+    vkDestroyRenderPass(deviceHandle, m_handle, nullptr);
+}
+
+void RenderPass::buildFramebuffers(const std::vector<std::vector<VkImageView>> &pooledImageViews, const std::optional<std::vector<VkImageView>> &pooledDepthAttachments, VkExtent2D extent, uint32_t layerCount, bool clearOldFramebuffers)
+{
+    const VkDevice& deviceHandle = m_device.lock()->getHandle();
 
     m_minRenderArea.offset = { 0, 0 };
     m_minRenderArea.extent = extent;
 
-    m_framebuffers.resize(imageViews.size());
-
-    for (size_t i = 0; i < imageViews.size(); ++i)
+    for (size_t i = 0; i < m_poolSize; i++)
     {
-        m_framebufferBuilder.setExtent(extent);
-        m_framebufferBuilder.setLayerCount(layerCount);
-        m_framebufferBuilder.setColorAttachment(imageViews[i]);
+        std::vector<VkImageView>& views = m_pooledViews[i];
+        std::vector<VkFramebuffer>& framebuffers = m_pooledFramebuffers[i];
 
-        if (depthAttachment.has_value())
-            m_framebufferBuilder.setDepthAttachment(depthAttachment.value());
+        if (clearOldFramebuffers)
+        {
+            for (VkFramebuffer& framebuffer : framebuffers)
+            {
+                vkDestroyFramebuffer(deviceHandle, framebuffer, nullptr);
+            }
 
-        m_framebuffers[i] = *m_framebufferBuilder.buildAndRestart();
-        m_views.push_back(imageViews[i]);
+            views.clear();
+        }
+
+        framebuffers.resize(pooledImageViews[i].size());
+
+        RenderPassFramebufferBuilder& framebufferBuilder = m_pooledFramebufferBuilders[i];
+
+        for (size_t j = 0; j < pooledImageViews[i].size(); ++j)
+        {
+            framebufferBuilder.setExtent(extent);
+            framebufferBuilder.setLayerCount(layerCount);
+            framebufferBuilder.setColorAttachment(pooledImageViews[i][j]);
+
+            if (pooledDepthAttachments.has_value())
+                framebufferBuilder.setDepthAttachment(pooledDepthAttachments.value()[i]);
+
+            framebuffers[j] = *framebufferBuilder.buildAndRestart();
+            views.push_back(pooledImageViews[i][j]);
+        }
     }
 }
 
@@ -101,11 +113,28 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
         std::cerr << "Failed to create render pass : " << res << std::endl;
         return nullptr;
     }
-
+     
     m_product->m_handle = handle;
+    m_product->m_poolSize = m_poolSize;
 
-    m_product->m_framebufferBuilder.setRenderPass(handle);
-    m_product->buildFramebuffers(m_imageViews, m_depthAttachment, m_extent, m_multiviewEnable ? 1u : m_layers);
+    m_product->m_pooledFramebufferBuilders.reserve(m_product->m_poolSize);
+    for (size_t i = 0; i < m_product->m_poolSize; i++)
+    {
+        RenderPassFramebufferBuilder framebufferBuilder;
+
+        if (m_depthAttachmentReference.has_value())
+            framebufferBuilder.setHasDepthAttached(true);
+
+        framebufferBuilder.setDevice(m_device);
+        framebufferBuilder.setRenderPass(handle);
+
+        m_product->m_pooledFramebufferBuilders.push_back(std::move(framebufferBuilder));
+
+        m_product->m_pooledViews.push_back({});
+        m_product->m_pooledFramebuffers.push_back({});
+    }
+
+    m_product->buildFramebuffers(m_pooledImageViews, m_pooledDepthAttachments, m_extent, m_multiviewEnable ? 1u : m_layers);
 
     return std::move(m_product);
 }
@@ -137,8 +166,6 @@ void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
     m_subpassDependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    m_product->m_framebufferBuilder.setHasDepthAttached(true);
 }
 
 void RenderPassDirector::configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment)
@@ -162,6 +189,24 @@ void RenderPassDirector::configureCubemapRenderPassBuilder(RenderPassBuilder &bu
 
     if (hasDepthAttachment && cubemap.getDepthImageView().has_value())
         builder.setDepthAttachment(cubemap.getDepthImageView().value());
+}
+
+void RenderPassDirector::configurePooledCubemapsRenderPassBuilder(RenderPassBuilder& builder, const std::vector<std::shared_ptr<Texture>>& cubemaps, bool useMultiview, bool hasDepthAttachment)
+{
+    const std::shared_ptr<Texture> &firstCubemap = cubemaps.front();
+    builder.setExtent({ firstCubemap->getWidth(), firstCubemap->getHeight() });
+    builder.setLayerCount(6u);
+
+    if (useMultiview)
+        builder.setMultiviewUsageEnable(useMultiview);
+
+    for (size_t i = 0u; i < cubemaps.size(); i++)
+    {
+        builder.addPooledImageViews({ cubemaps[i]->getImageView() });
+
+        if (hasDepthAttachment && cubemaps[i]->getDepthImageView().has_value())
+            builder.addPooledDepthAttachment(cubemaps[i]->getDepthImageView().value());
+    }
 }
 
 void RenderPassAttachmentDirector::configureAttachmentDontCareBuilder(RenderPassAttachmentBuilder &builder)

@@ -23,6 +23,7 @@
 #include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
+#include "engine/probe_grid.hpp"
 #include "engine/uniform.hpp"
 #include "engine/vertex.hpp"
 
@@ -103,7 +104,7 @@ Application::Application()
     // Opaque capture
     RenderPassBuilder opaqueCaptureRpb;
     opaqueCaptureRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(opaqueCaptureRpb, *capturedEnvMaps[0], true);
+    rpd.configurePooledCubemapsRenderPassBuilder(opaqueCaptureRpb, capturedEnvMaps, true);
     
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(capturedEnvMaps[0]->getImageFormat());
@@ -127,17 +128,17 @@ Application::Application()
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
     skyboxCaptureRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(skyboxCaptureRpb, *capturedEnvMaps[0], true);
+    rpd.configurePooledCubemapsRenderPassBuilder(skyboxCaptureRpb, capturedEnvMaps, true);
     
     rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFormat(capturedEnvMaps[0]->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto skyboxCaptureColorAttachment = rpab.buildAndRestart();
     skyboxCaptureRpb.addColorAttachment(*skyboxCaptureColorAttachment);
     
     rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setFormat(capturedEnvMaps[0]->getDepthImageFormat().value());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
@@ -166,7 +167,7 @@ Application::Application()
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
     irradianceConvolutionRpb.setDevice(mainDevice);
-    rpd.configureCubemapRenderPassBuilder(irradianceConvolutionRpb, *irradianceMaps[0], true, false);
+    rpd.configurePooledCubemapsRenderPassBuilder(irradianceConvolutionRpb, irradianceMaps, true, false);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -621,8 +622,6 @@ void Application::runLoop()
 
     auto objects = m_scene->getObjects();
 
-    std::vector<std::shared_ptr<Texture>> maps(maxProbeCount, irradianceMaps[0]);
-
     std::shared_ptr<Skybox> skybox = m_scene->getSkybox();
     for (int i = 0; i < objects.size(); ++i)
     {
@@ -657,8 +656,8 @@ void Application::runLoop()
             mrsb.setPipeline(phongPipeline);
             captureMrsb.setPipeline(phongCapturePipeline);
 
-            mrsb.setEnvironmentMaps(maps);
-            captureMrsb.setEnvironmentMaps(maps);
+            mrsb.setEnvironmentMaps(irradianceMaps);
+            captureMrsb.setEnvironmentMaps(irradianceMaps);
         }
         else
         {
@@ -672,8 +671,8 @@ void Application::runLoop()
             captureMrsb.setLightDescriptorEnable(false);
             captureMrsb.setPipeline(environmentMapCapturePipeline);
 
-            mrsb.setEnvironmentMaps(maps);
-            captureMrsb.setEnvironmentMaps(maps);
+            mrsb.setEnvironmentMaps(irradianceMaps);
+            captureMrsb.setEnvironmentMaps(irradianceMaps);
         }
 
         m_opaquePhase->registerRenderState(mrsb.build());
@@ -748,7 +747,7 @@ void Application::runLoop()
             irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             irsb.setDevice(mainDevice);
             irsb.setSkybox(skybox);
-            irsb.setTexture(capturedEnvMaps[0]);
+            irsb.setTexture(capturedEnvMaps[i]);
             irsb.setPipeline(irradianceConvolutionPipeline);
             m_irradianceConvolutionPhase->registerRenderState(irsb.build());
         }
@@ -804,7 +803,7 @@ void Application::runLoop()
 
         VkDescriptorImageInfo imageInfo = {
             .sampler = *sampler.value(),
-            .imageView = parentPhase->getRenderPass()->getImageView(imageIndex),
+            .imageView = parentPhase->getRenderPass()->getImageView(0u, imageIndex),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkWriteDescriptorSet write = {
@@ -847,6 +846,12 @@ void Application::runLoop()
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
+    ProbeGridBuilder gridBuilder;
+    gridBuilder.setProbeSpacing(5.f);
+    gridBuilder.setGridMaxHeight(10.f);
+    std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
+    const std::vector<std::unique_ptr<Probe>>& probes = grid->getProbes();
+
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
@@ -866,7 +871,7 @@ void Application::runLoop()
                 .offset = {0, 0},
                 .extent = m_window->getSwapChain()->getExtent(),
             },
-            *mainCamera, lights);
+            *mainCamera, lights, probes);
         if (res == VK_ERROR_OUT_OF_DATE_KHR)
         {
             // TODO : recreate framebuffers

@@ -24,17 +24,38 @@
 
 constexpr int maxProbeCount = 8;
 
-const glm::mat4 captureViews[] =
+const glm::vec3 captureViewCenter[] =
 {
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f)),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 1.f, 0.f), glm::vec3(0.f, 0.f,-1.f)),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f,-1.f, 0.f), glm::vec3(0.f, 0.f, 1.f)),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f)),
-   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), glm::vec3( 0.f, 0.f,-1.f), glm::vec3(0.f, 1.f, 0.f))
+   glm::vec3(-1.f, 0.f, 0.f),
+   glm::vec3( 1.f, 0.f, 0.f),
+   glm::vec3( 0.f, 1.f, 0.f),
+   glm::vec3( 0.f,-1.f, 0.f),
+   glm::vec3( 0.f, 0.f, 1.f),
+   glm::vec3( 0.f, 0.f,-1.f),
 };
 
-const glm::mat4 capturePartialProj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1.f);
+const glm::vec3 captureViewUp[] =
+{
+   glm::vec3(0.f, 1.f, 0.f),
+   glm::vec3(0.f, 1.f, 0.f),
+   glm::vec3(0.f, 0.f,-1.f),
+   glm::vec3(0.f, 0.f, 1.f),
+   glm::vec3(0.f, 1.f, 0.f),
+   glm::vec3(0.f, 1.f, 0.f)
+};
+
+const glm::mat4 captureViews[] =
+{
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[0], captureViewUp[0]),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[1], captureViewUp[1]),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[2], captureViewUp[2]),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[3], captureViewUp[3]),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[4], captureViewUp[4]),
+   glm::lookAt(glm::vec3(0.f, 0.f, 0.f), captureViewCenter[5], captureViewUp[5]),
+};
+
+
+const glm::mat4 capturePartialProj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1000.f);
 
 RenderStateABC::~RenderStateABC()
 {
@@ -46,33 +67,28 @@ RenderStateABC::~RenderStateABC()
     m_pipeline.reset();
 }
 
-void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
-                                          const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled)
+void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
+                                          const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
 {
-    ProbeGridBuilder gridBuilder;
-    std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
-    const std::vector<Probe> probes = grid->getProbes();
-
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
         MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[backBufferIndex]);
-        mvpData->proj = camera.getProjectionMatrix();
         mvpData->model = glm::identity<glm::mat4>();
 
         if (!captureModeEnabled)
         {
+            mvpData->proj = camera.getProjectionMatrix();
             mvpData->views[0] = camera.getViewMatrix();
         }
         else 
         {
-            const glm::vec3 probePosition = probes[singleFrameRenderIndex].position;
-            const glm::mat4 probeTranslate = glm::translate(glm::identity<glm::mat4>(), probePosition);
+            const glm::vec3 probePosition = probes[pooledFramebufferIndex]->position;
 
             mvpData->proj = capturePartialProj;
             mvpData->proj[1][1] *= -1;
 
             for (int i = 0; i < 6; i++)
-                mvpData->views[i] = captureViews[i] * probeTranslate;
+                mvpData->views[i] = glm::lookAt(probePosition, probePosition + captureViewCenter[i], captureViewUp[i]);
         }
     }
 
@@ -83,17 +99,15 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         int probeCount = 0;
         for (int i = 0; i < probes.size(); i++)
         {
-            const Probe& probe = probes[i];
+            const Probe* probe = probes[i].get();
 
             ProbeContainer::Probe probeData{
-                .position = probe.position,
+                .position = probe->position,
             };
 
             probeContainer->probes[probeCount] = probeData;
             probeCount++;
         }
-
-        probeContainer->probeCount = probeCount;
     }
 
     PointLightContainer* pointLightContainer = nullptr;
@@ -467,9 +481,9 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
-void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled)
+void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, camera, lights, captureModeEnabled);
+    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, captureModeEnabled);
 
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
@@ -640,24 +654,26 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC &camera,
-                                             const std::vector<std::shared_ptr<Light>> &lights, bool captureModeEnabled)
+void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
+                                             const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
 {
     MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
-    mvpData->proj = camera.getProjectionMatrix();
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
     {
+        mvpData->proj = camera.getProjectionMatrix();
         mvpData->views[0] = camera.getViewMatrix();
     }
     else
     {
+        const glm::vec3 probePosition = probes[pooledFramebufferIndex]->position;
+
         mvpData->proj = capturePartialProj;
         mvpData->proj[1][1] *= -1;
 
         for (int i = 0; i < 6; i++)
-            mvpData->views[i] = captureViews[i];
+            mvpData->views[i] = glm::lookAt(probePosition, probePosition + captureViewCenter[i], captureViewUp[i]);
     }
 }
 
@@ -786,24 +802,28 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera,
-    const std::vector<std::shared_ptr<Light>>& lights, bool captureModeEnabled)
+void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
+    const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
 {
     uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
 
     MVP* mvpData = static_cast<MVP*>(m_mvpUniformBuffersMapped[bufferIndex]);
-    mvpData->proj = glm::perspective(glm::half_pi<float>(), 1.0f, 0.1f, 1.f);
-    mvpData->proj[1][1] *= -1;
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
     {
+        mvpData->proj = camera.getProjectionMatrix();
         mvpData->views[0] = camera.getViewMatrix();
     }
     else
     {
+        const glm::vec3& probePosition = probes[pooledFramebufferIndex]->position;
+        
+        mvpData->proj = capturePartialProj;
+        mvpData->proj[1][1] *= -1;
+
         for (int i = 0; i < 6; i++)
-            mvpData->views[i] = captureViews[i];
+            mvpData->views[i] = glm::lookAt(probePosition, probePosition + captureViewCenter[i], captureViewUp[i]);
     }
 }
 

@@ -5,9 +5,14 @@
 
 class ProbeGridBuilder;
 
-struct Probe 
+class Probe 
 {
+public:
 	glm::vec3 position;
+
+	Probe(const glm::vec3& position)
+		: position(position) { }
+	virtual ~Probe() = default;
 };
 
 class ProbeGrid 
@@ -15,10 +20,10 @@ class ProbeGrid
 	friend ProbeGridBuilder;
 
 private:
-	std::vector<Probe> m_probes;
+	std::vector<std::unique_ptr<Probe>> m_probes;
 
 public:
-	const std::vector<Probe>& getProbes() const
+	const std::vector<std::unique_ptr<Probe>>& getProbes() const
 	{
 		return m_probes;
 	}
@@ -42,6 +47,11 @@ public:
 	ProbeGridBuilder() 
 	{
 		restart();
+	}
+
+	void setProbeSpacing(float spacing)
+	{
+		m_probeSpacing = spacing;
 	}
 
 	void setGridBaseHeight(float baseHeight)
