@@ -123,12 +123,12 @@ class RenderPass
 
     [[nodiscard]] const VkFramebuffer &getFramebuffer(uint32_t poolIndex, uint32_t imageIndex) const
     {
-        return m_pooledFramebuffers[poolIndex][imageIndex];
+        return m_pooledFramebuffers[poolIndex][imageIndex % m_pooledFramebuffers[poolIndex].size()];
     }
 
     [[nodiscard]] const VkImageView &getImageView(uint32_t poolIndex, uint32_t imageIndex) const
     {
-        return m_pooledViews[poolIndex][imageIndex];
+        return m_pooledViews[poolIndex][imageIndex % m_pooledFramebuffers[poolIndex].size()];
     }
     [[nodiscard]] const uint32_t getImageCount(uint32_t poolIndex) const
     {

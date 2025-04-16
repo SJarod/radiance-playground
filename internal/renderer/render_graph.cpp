@@ -26,12 +26,12 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Rend
         const RenderPhase* currentPhase = toProcess[i].get();
         for (uint32_t singleFrameRenderIndex = 0u; singleFrameRenderIndex < currentPhase->getSingleFrameRenderCount(); singleFrameRenderIndex++)
         {
-            for (uint32_t pooledFramebufferIndex = 0u; pooledFramebufferIndex < currentPhase->getRenderPass()->getFramebufferPoolSize(); pooledFramebufferIndex++)
+            for (uint32_t poolIndex = 0u; poolIndex < currentPhase->getRenderPass()->getFramebufferPoolSize(); poolIndex++)
             {
-                currentPhase->recordBackBuffer(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, renderArea, mainCamera, lights, probes);
+                currentPhase->recordBackBuffer(imageIndex, singleFrameRenderIndex, poolIndex, renderArea, mainCamera, lights, probes);
 
-                currentPhase->submitBackBuffer(lastAcquireSemaphore);
-                lastAcquireSemaphore = &currentPhase->getCurrentRenderSemaphore();
+                currentPhase->submitBackBuffer(lastAcquireSemaphore, poolIndex);
+                lastAcquireSemaphore = &currentPhase->getCurrentRenderSemaphore(poolIndex);
             }
         }
     }
@@ -66,7 +66,10 @@ void RenderGraph::swapAllRenderPhasesBackBuffers()
 {
     for (auto &phase : m_renderPhases)
     {
-        phase->swapBackBuffers();
+        for (uint32_t poolIndex = 0u; poolIndex < phase->getRenderPass()->getFramebufferPoolSize(); poolIndex++)
+        {
+            phase->swapBackBuffers(poolIndex);
+        }
     }
 }
 
@@ -75,15 +78,18 @@ VkSemaphore RenderGraph::getFirstPhaseCurrentAcquireSemaphore() const
     assert(m_renderPhases.size() != 0 || m_oneTimeRenderPhases.size() != 0);
 
     if (m_shouldRenderOneTimePhases)
-        return m_oneTimeRenderPhases.front()->getCurrentAcquireSemaphore();
+    {
+        if (m_oneTimeRenderPhases.size() > 0u)
+            return m_oneTimeRenderPhases.front()->getCurrentAcquireSemaphore(0u);
+    }
 
-    return m_renderPhases.front()->getCurrentAcquireSemaphore();
+    return m_renderPhases.front()->getCurrentAcquireSemaphore(0u);
 }
 
 VkSemaphore RenderGraph::getLastPhaseCurrentRenderSemaphore() const
 {
     assert(m_renderPhases.size() != 0);
-    return m_renderPhases.back()->getCurrentRenderSemaphore();
+    return m_renderPhases.back()->getCurrentRenderSemaphore(m_renderPhases.back()->getRenderPass()->getFramebufferPoolSize() - 1u);
 }
 
 std::vector<VkFence> RenderGraph::getAllCurrentFences() const
@@ -97,13 +103,23 @@ std::vector<VkFence> RenderGraph::getAllCurrentFences() const
         for (const auto& phase : m_oneTimeRenderPhases)
         {
             if (phase->getSingleFrameRenderCount() > 0u)
-                fences.push_back(phase->getCurrentFence());
+            {
+                for (uint32_t poolIndex = 0u; poolIndex < phase->getRenderPass()->getFramebufferPoolSize(); poolIndex++)
+                {
+                    fences.push_back(phase->getCurrentFence(poolIndex));
+                }
+            }
         }
     }
     for (const auto &phase : m_renderPhases)
     {
         if (phase->getSingleFrameRenderCount() > 0u)
-            fences.push_back(phase->getCurrentFence());
+        {
+            for (uint32_t poolIndex = 0u; poolIndex < phase->getRenderPass()->getFramebufferPoolSize(); poolIndex++)
+            {
+                fences.push_back(phase->getCurrentFence(poolIndex));
+            }
+        }
     }
     return fences;
 }

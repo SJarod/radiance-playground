@@ -27,17 +27,22 @@ RenderPhase::~RenderPhase()
     // TODO : wait queue instead of device
     vkDeviceWaitIdle(deviceHandle);
 
-    for (int i = 0; i < m_backBuffers.size(); ++i)
+    for (uint32_t i = 0u; i < m_pooledBackBuffers.size(); i++)
     {
-        vkDestroyFence(deviceHandle, m_backBuffers[i].inFlightFence, nullptr);
-        vkDestroySemaphore(deviceHandle, m_backBuffers[i].renderSemaphore, nullptr);
-        vkDestroySemaphore(deviceHandle, m_backBuffers[i].acquireSemaphore, nullptr);
+        const auto& backBuffers = m_pooledBackBuffers[i];
+        for (uint32_t j = 0u; j < backBuffers.size(); j++)
+        {
+            const BackBufferT& backbuffer = backBuffers[j];
+            vkDestroyFence(deviceHandle, backbuffer.inFlightFence, nullptr);
+            vkDestroySemaphore(deviceHandle, backbuffer.renderSemaphore, nullptr);
+            vkDestroySemaphore(deviceHandle, backbuffer.acquireSemaphore, nullptr);
+        }
     }
 
     m_renderPass.reset();
 }
 
-void RenderPhase::registerRenderState(std::shared_ptr<RenderStateABC> renderState)
+void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState)
 {
     for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
@@ -45,9 +50,28 @@ void RenderPhase::registerRenderState(std::shared_ptr<RenderStateABC> renderStat
         {
             renderState->updateDescriptorSets(m_parentPhase, imageIndex);
         }
+
+        m_pooledRenderStates[poolIndex].push_back(renderState);
     }
-    
-    m_renderStates.emplace_back(renderState);
+}
+
+void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState, uint32_t pooledFramebufferIndex)
+{
+    if (pooledFramebufferIndex >= m_pooledRenderStates.size())
+    {
+        std::cerr << "Failed to add renderstate to renderstate pool" << std::endl;
+        return;
+    }
+
+    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
+    {
+        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        {
+            renderState->updateDescriptorSets(m_parentPhase, imageIndex);
+        }
+    }
+
+    m_pooledRenderStates[pooledFramebufferIndex].push_back(renderState);
 }
 
 void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
@@ -55,12 +79,12 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 {
     if (singleFrameRenderIndex > 0)
     {
-        VkFence currentFence = getCurrentFence();
+        VkFence currentFence = getCurrentFence(pooledFramebufferIndex);
         vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
         vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
     }
 
-    const VkCommandBuffer &commandBuffer = getCurrentBackBuffer().commandBuffer;
+    const VkCommandBuffer &commandBuffer = getCurrentBackBuffer(pooledFramebufferIndex).commandBuffer;
 
     vkResetCommandBuffer(commandBuffer, 0);
 
@@ -97,19 +121,21 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     };
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    for (int i = 0; i < m_renderStates.size(); ++i)
+    const auto& renderStates = m_pooledRenderStates[pooledFramebufferIndex];
+    for (int i = 0; i < renderStates.size(); ++i)
     {
-        m_renderStates[i]->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        m_renderStates[i]->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, m_isCapturePhase);
-        m_renderStates[i]->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
+        RenderStateABC* renderState = renderStates[i].get();
+        renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
-        if (const auto &pipeline = m_renderStates[i]->getPipeline())
+        if (const auto &pipeline = renderState->getPipeline())
         {
             pipeline->recordBind(commandBuffer, imageIndex, renderArea);
         }
 
-        m_renderStates[i]->recordBackBufferDescriptorSetsCommands(commandBuffer, m_backBufferIndex);
-        m_renderStates[i]->recordBackBufferDrawObjectCommands(commandBuffer);
+        renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, m_backBufferIndex);
+        renderState->recordBackBufferDrawObjectCommands(commandBuffer);
     }
 
     vkCmdEndRenderPass(commandBuffer);
@@ -119,31 +145,31 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         std::cerr << "Failed to record command buffer : " << res << std::endl;
 }
 
-void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) const
+void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
 {
-    VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
-                                                             : getCurrentBackBuffer().acquireSemaphore};
+    const BackBufferT& currentBackBuffer = getCurrentBackBuffer(pooledFramebufferIndex);
+    VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride : currentBackBuffer.acquireSemaphore};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore()};
+    VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore(pooledFramebufferIndex)};
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = waitStages,
         .commandBufferCount = 1,
-        .pCommandBuffers = &getCurrentBackBuffer().commandBuffer,
+        .pCommandBuffers = &currentBackBuffer.commandBuffer,
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = signalSemaphores,
     };
 
-    VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence());
+    VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence(pooledFramebufferIndex));
     if (res != VK_SUCCESS)
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
 }
 
-void RenderPhase::swapBackBuffers()
+void RenderPhase::swapBackBuffers(uint32_t pooledFramebufferIndex)
 {
-    m_backBufferIndex = (m_backBufferIndex + 1) % m_backBuffers.size();
+    m_backBufferIndex = (m_backBufferIndex + 1) % m_pooledBackBuffers[pooledFramebufferIndex].size();
 }
 
 std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
@@ -155,58 +181,66 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
     auto deviceHandle = devicePtr->getHandle();
 
     // back buffers
+    const uint32_t poolSize = m_product->m_renderPass->getFramebufferPoolSize();
 
-    m_product->m_backBuffers.resize(m_bufferingType);
-
-    VkCommandBufferAllocateInfo commandBufferAllocInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = devicePtr->getCommandPool(),
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1U,
-    };
-    for (int i = 0; i < m_bufferingType; ++i)
+    m_product->m_pooledRenderStates.resize(poolSize);
+    m_product->m_pooledBackBuffers.resize(poolSize);
+    for (uint32_t poolIndex = 0u; poolIndex < poolSize; poolIndex++)
     {
-        VkResult res =
-            vkAllocateCommandBuffers(deviceHandle, &commandBufferAllocInfo, &m_product->m_backBuffers[i].commandBuffer);
-        if (res != VK_SUCCESS)
-        {
-            std::cerr << "Failed to allocate command buffers : " << res << std::endl;
-            return nullptr;
-        }
-    }
+        m_product->m_pooledBackBuffers[poolIndex].resize(m_bufferingType);
 
-    // synchronization
+        auto& backBuffers = m_product->m_pooledBackBuffers[poolIndex];
 
-    VkSemaphoreCreateInfo semaphoreCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
-    VkFenceCreateInfo fenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
-    for (int i = 0; i < m_bufferingType; ++i)
-    {
-        VkResult res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                                         &m_product->m_backBuffers[i].acquireSemaphore);
-        if (res != VK_SUCCESS)
+        VkCommandBufferAllocateInfo commandBufferAllocInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = devicePtr->getCommandPool(),
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1U,
+        };
+        for (int i = 0; i < m_bufferingType; ++i)
         {
-            std::cerr << "Failed to create semaphore : " << res << std::endl;
-            return nullptr;
+            VkResult res =
+                vkAllocateCommandBuffers(deviceHandle, &commandBufferAllocInfo, &backBuffers[i].commandBuffer);
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to allocate command buffers : " << res << std::endl;
+                return nullptr;
+            }
         }
 
-        res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                                &m_product->m_backBuffers[i].renderSemaphore);
-        if (res != VK_SUCCESS)
-        {
-            std::cerr << "Failed to create semaphore : " << res << std::endl;
-            return nullptr;
-        }
+        // synchronization
 
-        res = vkCreateFence(deviceHandle, &fenceCreateInfo, nullptr, &m_product->m_backBuffers[i].inFlightFence);
-        if (res != VK_SUCCESS)
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        };
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
+        for (int i = 0; i < m_bufferingType; ++i)
         {
-            std::cerr << "Failed to create fence : " << res << std::endl;
-            return nullptr;
+            VkResult res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
+                &backBuffers[i].acquireSemaphore);
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to create semaphore : " << res << std::endl;
+                return nullptr;
+            }
+
+            res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
+                &backBuffers[i].renderSemaphore);
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to create semaphore : " << res << std::endl;
+                return nullptr;
+            }
+
+            res = vkCreateFence(deviceHandle, &fenceCreateInfo, nullptr, &backBuffers[i].inFlightFence);
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to create fence : " << res << std::endl;
+                return nullptr;
+            }
         }
     }
 

@@ -2,13 +2,20 @@
 
 std::unique_ptr<ProbeGrid> ProbeGridBuilder::build()
 {
-	for (float currentLayerHeight = m_gridBaseHeight; currentLayerHeight < m_gridMaxHeight; currentLayerHeight += m_probeSpacing)
+	const float xProbeSpacing = m_extent.x / static_cast<float>(m_xAxisProbeCount - 1u);
+	const float yProbeSpacing = m_extent.y / static_cast<float>(m_yAxisProbeCount - 1u);
+	const float zProbeSpacing = m_extent.z / static_cast<float>(m_zAxisProbeCount - 1u);
+
+	for (uint32_t i = 0u; i < m_xAxisProbeCount; i++)
 	{
-		for (float x = 0; x < m_gridMaxHeight; x += m_probeSpacing) 
+		float y = m_cornerPosition.y + i * yProbeSpacing;
+		for (uint32_t j = 0u; j < m_yAxisProbeCount; j++)
 		{
-			for (float z = 0; z < m_gridMaxHeight; z += m_probeSpacing)
+			float x = m_cornerPosition.x + j * xProbeSpacing;
+			for (uint32_t k = 0u; k < m_zAxisProbeCount; k++)
 			{
-				m_product->m_probes.push_back(std::make_unique<Probe>(glm::vec3(x, currentLayerHeight, z)));
+				float z = m_cornerPosition.z + k * xProbeSpacing;
+				m_product->m_probes.push_back(std::make_unique<Probe>(glm::vec3(x, y, z)));
 			}
 		}
 	}

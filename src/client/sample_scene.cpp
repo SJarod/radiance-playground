@@ -65,7 +65,7 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
     light->position = glm::vec3(-1.0, 0.0, 0.0);
-    light->diffuseColor = glm::vec3(0.4, 1.0, 0.2);
+    light->diffuseColor = glm::vec3(1.0, 0.0, 0.0);
     light->diffusePower = 1.0;
     light->specularColor = glm::vec3(1.0);
     light->specularPower = 1.0;

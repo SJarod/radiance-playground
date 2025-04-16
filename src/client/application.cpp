@@ -169,7 +169,7 @@ Application::Application()
     irradianceConvolutionRpb.setDevice(mainDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(irradianceConvolutionRpb, irradianceMaps, true, false);
     rpad.configureAttachmentDontCareBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setFormat(irradianceMaps[0]->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto irradianceColorAttachment = rpab.buildAndRestart();
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
@@ -307,6 +307,9 @@ Application::~Application()
 {
     vkDeviceWaitIdle(m_devices[0]->getHandle());
 
+    capturedEnvMaps.clear();
+    irradianceMaps.clear();
+
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -339,7 +342,7 @@ void Application::initImgui()
     }
 
     std::shared_ptr<RenderStateABC> render_state = imguirsb.build();
-    m_imguiPhase->registerRenderState(render_state);
+    m_imguiPhase->registerRenderStateToAllPool(render_state);
 
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
@@ -675,8 +678,8 @@ void Application::runLoop()
             captureMrsb.setEnvironmentMaps(irradianceMaps);
         }
 
-        m_opaquePhase->registerRenderState(mrsb.build());
-        m_opaqueCapturePhase->registerRenderState(captureMrsb.build());
+        m_opaquePhase->registerRenderStateToAllPool(mrsb.build());
+        m_opaqueCapturePhase->registerRenderStateToAllPool(captureMrsb.build());
     }
 
     // skybox
@@ -749,7 +752,7 @@ void Application::runLoop()
             irsb.setSkybox(skybox);
             irsb.setTexture(capturedEnvMaps[i]);
             irsb.setPipeline(irradianceConvolutionPipeline);
-            m_irradianceConvolutionPhase->registerRenderState(irsb.build());
+            m_irradianceConvolutionPhase->registerRenderStateToSpecificPool(irsb.build(), i);
         }
 
         SkyboxRenderStateBuilder srsb;
@@ -760,7 +763,7 @@ void Application::runLoop()
         srsb.setSkybox(skybox);
         srsb.setTexture(skybox->getTexture());
         srsb.setPipeline(skyboxPipeline);
-        m_skyboxPhase->registerRenderState(srsb.build());
+        m_skyboxPhase->registerRenderStateToAllPool(srsb.build());
 
         SkyboxRenderStateBuilder captureSrsb;
         captureSrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
@@ -770,7 +773,7 @@ void Application::runLoop()
         captureSrsb.setSkybox(skybox);
         captureSrsb.setTexture(skybox->getTexture());
         captureSrsb.setPipeline(skyboxCapturePipeline);
-        m_skyboxCapturePhase->registerRenderState(captureSrsb.build());
+        m_skyboxCapturePhase->registerRenderStateToAllPool(captureSrsb.build());
     }
 
     MeshBuilder mb;
@@ -838,7 +841,7 @@ void Application::runLoop()
     });
     postProcessPb.setUniformDescriptorPack(postProcessUdb.buildAndRestart());
     quadRsb.setPipeline(postProcessPb.build());
-    m_postProcessPhase->registerRenderState(quadRsb.build());
+    m_postProcessPhase->registerRenderStateToAllPool(quadRsb.build());
 
     initImgui();
 
@@ -847,8 +850,12 @@ void Application::runLoop()
     CameraABC *mainCamera = m_scene->getMainCamera();
 
     ProbeGridBuilder gridBuilder;
-    gridBuilder.setProbeSpacing(5.f);
-    gridBuilder.setGridMaxHeight(10.f);
+    const float gridSize = 0.5f;
+    gridBuilder.setXAxisProbeCount(2u);
+    gridBuilder.setYAxisProbeCount(2u);
+    gridBuilder.setZAxisProbeCount(2u);
+    gridBuilder.setExtent(glm::vec3(gridSize));
+    gridBuilder.setCornerPosition(-0.5f * glm::vec3(gridSize));
     std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
     const std::vector<std::unique_ptr<Probe>>& probes = grid->getProbes();
 

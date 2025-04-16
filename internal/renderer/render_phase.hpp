@@ -43,21 +43,21 @@ class RenderPhase
 
     std::unique_ptr<RenderPass> m_renderPass;
 
-    std::vector<std::shared_ptr<RenderStateABC>> m_renderStates;
+    std::vector<std::vector<std::shared_ptr<RenderStateABC>>> m_pooledRenderStates;
 
     uint32_t m_singleFrameRendeerCount = 1u;
 
     int m_backBufferIndex = 0;
-    std::vector<BackBufferT> m_backBuffers;
+    std::vector<std::vector<BackBufferT>> m_pooledBackBuffers;
 
     bool m_isCapturePhase = false;
 
     RenderPhase() = default;
 
   private:
-    [[nodiscard]] const BackBufferT &getCurrentBackBuffer() const
+    [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const
     {
-        return m_backBuffers[m_backBufferIndex];
+        return m_pooledBackBuffers[pooledFramebufferIndex][m_backBufferIndex];
     }
 
   public:
@@ -68,13 +68,14 @@ class RenderPhase
     RenderPhase(RenderPhase &&) = delete;
     RenderPhase &operator=(RenderPhase &&) = delete;
 
-    void registerRenderState(std::shared_ptr<RenderStateABC> renderState);
+    void registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState);
+    void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState, uint32_t pooledFramebufferIndex);
 
     void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
                           const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes) const;
-    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
-    void swapBackBuffers();
+    void swapBackBuffers(uint32_t pooledFramebufferIndex);
     
     void updateSwapchainOnRenderPass(const SwapChain* newSwapchain);
 
@@ -84,17 +85,17 @@ class RenderPhase
           return m_singleFrameRendeerCount;
     }
 
-    [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore() const
+    [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const
     {
-        return getCurrentBackBuffer().acquireSemaphore;
+        return getCurrentBackBuffer(pooledFramebufferIndex).acquireSemaphore;
     }
-    [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore() const
+    [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const
     {
-        return getCurrentBackBuffer().renderSemaphore;
+        return getCurrentBackBuffer(pooledFramebufferIndex).renderSemaphore;
     }
-    [[nodiscard]] const VkFence &getCurrentFence() const
+    [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const
     {
-        return getCurrentBackBuffer().inFlightFence;
+        return getCurrentBackBuffer(pooledFramebufferIndex).inFlightFence;
     }
     [[nodiscard]] const RenderPass *getRenderPass() const
     {

@@ -34,9 +34,12 @@ class ProbeGridBuilder
 private:
 	std::unique_ptr<ProbeGrid> m_product;
 
-	float m_probeSpacing = 1.f;
-	float m_gridBaseHeight = 0.f;
-	float m_gridMaxHeight = 2.f;
+	uint32_t m_xAxisProbeCount = 2u;
+	uint32_t m_yAxisProbeCount = 2u;
+	uint32_t m_zAxisProbeCount = 2u;
+
+	glm::vec3 m_cornerPosition = { 0.f, 0.f, 0.f };
+	glm::vec3 m_extent = { 2.f, 2.f, 2.f };
 
 	void restart() 
 	{
@@ -49,19 +52,29 @@ public:
 		restart();
 	}
 
-	void setProbeSpacing(float spacing)
+	void setXAxisProbeCount(uint32_t probeCount)
 	{
-		m_probeSpacing = spacing;
+		m_xAxisProbeCount = probeCount;
 	}
 
-	void setGridBaseHeight(float baseHeight)
+	void setYAxisProbeCount(uint32_t probeCount)
 	{
-		m_gridBaseHeight = baseHeight;
+		m_yAxisProbeCount = probeCount;
 	}
 
-	void setGridMaxHeight(float maxHeight)
+	void setZAxisProbeCount(uint32_t probeCount)
 	{
-		m_gridMaxHeight = maxHeight;
+		m_zAxisProbeCount = probeCount;
+	}
+
+	void setCornerPosition(const glm::vec3& cornerPosition)
+	{
+		m_cornerPosition = cornerPosition;
+	}
+
+	void setExtent(const glm::vec3& extent)
+	{
+		m_extent = extent;
 	}
 
 	std::unique_ptr<ProbeGrid> build();
