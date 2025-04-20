@@ -30,6 +30,8 @@
 
 \newcommand{\titre}[1]{\renewcommand{\titre}{#1}}
 
+\newcommand{\pieddepage}[1]{\renewcommand{\pieddepage}{#1}}
+
 \newcommand{\eleve}[1]{\renewcommand{\eleve}{#1}}
 
 \newcommand{\tuteuruniv}[1]{\renewcommand{\tuteuruniv}{#1}}
@@ -45,7 +47,7 @@
 \lhead{\includegraphics[scale=0.1]{logos/Logo_ISART.png}} %Affichage de l'image au top de la page
 \rhead{\nouppercase{\leftmark}}
 \rfoot{\thepage}
-\cfoot{\textbf{\titre}}
+\cfoot{\textbf{\pieddepage}}
 \lfoot{\trigrammemention}
 
 }
