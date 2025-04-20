@@ -1,6 +1,5 @@
 \LoadClass[a4paper,12pt]{article} % Classe du document
 
-%--------------------- Packages ------------------------
 
 \RequirePackage[french]{babel} %Langue du document
 \RequirePackage[utf8]{inputenc} %Caractères spéciaux
@@ -24,8 +23,6 @@
 \RequirePackage[left=3cm,right=3cm,top=3cm,bottom=5cm,headheight=15mm]{geometry} %Configuration de la page
 
 
-%-------------------- Informations sur le rapport ----------------------
-
 \newcommand{\mention}[1]{\renewcommand{\mention}{#1}}
 \newcommand{\trigrammemention}[1]{\renewcommand{\trigrammemention}{#1}}
 \newcommand{\master}[1]{\renewcommand{\master}{#1}}
@@ -36,9 +33,6 @@
 \newcommand{\eleve}[1]{\renewcommand{\eleve}{#1}}
 
 \newcommand{\tuteuruniv}[1]{\renewcommand{\tuteuruniv}{#1}}
-\newcommand{\tuteurentreprise}[1]{\renewcommand{\tuteurentreprise}{#1}}
-
-\newcommand{\logoentreprise}[1]{\renewcommand{\logoentreprise}{#1}}
 
 \newcommand{\dates}[1]{\renewcommand{\dates}{#1}}
 
@@ -62,19 +56,15 @@
 \ThisLRCornerWallPaper{0.3}{logos/bordureBOTT.png}
 \ThisULCornerWallPaper{0.3}{logos/bordureTOP.png}
 
-\centering %Centraliser le contenu
+\centering % Centrer le contenu
 
 % Logo Entreprise x ISART
-\begin{figure}
+\begin{center}
     \begin{subfigure}{.5\textwidth}
         \centering
-        \includegraphics[width=0.7\textwidth]{logos/entreprise.png}\par\vspace{1cm} % METTRE ICI le LOGO de l'entreprise (équipe d'accueil) 
-    \end{subfigure}%
-    \begin{subfigure}{.5\textwidth}
-        \centering
-        \includegraphics[width=0.7\textwidth]{logos/Logo_ISART.png}\par\vspace{1cm} %Insertion du logo ISART
+        \includegraphics[width=0.7\textwidth]{logos/Logo_ISART.png}
     \end{subfigure}
-\end{figure}
+\end{center}
 
 % Titre du rapport
 \rule{\linewidth}{0.2 mm} \\[0.4 cm]
@@ -92,32 +82,31 @@
 % Dates
 {\large \dates \par} 
 
-\vspace{6cm}
+\vspace{5.5cm}
 
-% Représentants de l'étudiant
+% Mentors
 \begin{minipage}{0.4\textwidth}
 	\begin{flushleft} 
-	\emph{\textbf{Tuteur(s) ISART DIGITAL:}}\\ 
-    \tuteuruniv \\ 
+	\emph{\textbf{Tuteur(s) ISART DIGITAL:}} \\
+    \tuteuruniv \\
 	\end{flushleft}
 \end{minipage}
-~
-\begin{minipage}{0.4\textwidth}
-	\begin{flushright} 
-	\emph{\textbf{Tuteur(s) entreprise :}} \\
-	 \tuteurentreprise \\
-	\end{flushright}
-\end{minipage}\\[4cm]
-    
 	\vfill
-	
 
 \end{titlepage}
 \newpage
 }
 
-\newcommand{\tabledematieres}{
+\newcommand{\contents}{
 \tableofcontents
+
+\listoffigures
+
+\listoftables
+
+\listofalgorithms
+\addtocontents{loa}{\def\string\figurename{Algorithm}}
+
 \newpage
 }
 
@@ -129,6 +118,3 @@
 \label{fig: #4}
 \end{figure}
 }
-
-
-

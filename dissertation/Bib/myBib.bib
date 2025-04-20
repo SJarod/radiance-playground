@@ -1,24 +1,85 @@
-@inproceedings{Addoum2021,
-author = {Addoum, Mael Ahmad and Rouffet, Maxime and Jacopin, \'{E}ric},
-title = {3D Brawler Game Using a Hybrid Planning Approach},
-year = {2021},
-publisher = {IEEE Press},
-url = {https://doi.org/10.1109/CoG52621.2021.9619075},
-doi = {10.1109/CoG52621.2021.9619075},
-booktitle = {2021 IEEE Conference on Games (CoG)},
-pages = {1–2},
-numpages = {2},
-location = {Copenhagen, Denmark}
+
+@misc{noauthor_building_nodate,
+	title = {Building {Real}-{Time} {Global} {Illumination}: {Radiance} {Cascades}},
+	shorttitle = {Building {Real}-{Time} {Global} {Illumination}},
+	url = {https://jason.today/rc},
+	abstract = {An interactive walkthrough of implementing radiance cascades, a technique for real-time noiseless global illumination.},
+	language = {en},
+	urldate = {2024-10-24},
+	file = {Snapshot:C\:\\Users\\remig\\Zotero\\storage\\MMUWDYRJ\\rc.html:text/html},
 }
 
+@misc{unrealab_basic_2022,
+	title = {Basic {3D} lighting concepts, {Ray} {Tracing} and {Global} {Illumination}},
+	url = {https://www.youtube.com/watch?v=b_I9fVenRIo},
+	abstract = {The basics of 3D lighting: direct light, indirect light, ray tracing, shadows, Global Illumination and Final Gather.},
+	urldate = {2024-10-24},
+	author = {{UnreaLab}},
+	month = mar,
+	year = {2022},
+}
 
-@INPROCEEDINGS{Addoum2021-bis,
-  author={Addoum, Mael Ahmad and Mekhaemar, Jannah and Rouffet, Maxime and Jacopin, Éric},
-  booktitle={2021 IEEE Conference on Games (CoG)}, 
-  title={Khaldun: GOAP for both Procedural Level generation and NPC Behaviors}, 
-  year={2021},
-  volume={},
-  number={},
-  pages={1-2},
-  keywords={Conferences;Games;Tools;Planning;Artificial intelligence;GOAP;Procedural Level Generation},
-  doi={10.1109/CoG52621.2021.9619062}}
+@misc{alexander_sannikov_2d_2022,
+	title = {2d {Full} {Global} {Illumination} \#2 (working principle and perf tests)},
+	url = {https://www.youtube.com/watch?v=o2kgW2TBpUo},
+	abstract = {In this video I'm showcasing my sampling strategy that's based on cascades. Cascades that are farther away, contain more information about ray directions, but less information about ray origins -- because of this, each cascade actually takes up exactly the same amount of memory.
+
+In other words, cascades encode information in light probes. Cascade n+1 contains 4x less light probes than cascade n, but each probe is 4x higher resolution.
+
+Note that performance of the algorithm is constant and does not depend on how many light sources there are : each pixel is assumed to have its own luminance and opacity values, GI is calculated in 1920x1080 full res. Also no information is cached : each frame lighting is calculated entirely from scratch, it converges fast enough so that no denoising is needed.
+
+PS this is not unity and not UE, this is my custom vulkan-based framegraph rendering engine, called LegitEngine. The engine itself is open source with a bunch of demos, but this demo is not in the repo (yet?): https://github.com/Raikiri/LegitEngine
+The profiler ImGui component that you see in the lower left corner can be used as a standalone: https://github.com/Raikiri/LegitProfiler (you still need to provide it your own time stamps and you need to have a working ImGui setup to use it).},
+	urldate = {2024-10-24},
+	author = {{Alexander Sannikov}},
+	month = aug,
+	year = {2022},
+}
+
+@misc{simondev_exploring_2024,
+	title = {Exploring a {New} {Approach} to {Realistic} {Lighting}: {Radiance} {Cascades}},
+	shorttitle = {Exploring a {New} {Approach} to {Realistic} {Lighting}},
+	url = {https://www.youtube.com/watch?v=3so7xdZHKxw},
+	abstract = {Radiance Cascades are an innovative solution to global illumination from the devs of Path of Exile 2. Let's explore and implement their approach.
+
+Gamedev Courses: https://simondev.io
+Support me on Patreon:   / simondevyt  
+
+Follow me on:
+Instagram:   / beer\_and\_code  
+Twitter:   / iced\_coffee\_dev  
+
+In this video, we look through the recent Radiance Cascades paper from the devs of Path of Exile 2, explore the ideas behind their approach, and implement something similar.
+
+Reference:
+Paper: https://drive.google.com/file/d/1L6v1...
+Discord:   / discord  
+
+Other great explanations:
+GM Shaders: https://mini.gmshaders.com/p/radiance...
+Tmpvar: https://tmpvar.com/poc/radiance-casca...},
+	urldate = {2024-10-24},
+	author = {{SimonDev}},
+	month = jul,
+	year = {2024},
+}
+
+@misc{team_radiance_2020,
+	title = {Radiance vs. {Irradiance}: {The} {Differences}},
+	shorttitle = {Radiance vs. {Irradiance}},
+	url = {https://gamma-sci.com/2020/12/16/radiance-vs-irradiance-the-differences/},
+	abstract = {The display measurement industry is incredibly complex. Experts in the field have to be laser-focused all the time, so they don’t make mistakes. If you’ve ever talked to someone in […]},
+	language = {en-US},
+	urldate = {2025-01-12},
+	journal = {Gamma Scientific},
+	author = {Team, Gamma Editorial},
+	month = dec,
+	year = {2020},
+	file = {Snapshot:C\:\\Users\\remig\\Zotero\\storage\\7YC8G6WD\\radiance-vs-irradiance-the-differences.html:text/html},
+}
+
+@article{alexander_radiance_nodate,
+	title = {Radiance {Cascades}:  {A} {Novel} {Approach} to {Calculating} {Global}  {Illumination}[{WIP}]},
+	url = {https://drive.google.com/file/d/1L6v1_7HY2X-LV3Ofb6oyTIxgEaP4LOI6},
+	author = {Alexander, Sannikov},
+}
