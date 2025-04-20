@@ -11,9 +11,9 @@ foreach (_variableName ${_variableNames})
     message(STATUS "${_variableName}=${${_variableName}}")
 endforeach()
 
-add_compile_definitions(GLM_FORCE_RADIANS)
-add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
-add_compile_definitions(GLM_FORCE_LEFT_HANDED)
+#add_compile_definitions(GLM_FORCE_RADIANS)
+#add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
+#add_compile_definitions(GLM_FORCE_LEFT_HANDED)
 add_subdirectory(glm)
 
 set(ASSIMP_BUILD_TESTS OFF)

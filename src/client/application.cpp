@@ -975,6 +975,16 @@ void Application::runLoop()
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
+        if (InputManager::GetKeyUp(Keycode::F1))
+        {
+            Transform t = mainCamera->getTransform();
+            auto e = glm::eulerAngles(t.rotation);
+            printf("-------------- dump camera position ------------------------\n");
+            printf("position : %f, %f, %f\n", t.position.x, t.position.y, t.position.z);
+            printf("rotation : %f, %f, %f\n", e.x, e.y, e.z);
+            printf("scale : %f, %f, %f\n", t.scale.x, t.scale.y, t.scale.z);
+            break;
+        }
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
@@ -1000,5 +1010,9 @@ void Application::runLoop()
         }
 
         m_window->swapBuffers();
+
+        // static int a = 0;
+        // if (a++ > 1)
+        //     break;
     }
 }

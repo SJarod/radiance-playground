@@ -251,6 +251,21 @@ void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
 
 std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
 {
+    #ifdef GLM_FORCE_RADIANS
+    std::cout << "GLM_FORCE_RADIANS enabled" << std::endl;
+#else
+    std::cout << "GLM_FORCE_RADIANS disabled" << std::endl;
+#endif
+#ifdef GLM_FORCE_DEPTH_ZERO_TO_ONE
+    std::cout << "GLM_FORCE_DEPTH_ZERO_TO_ONE enabled" << std::endl;
+#else
+    std::cout << "GLM_FORCE_DEPTH_ZERO_TO_ONE disabled" << std::endl;
+#endif
+#ifdef GLM_FORCE_LEFT_HANDED
+    std::cout << "GLM_FORCE_LEFT_HANDED enabled" << std::endl;
+#else
+    std::cout << "GLM_FORCE_LEFT_HANDED disabled" << std::endl;
+#endif
     assert(m_device.lock());
 
     auto deviceHandle = m_device.lock()->getHandle();
