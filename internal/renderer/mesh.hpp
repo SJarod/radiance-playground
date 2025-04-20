@@ -11,7 +11,7 @@
 class Device;
 class Buffer;
 class Texture;
-class aiScene;
+class aiMesh;
 class MeshBuilder;
 
 class Mesh
@@ -87,9 +87,6 @@ class MeshBuilder
     void createVertexBuffer();
     void createIndexBuffer();
 
-    void setVerticesFromAiScene(const aiScene *pScene);
-    void setIndicesFromAiScene(const aiScene *pScene);
-
   public:
     MeshBuilder()
     {
@@ -120,6 +117,9 @@ class MeshBuilder
     {
         m_importerFlags = flags;
     }
+
+    void setVerticesFromAiMesh(const aiMesh* pMesh);
+    void setIndicesFromAiMesh(const aiMesh* pMesh);
 
     std::unique_ptr<Mesh> buildAndRestart();
 };

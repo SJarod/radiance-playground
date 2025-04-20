@@ -473,13 +473,17 @@ void ModelRenderState::updatePushConstants(const VkCommandBuffer& commandBuffer,
 void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer)
 {
     auto modelPtr = m_model.lock();
-    auto meshPtr = modelPtr->getMesh();
+    auto meshes = modelPtr->getMeshes();
 
-    VkBuffer vbos[] = {meshPtr->getVertexBufferHandle()};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, meshPtr->getIndexBufferHandle(), 0, VK_INDEX_TYPE_UINT16);
-    vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
+    for (uint32_t i = 0u; i < meshes.size(); i++)
+    {
+        auto meshPtr = meshes[i];
+        VkBuffer vbos[] = {meshPtr->getVertexBufferHandle()};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vbos, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, meshPtr->getIndexBufferHandle(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
+    }
 }
 
 void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)

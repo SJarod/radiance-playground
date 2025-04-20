@@ -73,27 +73,25 @@ void MeshBuilder::createIndexBuffer()
     stagingBuffer.reset();
 }
 
-void MeshBuilder::setVerticesFromAiScene(const aiScene *pScene)
+void MeshBuilder::setVerticesFromAiMesh(const aiMesh *pMesh)
 {
-    aiMesh *mesh = pScene->mMeshes[0];
-    for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
+    for (unsigned int i = 0; i < pMesh->mNumVertices; ++i)
     {
-        const aiVector3D pPos = mesh->mVertices[i];
-        const aiVector3D pNormal = mesh->mNormals[i];
+        const aiVector3D pPos = pMesh->mVertices[i];
+        const aiVector3D pNormal = pMesh->mNormals[i];
         aiVector3D pUV = aiVector3D(0.f, 0.f, 0.f);
-        if (mesh->HasTextureCoords(0))
-            pUV = mesh->mTextureCoords[0][i];
+        if (pMesh->HasTextureCoords(0))
+            pUV = pMesh->mTextureCoords[0][i];
 
         m_product->m_vertices.emplace_back(
             Vertex({pPos.x, pPos.y, pPos.z}, {pNormal.x, pNormal.y, pNormal.z}, {0.f, 0.f, 0.f, 1.f}, {pUV.x, pUV.y}));
     }
 }
-void MeshBuilder::setIndicesFromAiScene(const aiScene *pScene)
+void MeshBuilder::setIndicesFromAiMesh(const aiMesh *pMesh)
 {
-    aiMesh *mesh = pScene->mMeshes[0];
-    for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
+    for (unsigned int i = 0; i < pMesh->mNumFaces; ++i)
     {
-        const aiFace &Face = mesh->mFaces[i];
+        const aiFace &Face = pMesh->mFaces[i];
         assert(Face.mNumIndices == 3);
         m_product->m_indices.push_back(Face.mIndices[0]);
         m_product->m_indices.push_back(Face.mIndices[1]);
@@ -113,8 +111,8 @@ std::unique_ptr<Mesh> MeshBuilder::buildAndRestart()
             return nullptr;
         }
 
-        setVerticesFromAiScene(pScene);
-        setIndicesFromAiScene(pScene);
+        setVerticesFromAiMesh(pScene->mMeshes[0]);
+        setIndicesFromAiMesh(pScene->mMeshes[0]);
     }
 
     createVertexBuffer();

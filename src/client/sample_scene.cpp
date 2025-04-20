@@ -44,24 +44,16 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     mainSb.setCubemap(ctb.buildAndRestart());
     m_skybox = mainSb.buildAndRestart();
 
-    MeshBuilder mb;
-    MeshDirector md;
-    md.createAssimpMeshBuilder(mb);
-    mb.setDevice(device);
-    mb.setModelFilename("assets/viking_room.obj");
-    std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
-
-    TextureBuilder tb;
-    td.configureSRGBTextureBuilder(tb);
-    tb.setDevice(device);
-    tb.setTextureFilename("assets/viking_room.png");
-    mesh->setTexture(tb.buildAndRestart());
-
     ModelBuilder modelBuilder;
-    modelBuilder.setMesh(mesh);
-    modelBuilder.setName("Viking Room");
+    modelBuilder.setDevice(device);
+    modelBuilder.setModelFilename("assets/Sponza-master/sponza.obj");
+    modelBuilder.setName("Sponza");
+    std::shared_ptr<Model> loadedModel = modelBuilder.build();
+    Transform loadedModelTransform;
+    loadedModelTransform.scale = glm::vec3(0.05f);
+    loadedModel->setTransform(loadedModelTransform);
 
-    m_objects.push_back(modelBuilder.build());
+    m_objects.push_back(loadedModel);
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
     light->position = glm::vec3(-1.0, 0.0, 0.0);
@@ -92,6 +84,9 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
     };
+
+    MeshBuilder mb;
+    MeshDirector md;
     mb.setDevice(device);
     mb.setVertices(vertices);
     mb.setIndices(indices);
@@ -100,6 +95,8 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     const std::vector<unsigned char> imagePixels = {
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
     };
+
+    TextureBuilder tb;
     td.configureSRGBTextureBuilder(tb);
     tb.setDevice(device);
     tb.setImageData(imagePixels);

@@ -7,12 +7,13 @@
 
 class Mesh;
 class MeshBuilder;
+class Device;
 
 class Model 
 {
     friend class ModelBuilder;
 private:
-	std::shared_ptr<Mesh> m_mesh;
+	std::vector<std::shared_ptr<Mesh>> m_meshes;
 	Transform m_transform;
     std::string m_name = "default";
 
@@ -25,9 +26,17 @@ public:
     {
         return m_name;
     }
-    [[nodiscard]] const std::shared_ptr<Mesh>& getMesh() const 
+    [[nodiscard]] const std::shared_ptr<Mesh> getMesh(uint32_t meshIndex = 0u) const 
     {
-        return m_mesh;
+        if (meshIndex > m_meshes.size())
+            return nullptr;
+
+        return m_meshes[meshIndex];
+    }
+
+    [[nodiscard]] const std::vector<std::shared_ptr<Mesh>>& getMeshes() const
+    {
+        return m_meshes;
     }
 
 public:
@@ -46,20 +55,38 @@ class ModelBuilder
 {
 private:
     std::unique_ptr<Model> m_product;
-    std::shared_ptr<Mesh> m_mesh;
-    
+    std::vector<std::shared_ptr<Mesh>> m_meshes;
+    std::weak_ptr<Device> m_device;
+
     void restart()
     {
         m_product = std::unique_ptr<Model>(new Model);
     }
+
+    std::string m_modelFilename;
+    bool m_bLoadFromFile = false;
+
+    unsigned int m_importerFlags;
 
 public:
     ModelBuilder() 
     { 
         restart();
     }
-
-    void setMesh(const std::shared_ptr<Mesh> &mesh);
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        m_device = device;
+    }
+    void setModelFilename(const std::string& filename)
+    {
+        m_modelFilename = filename;
+        m_bLoadFromFile = true;
+    }
+    void setModelImporterFlags(unsigned int flags)
+    {
+        m_importerFlags = flags;
+    }
+    void setMesh(const std::shared_ptr<Mesh> &mesh, uint32_t meshIndex = 0u);
     void setName(const std::string& name);
     std::unique_ptr<Model> build();
 };
