@@ -10,7 +10,7 @@ class SwapChain;
 class Pipeline;
 class Mesh;
 class Light;
-class Probe;
+class ProbeGrid;
 class Texture;
 class Buffer;
 class CameraABC;
@@ -72,7 +72,7 @@ class RenderPhase
     void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState, uint32_t pooledFramebufferIndex);
 
     void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
-                          const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes) const;
+                          const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid) const;
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
     void swapBackBuffers(uint32_t pooledFramebufferIndex);

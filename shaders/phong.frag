@@ -1,5 +1,7 @@
 #version 450
 
+#define MAX_PROBE_COUNT 64
+
 vec3 lerp(in vec3 a, in vec3 b, in float t)
 {
 	return mix(a, b, t);
@@ -47,7 +49,7 @@ layout(location = 3) in vec3 fragPos;
 layout(location = 0) out vec4 oColor;
 
 layout(binding = 1) uniform sampler2D texSampler;
-layout(binding = 4) uniform samplerCube[8] irradianceMaps;
+layout(binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
 
 struct Probe
 {
@@ -56,6 +58,10 @@ struct Probe
 
 layout(std430, binding = 5) readonly buffer ProbesData
 {
+	ivec3 dimensions;
+	float pad0[1];
+	vec3 extent;
+	vec3 cornerPosition;
 	Probe probes[];
 };
 
@@ -123,19 +129,43 @@ void applySingleDirectionalLight(inout LightingResult fragLighting, in Direction
 
 void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal)
 {
-	const vec3 probePos000 = probes[0].position;
-	const vec3 probePos111 = probes[7].position;
+	const ivec3 indexBorders = dimensions - ivec3(1u);
+	const vec3 fragPosLocalToGrid = max(fragPos - cornerPosition, 0.0);
+	const ivec3 probeCornerIndex = ivec3(fragPosLocalToGrid / extent);
+
+	const ivec3 probe3DIndex000 = min(probeCornerIndex + ivec3(0, 0, 0), indexBorders);
+	const ivec3 probe3DIndex010 = min(probeCornerIndex + ivec3(0, 1, 0), indexBorders);
+	const ivec3 probe3DIndex100 = min(probeCornerIndex + ivec3(1, 0, 0), indexBorders);
+	const ivec3 probe3DIndex001 = min(probeCornerIndex + ivec3(0, 0, 1), indexBorders);
+	const ivec3 probe3DIndex110 = min(probeCornerIndex + ivec3(1, 1, 0), indexBorders);
+	const ivec3 probe3DIndex011 = min(probeCornerIndex + ivec3(0, 1, 1), indexBorders);
+	const ivec3 probe3DIndex101 = min(probeCornerIndex + ivec3(1, 0, 1), indexBorders);
+	const ivec3 probe3DIndex111 = min(probeCornerIndex + ivec3(1, 1, 1), indexBorders);
+
+	// 1DIndex = 3DIndex.x * dimensions.z + 3DIndex.y * dimensions.z * dimensions.x + 3DIndex.z
+	const ivec3 weights = ivec3(dimensions.z, dimensions.z * dimensions.x, 1);
+	const int probe1DIndex000 = int(dot(probe3DIndex000, weights));
+	const int probe1DIndex010 = int(dot(probe3DIndex010, weights));
+	const int probe1DIndex100 = int(dot(probe3DIndex100, weights));
+	const int probe1DIndex110 = int(dot(probe3DIndex110, weights));
+	const int probe1DIndex001 = int(dot(probe3DIndex001, weights));
+	const int probe1DIndex011 = int(dot(probe3DIndex011, weights));
+	const int probe1DIndex101 = int(dot(probe3DIndex101, weights));
+	const int probe1DIndex111 = int(dot(probe3DIndex111, weights));
+
+	const vec3 probePos000 = probes[probe1DIndex000].position;
+	const vec3 probePos111 = probes[probe1DIndex111].position;
 
 	const vec3 t = (fragPos - probePos000) / (probePos111 - probePos000);
 	
-	const vec3 irradiance000 = texture(irradianceMaps[0], normal).rgb;
-	const vec3 irradiance010 = texture(irradianceMaps[1], normal).rgb;
-	const vec3 irradiance100 = texture(irradianceMaps[2], normal).rgb;
-	const vec3 irradiance110 = texture(irradianceMaps[3], normal).rgb;
-	const vec3 irradiance001 = texture(irradianceMaps[4], normal).rgb;
-	const vec3 irradiance011 = texture(irradianceMaps[5], normal).rgb;
-	const vec3 irradiance101 = texture(irradianceMaps[6], normal).rgb;
-	const vec3 irradiance111 = texture(irradianceMaps[7], normal).rgb;
+	const vec3 irradiance000 = texture(irradianceMaps[probe1DIndex000], normal).rgb;
+	const vec3 irradiance010 = texture(irradianceMaps[probe1DIndex010], normal).rgb;
+	const vec3 irradiance100 = texture(irradianceMaps[probe1DIndex100], normal).rgb;
+	const vec3 irradiance110 = texture(irradianceMaps[probe1DIndex110], normal).rgb;
+	const vec3 irradiance001 = texture(irradianceMaps[probe1DIndex001], normal).rgb;
+	const vec3 irradiance011 = texture(irradianceMaps[probe1DIndex011], normal).rgb;
+	const vec3 irradiance101 = texture(irradianceMaps[probe1DIndex101], normal).rgb;
+	const vec3 irradiance111 = texture(irradianceMaps[probe1DIndex111], normal).rgb;
 	
 	vec3 interpIrradiance = trilerpClamped(irradiance000, irradiance010, irradiance100, irradiance110,
 									irradiance001, irradiance011, irradiance101, irradiance111, t);

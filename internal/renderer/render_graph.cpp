@@ -18,7 +18,7 @@ void RenderGraph::addRenderPhase(std::unique_ptr<RenderPhase> renderPhase)
 }
 
 void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<RenderPhase>> &toProcess, uint32_t imageIndex, VkRect2D renderArea, const CameraABC& mainCamera,
-    const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
+    const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
 {
     const VkSemaphore* lastAcquireSemaphore = inWaitSemaphore;
     for (int i = 0; i < toProcess.size(); ++i)
@@ -28,7 +28,7 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Rend
         {
             for (uint32_t poolIndex = 0u; poolIndex < currentPhase->getRenderPass()->getFramebufferPoolSize(); poolIndex++)
             {
-                currentPhase->recordBackBuffer(imageIndex, singleFrameRenderIndex, poolIndex, renderArea, mainCamera, lights, probes);
+                currentPhase->recordBackBuffer(imageIndex, singleFrameRenderIndex, poolIndex, renderArea, mainCamera, lights, probeGrid);
 
                 currentPhase->submitBackBuffer(lastAcquireSemaphore, poolIndex);
                 lastAcquireSemaphore = &currentPhase->getCurrentRenderSemaphore(poolIndex);
@@ -41,17 +41,17 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Rend
 }
 
 void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
-                                   const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes)
+                                   const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid)
 {
     const VkSemaphore *lastAcquireSemaphore = nullptr;
     if (m_shouldRenderOneTimePhases)
     {
-        processRenderPhaseChain(m_oneTimeRenderPhases, imageIndex, renderArea, mainCamera, lights, probes, nullptr, &lastAcquireSemaphore);
+        processRenderPhaseChain(m_oneTimeRenderPhases, imageIndex, renderArea, mainCamera, lights, probeGrid, nullptr, &lastAcquireSemaphore);
 
         m_shouldRenderOneTimePhases = false;
     }
 
-    processRenderPhaseChain(m_renderPhases, imageIndex, renderArea, mainCamera, lights, probes, lastAcquireSemaphore, nullptr);
+    processRenderPhaseChain(m_renderPhases, imageIndex, renderArea, mainCamera, lights, probeGrid, lastAcquireSemaphore, nullptr);
 }
 
 void RenderGraph::updateSwapchainOnRenderPhases(const SwapChain* swapchain)

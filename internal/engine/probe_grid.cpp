@@ -2,19 +2,17 @@
 
 std::unique_ptr<ProbeGrid> ProbeGridBuilder::build()
 {
-	const float xProbeSpacing = m_extent.x / static_cast<float>(m_xAxisProbeCount - 1u);
-	const float yProbeSpacing = m_extent.y / static_cast<float>(m_yAxisProbeCount - 1u);
-	const float zProbeSpacing = m_extent.z / static_cast<float>(m_zAxisProbeCount - 1u);
+	const glm::vec3 probeSpacing = m_product->m_extent / static_cast<glm::vec3>(m_product->m_dimensions - glm::uvec3(1u));
 
-	for (uint32_t i = 0u; i < m_xAxisProbeCount; i++)
+	for (uint32_t i = 0u; i < m_product->m_dimensions.y; i++)
 	{
-		float y = m_cornerPosition.y + i * yProbeSpacing;
-		for (uint32_t j = 0u; j < m_yAxisProbeCount; j++)
+		const float y = m_product->m_cornerPosition.y + i * probeSpacing.y;
+		for (uint32_t j = 0u; j < m_product->m_dimensions.x; j++)
 		{
-			float x = m_cornerPosition.x + j * xProbeSpacing;
-			for (uint32_t k = 0u; k < m_zAxisProbeCount; k++)
+			const float x = m_product->m_cornerPosition.x + j * probeSpacing.x;
+			for (uint32_t k = 0u; k < m_product->m_dimensions.z; k++)
 			{
-				float z = m_cornerPosition.z + k * xProbeSpacing;
+				const float z = m_product->m_cornerPosition.z + k * probeSpacing.z;
 				m_product->m_probes.push_back(std::make_unique<Probe>(glm::vec3(x, y, z)));
 			}
 		}

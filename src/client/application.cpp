@@ -32,7 +32,7 @@
 
 #include "application.hpp"
 
-constexpr int maxProbeCount = 8;
+constexpr uint32_t maxProbeCount = 64u;
 
 Application::Application()
 {
@@ -661,6 +661,7 @@ void Application::runLoop()
 
             mrsb.setEnvironmentMaps(irradianceMaps);
             captureMrsb.setEnvironmentMaps(irradianceMaps);
+            mrsb.setMaxProbeCount(maxProbeCount);
         }
         else
         {
@@ -676,6 +677,7 @@ void Application::runLoop()
 
             mrsb.setEnvironmentMaps(irradianceMaps);
             captureMrsb.setEnvironmentMaps(irradianceMaps);
+            mrsb.setMaxProbeCount(maxProbeCount);
         }
 
         m_opaquePhase->registerRenderStateToAllPool(mrsb.build());
@@ -850,14 +852,13 @@ void Application::runLoop()
     CameraABC *mainCamera = m_scene->getMainCamera();
 
     ProbeGridBuilder gridBuilder;
-    const float gridSize = 0.5f;
-    gridBuilder.setXAxisProbeCount(2u);
-    gridBuilder.setYAxisProbeCount(2u);
-    gridBuilder.setZAxisProbeCount(2u);
+    const float gridSize = 10.f;
+    gridBuilder.setXAxisProbeCount(4u);
+    gridBuilder.setYAxisProbeCount(4u);
+    gridBuilder.setZAxisProbeCount(4u);
     gridBuilder.setExtent(glm::vec3(gridSize));
     gridBuilder.setCornerPosition(-0.5f * glm::vec3(gridSize));
     std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
-    const std::vector<std::unique_ptr<Probe>>& probes = grid->getProbes();
 
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
@@ -878,7 +879,7 @@ void Application::runLoop()
                 .offset = {0, 0},
                 .extent = m_window->getSwapChain()->getExtent(),
             },
-            *mainCamera, lights, probes);
+            *mainCamera, lights, grid);
         if (res == VK_ERROR_OUT_OF_DATE_KHR)
         {
             // TODO : recreate framebuffers

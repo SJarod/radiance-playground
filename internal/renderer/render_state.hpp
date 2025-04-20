@@ -16,7 +16,7 @@ class Mesh;
 class Model;
 class Skybox;
 class Light;
-class Probe;
+class ProbeGrid;
 class ModelRenderStateBuilder;
 class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
@@ -37,6 +37,10 @@ class RenderStateABC
             glm::vec3 position;
         };
 
+        glm::uvec3 dimensions;
+        float pad0[1];
+        glm::vec3 extent;
+        glm::vec3 cornerPosition;
         Probe probes[8];
     };
 
@@ -106,7 +110,7 @@ class RenderStateABC
                                       const std::vector<std::shared_ptr<Light>> &lights) { }
 
     virtual void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                                      const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled);
+                                      const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
@@ -156,7 +160,7 @@ class ModelRenderState : public RenderStateABC
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
     
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled) override;
+        const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 };
 
 class ModelRenderStateBuilder : public RenderStateBuilderI
@@ -171,6 +175,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
 
     std::weak_ptr<Texture> m_texture;
     std::vector<std::weak_ptr<Texture>> m_environmentMaps;
+    uint32_t m_maxProbeCount = 8u;
 
     bool m_probeDescriptorEnable = true;
     bool m_lightDescriptorEnable = true;
@@ -208,6 +213,10 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_environmentMaps.reserve(textures.size());
         for (const std::shared_ptr<Texture>& texture : textures)
             m_environmentMaps.push_back(texture);
+    }
+    void setMaxProbeCount(uint32_t maxProbeCount)
+    {
+        m_maxProbeCount = maxProbeCount;
     }
     void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
@@ -316,7 +325,7 @@ class SkyboxRenderState : public RenderStateABC
 
   public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                              const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled) override;
+                              const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
 };
@@ -393,7 +402,7 @@ private:
 
 public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled) override;
+        const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
 };

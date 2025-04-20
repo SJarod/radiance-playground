@@ -8,7 +8,7 @@
 class RenderPhase;
 class CameraABC;
 class Light;
-class Probe;
+class ProbeGrid;
 class SwapChain;
 
 /**
@@ -29,11 +29,11 @@ class RenderGraph
 
     void processRenderPhaseChain(const std::vector<std::unique_ptr<RenderPhase>> &toProcess, 
         uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
-        const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes,
+        const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid,
         const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore);
 
     void processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
-                          const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes);
+                          const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid);
 
     void swapAllRenderPhasesBackBuffers();
 

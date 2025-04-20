@@ -22,8 +22,6 @@
 
 #include "render_state.hpp"
 
-constexpr int maxProbeCount = 8;
-
 const glm::vec3 captureViewCenter[] =
 {
    glm::vec3(-1.f, 0.f, 0.f),
@@ -68,7 +66,7 @@ RenderStateABC::~RenderStateABC()
 }
 
 void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                                          const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
+                                          const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
@@ -82,7 +80,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         }
         else 
         {
-            const glm::vec3 probePosition = probes[pooledFramebufferIndex]->position;
+            const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
             mvpData->proj = capturePartialProj;
             mvpData->proj[1][1] *= -1;
@@ -94,9 +92,9 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
 
     if (m_probeStorageBuffersMapped.size() > 0)
     {
+        const std::vector<std::unique_ptr<Probe>> & probes = probeGrid->getProbes();
         ProbeContainer* probeContainer = static_cast<ProbeContainer*>(m_probeStorageBuffersMapped[backBufferIndex]);
 
-        int probeCount = 0;
         for (int i = 0; i < probes.size(); i++)
         {
             const Probe* probe = probes[i].get();
@@ -105,9 +103,12 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
                 .position = probe->position,
             };
 
-            probeContainer->probes[probeCount] = probeData;
-            probeCount++;
+            probeContainer->probes[i] = probeData;
         }
+
+        probeContainer->dimensions = probeGrid->getDimensions();
+        probeContainer->extent = probeGrid->getExtent();
+        probeContainer->cornerPosition = probeGrid->getCornerPosition();
     }
 
     PointLightContainer* pointLightContainer = nullptr;
@@ -418,8 +419,8 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         if (m_environmentMaps.size() > 0)
         {
             // Max probe count per draw (may be higher)
-            envMapImageInfos.reserve(maxProbeCount);
-            for (int i = 0; i < maxProbeCount; i++)
+            envMapImageInfos.reserve(m_maxProbeCount);
+            for (int i = 0; i < m_maxProbeCount; i++)
             {
                 std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
 
@@ -481,9 +482,9 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
-void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
+void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera, const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, captureModeEnabled);
+    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, captureModeEnabled);
 
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
@@ -655,7 +656,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
 }
 
 void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                                             const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
+                                             const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
     MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
     mvpData->model = glm::identity<glm::mat4>();
@@ -667,7 +668,7 @@ void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singl
     }
     else
     {
-        const glm::vec3 probePosition = probes[pooledFramebufferIndex]->position;
+        const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
         mvpData->proj = capturePartialProj;
         mvpData->proj[1][1] *= -1;
@@ -803,7 +804,7 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
 }
 
 void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
-    const std::vector<std::shared_ptr<Light>>& lights, const std::vector<std::unique_ptr<Probe>> &probes, bool captureModeEnabled)
+    const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
     uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
 
@@ -817,8 +818,8 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, ui
     }
     else
     {
-        const glm::vec3& probePosition = probes[pooledFramebufferIndex]->position;
-        
+        const glm::vec3& probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
+
         mvpData->proj = capturePartialProj;
         mvpData->proj[1][1] *= -1;
 

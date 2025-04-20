@@ -75,7 +75,7 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
 }
 
 void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
-                                   const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes) const
+                                   const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid) const
 {
     if (singleFrameRenderIndex > 0)
     {
@@ -126,7 +126,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     {
         RenderStateABC* renderState = renderStates[i].get();
         renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probes, m_isCapturePhase);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, m_isCapturePhase);
         renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
         if (const auto &pipeline = renderState->getPipeline())

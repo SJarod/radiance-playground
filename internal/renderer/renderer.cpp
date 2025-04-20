@@ -52,14 +52,14 @@ VkResult Renderer::presentBackBuffer(uint32_t imageIndex)
 }
 
 VkResult Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
-                               const std::vector<std::shared_ptr<Light>> &lights, const std::vector<std::unique_ptr<Probe>> &probes)
+                               const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid)
 {
     uint32_t imageIndex;
     VkResult res = acquireNextSwapChainImage(imageIndex);
     if (res != VK_SUCCESS)
         return res;
 
-    m_renderGraph->processRendering(imageIndex, renderArea, mainCamera, lights, probes);
+    m_renderGraph->processRendering(imageIndex, renderArea, mainCamera, lights, probeGrid);
     res = presentBackBuffer(imageIndex);
     if (res != VK_SUCCESS)
         return res;
