@@ -1,0 +1,156 @@
+\documentclass{rapportCS}
+\usepackage{lipsum}
+\title{Template - Mémoire Game Programming} %Thanks for Rapport CentraleSupelec - Template, By Axel Poupart-Lafarge
+\begin{document}
+
+%----------- Informations du rapport ---------
+
+%\logoentreprise{logos/entreprise.png} % METTRE ICI le logo de l'équipe d'accueil 
+
+\titre{Titre du Projet de Spécialisation Fin d'étude} % Titre du fichier
+
+
+\mention{Game Programming} % Nom de la formation
+\master{Option GPU IA ou GFX} % Nom de l'option choisie
+\trigrammemention{MGP2 IA} % Pour le bas de la page
+
+
+\eleve{Prénom Nom}
+
+\dates{date début - date fin}
+
+% Informations tuteurs ISART
+\tuteuruniv{
+    \textsc{Prénom Nom} \\
+    p.nom@isartdigital.com
+} 
+
+\tuteurentreprise{
+    \textsc{Prénom Nom} \\
+    prénom.nom@entreprise.com \\
+}
+
+%----------- Initialisation -------------------
+        
+\fairemarges %Afficher les marges
+\fairepagedegarde %Créer la page de garde
+
+%----------- Abstract -------------------
+\vspace*{\stretch{1}}
+\begin{center}
+	\begin{abstract}
+ 
+Le rapport doit faire entre 20 et 30 pages et être rédigé en anglais. Les figures et tableaux doivent être référencés dans le texte. 
+
+Vous devez faire deux résumés, un en anglais, l'autre en français qui seront inclus sur la première page du document.
+
+Nous vous rappellons que votre document présente les travaux effectués sur la période de votre projet d'applicaton (PFEM2).
+
+Il doit avoir une structure similaire à celle de la table de matière ci-dessous. 
+
+       \\
+        \rule{\linewidth}{0.2 mm} \\[0.4 cm]
+        \begin{center}\textbf{Summary :}\end{center} 
+        
+        Write your abstract in English here
+
+        
+    \end{abstract}
+\end{center}
+\vspace*{\stretch{1}}
+\newpage
+
+%------------ Table des matières ----------------
+\begingroup % start a TeX group
+\color{blue}
+\tabledematieres % Créer la table de matières
+\endgroup
+
+%------------ Corps du rapport ----------------
+
+
+%------------ Introduction ----------------
+
+\section{Introduction} 
+% Effacer les lignes suivantes et écrire le texte souhaité
+
+L'introduction sert à situer le contexte du travail. Pourquoi est-ce intéressant (expliciter la problématique du projet)  ? Qui a travaillé avant sur ce sujet (cette section doit contenir la majeure partie des références bibliographiques) ? En quoi ce travail est original par rapport à la problématique soulignée et quelle solution apporte-t-il ? Quelle
+démarche avons-nous suivi ? 
+
+
+\section{La méthodologie}
+Cette section représente le fond de votre rapport (la partie la plus importante). C'est ici que la démarche scientifique et technique doit être scrupuleusement suivie. De la rigueur, de la rigueur, et de la clarté. \\
+Quels modèles ou algortihmes ont été utilisé ? 
+Quels outils logiciels, matériels, et langages de programmation avons nous utilisé ?
+présenter l'architecture de votre code via un organigramme ou avec des pseudo-codes (ne pas copier coller de codes brutes) ? 
+Comment votre méthode a été testé et validé ? 
+
+
+\section{Les résultats, la discussion}
+\begin{enumerate}
+    \item Présentez vos résultats de manière claire et concise
+    \item \textbf{Utilisation des Figures et Tables} : Appuyez vos résultats avec des graphiques, des figures et des tableaux. Numérotez-les séquentiellement et faites-y référence dans le texte (par exemple : « comme illustré dans la Figure \ref{fig:my_label} »). Chaque figure/table doit être accompagnée d’une légende claire et descriptive.
+\item \textbf{Données Quantitatives et Qualitatives} : Incluez à la fois des résultats numériques (si applicable, comme le coût d'IA par frame) et des observations qualitatives, selon la nature de votre sujet.
+
+\item \textbf{Discussion Critique} : Analysez la pertinence de vos résultats et montrer la solution qu'ils ont apporté pour l'application de votre projet. Discuter aussi les limitations de l'approche et méthode que vous avez utilisées.  
+
+\end{enumerate}
+
+
+
+\section{Les conclusions, future perspectives}
+Les conclusions doivent déjà apparaître dans le résumé et le corps de l’article (dans cette section). Ici, on doit BRIEVEMENT rappeler la méthode utilisée et EXPLICITER les conclusions trouvées (oublier les détails et faire sortir l'essentiel). Ensuite, ouvrez des futures perspectives. 
+
+
+\section{Les références bibliographiques}
+Il existe plusieurs styles pour les références bibliographiques. Il en existe même trop : raison de plus pour ne pas en inventer davantage.
+Privilégiez BiB*TEX pour gérer le formattage des références automatiquement (vous n’aurez pas à vous occuper du style). 
+
+Les références (articles, blogs, pages web) doivent être mentionnées dans le texte par une balise \cite{Addoum2021} \cite{Addoum2021-bis} et fait le lien avec la citation incluse dans la bibliographie.
+
+
+\bibliography{Bib/myBib} % This is required to be included
+\bibliographystyle{unsrt} % vous pouvez utiliser d'autres styles pour lister vos références (regardez sur internet) 
+
+\newpage
+
+
+
+
+
+%------------- Commandes utiles ----------------
+
+\section{Quelques commandes}
+
+Voici quelques commandes utiles :
+
+
+
+\subsection{Insertion de figures}
+%------ Pour insérer et citer une image centralisée -----
+% Le premier argument est le chemin pour la photo
+% Le deuxième est la hauteur de la photo
+% Le troisième la légende
+% Le quatrième le label
+Ici, je cite l'image \ref{fig:my_label} dans le texte.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.4\textwidth]{logos/Logo_ISART.png}
+    \caption{Mettre une légende explicite à votre figure}
+    \label{fig:my_label}
+\end{figure}
+
+\subsection{Insertion d'équation}
+%------- Pour insérer et citer une équation --------------
+
+\begin{equation} \label{eq: exemple}
+\frac{\delta}{\theta} - \sqrt{\rho}  = \int f(x)
+\end{equation}
+
+L'équation \ref{eq: exemple} est citée ici. 
+
+
+
+
+\end{document}
+  
