@@ -54,6 +54,8 @@ class RenderStateABC
             float specularPower;
             glm::vec3 position;
             float pad0[1];
+            glm::vec3 attenuation;
+            float pad1[1];
         };
 
         int pointLightCount;

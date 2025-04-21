@@ -73,6 +73,8 @@ struct PointLight
 	float specularPower;
 	vec3 position;
 	float pad0[1];
+	vec3 attenuation;
+	float pad1[1];
 };
 
 layout(std430, set = 0, binding = 2) readonly buffer PointLightsData
@@ -111,10 +113,17 @@ struct LightingResult
 
 void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 normal)
 {
-	fragLighting.ambient = vec3(0.1);
-	vec3 lightDir = normalize(pointLight.position - fragPos);
-	float diff = max(dot(normal, lightDir), 0.0);
-	fragLighting.diffuse += diff * pointLight.diffuseColor * pointLight.diffusePower;
+	const vec3 fragPosToLightPos = pointLight.position - fragPos;
+	const float lightDist = length(fragPosToLightPos);
+	const vec3 lightDir = fragPosToLightPos / lightDist;
+
+	const vec3 lightAttenuationWeights = vec3(1.0, lightDist, lightDist * lightDist);
+
+	// Get attenuation (c + l * d + q * d^2)
+	const float diffuseAttenuation = dot(pointLight.attenuation, lightAttenuationWeights);
+
+	float diffuseIntensity = max(dot(normal, lightDir), 0.0);
+	fragLighting.diffuse += diffuseIntensity * pointLight.diffuseColor * pointLight.diffusePower / diffuseAttenuation;
 	fragLighting.specular += vec3(0.0);
 }
 
@@ -180,7 +189,7 @@ void main()
 
 	vec3 viewDirection = normalize(fragPos - viewPos);
 
-	LightingResult fragLighting = { vec3(0.2), vec3(0.0), vec3(0.0) };
+	LightingResult fragLighting = { vec3(0.0), vec3(0.0), vec3(0.0) };
 
 	for (int i = 0; i < pointLightCount; i++)
 	{

@@ -22,6 +22,7 @@ class PointLight : public Light
 {
 	public:
 		glm::vec3 position;
+		glm::vec3 attenuation = glm::vec3(0.f, 0.f, 1.f);
 };
 
 class DirectionalLight : public Light

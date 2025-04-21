@@ -134,6 +134,7 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
                     .specularColor = pointLight->specularColor,
                     .specularPower = pointLight->specularPower,
                     .position = pointLight->position,
+                    .attenuation = pointLight->attenuation,
                 };
 
                 pointLightContainer->pointLights[pointLightCount] = pointLightData;
