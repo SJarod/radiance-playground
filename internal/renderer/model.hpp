@@ -66,7 +66,7 @@ private:
     std::string m_modelFilename;
     bool m_bLoadFromFile = false;
 
-    unsigned int m_importerFlags;
+    unsigned int m_importerFlags = 0x00000000;
 
 public:
     ModelBuilder() 

@@ -28,6 +28,8 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
 
     if (m_bLoadFromFile)
     {
+        stbi_set_flip_vertically_on_load(true);
+
         int texWidth, texHeight, texChannels;
         stbi_uc *textureData =
             stbi_load(m_textureFilename.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);

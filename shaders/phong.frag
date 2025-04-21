@@ -120,7 +120,6 @@ void applySinglePointLight(inout LightingResult fragLighting, in PointLight poin
 
 void applySingleDirectionalLight(inout LightingResult fragLighting, in DirectionalLight directionalLight, in vec3 normal)
 {
-	fragLighting.ambient = vec3(0.1);
 	vec3 lightDir = normalize(directionalLight.direction);
 	float diff = max(dot(normal, lightDir), 0.0);
 	fragLighting.diffuse += diff * directionalLight.diffuseColor * directionalLight.diffusePower;
@@ -181,7 +180,7 @@ void main()
 
 	vec3 viewDirection = normalize(fragPos - viewPos);
 
-	LightingResult fragLighting = { vec3(0.0), vec3(0.0), vec3(0.0) };
+	LightingResult fragLighting = { vec3(0.2), vec3(0.0), vec3(0.0) };
 
 	for (int i = 0; i < pointLightCount; i++)
 	{
