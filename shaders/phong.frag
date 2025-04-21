@@ -48,15 +48,15 @@ layout(location = 3) in vec3 fragPos;
 
 layout(location = 0) out vec4 oColor;
 
-layout(binding = 1) uniform sampler2D texSampler;
-layout(binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
+layout(set = 1, binding = 1) uniform sampler2D texSampler;
+layout(set = 0, binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
 
 struct Probe
 {
 	vec3 position;
 };
 
-layout(std430, binding = 5) readonly buffer ProbesData
+layout(std430, set = 0, binding = 5) readonly buffer ProbesData
 {
 	ivec3 dimensions;
 	float pad0[1];
@@ -75,7 +75,7 @@ struct PointLight
 	float pad0[1];
 };
 
-layout(std430, binding = 2) readonly buffer PointLightsData
+layout(std430, set = 0, binding = 2) readonly buffer PointLightsData
 {
 	int pointLightCount;
 	PointLight pointLights[];
@@ -91,7 +91,7 @@ struct DirectionalLight
 	float pad0[1];
 };
 
-layout(std430, binding = 3) readonly buffer DirectionalLightsData
+layout(std430, set = 0, binding = 3) readonly buffer DirectionalLightsData
 {
 	int directionalLightCount;
 	DirectionalLight directionalLights[];

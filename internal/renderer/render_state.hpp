@@ -88,7 +88,8 @@ class RenderStateABC
     std::shared_ptr<Pipeline> m_pipeline;
 
     VkDescriptorPool m_descriptorPool;
-    std::vector<VkDescriptorSet> m_descriptorSets;
+    std::vector<VkDescriptorSet> m_instanceDescriptorSets;
+    std::vector<std::vector<VkDescriptorSet>> m_materialDescriptorSetsPerSubObject;
     std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
     std::vector<void *> m_mvpUniformBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_probeStorageBuffers;
@@ -98,8 +99,13 @@ class RenderStateABC
     std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
     std::vector<void *> m_directionalLightStorageBuffersMapped;
 
-    DescriptorSetUpdatePred m_descriptorSetUpdatePredPerFrame = nullptr;
-    DescriptorSetUpdatePred m_descriptorSetUpdatePred = nullptr;
+    DescriptorSetUpdatePred m_instanceDescriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_instanceDescriptorSetUpdatePred = nullptr;
+    DescriptorSetUpdatePred m_materialDescriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_materialDescriptorSetUpdatePred = nullptr;
+
+    bool m_instanceDescriptorSetEnable = true;
+    bool m_materialDescriptorSetEnable = true;
 
     RenderStateABC() = default;
 
@@ -114,8 +120,9 @@ class RenderStateABC
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
-    virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t imageIndex);
-    virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) = 0;
+    virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex, uint32_t imageIndex);
+    virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) = 0;
+    virtual uint32_t getSubObjectCount() const = 0;
 
   public:
     [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const
@@ -139,8 +146,12 @@ class RenderStateBuilderI
     virtual void addPoolSize(VkDescriptorType poolSizeType) = 0;
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
-    virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
-    virtual void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+    virtual void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
+    virtual void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+    virtual void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
+    virtual void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+    virtual void setInstanceDescriptorEnable(bool enable) = 0;
+    virtual void setMaterialDescriptorEnable(bool enable) = 0;
 
     virtual std::unique_ptr<RenderStateABC> build() = 0;
 };
@@ -157,10 +168,12 @@ class ModelRenderState : public RenderStateABC
   public:
     void updatePushConstants(const VkCommandBuffer& commandBuffer, uint32_t imageIndex, uint32_t singleFrameRenderIndex, const CameraABC& camera,
           const std::vector<std::shared_ptr<Light>>& lights) override;
-    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
     
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
         const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
+
+    uint32_t getSubObjectCount() const override;
 };
 
 class ModelRenderStateBuilder : public RenderStateBuilderI
@@ -175,7 +188,6 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
 
     std::weak_ptr<Texture> m_texture;
     std::vector<std::weak_ptr<Texture>> m_environmentMaps;
-    uint32_t m_maxProbeCount = 8u;
 
     bool m_probeDescriptorEnable = true;
     bool m_lightDescriptorEnable = true;
@@ -214,19 +226,30 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         for (const std::shared_ptr<Texture>& texture : textures)
             m_environmentMaps.push_back(texture);
     }
-    void setMaxProbeCount(uint32_t maxProbeCount)
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
-        m_maxProbeCount = maxProbeCount;
+        m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
-    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+        m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePred = pred;
+        m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
-
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePred = pred;
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+        m_product->m_instanceDescriptorSetEnable = enable;
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+        m_product->m_materialDescriptorSetEnable = enable;
+    }
 
     void setModel(std::shared_ptr<Model> mesh)
     {
@@ -262,7 +285,9 @@ class ImGuiRenderState : public RenderStateABC
     friend ImGuiRenderStateBuilder;
 
   public:
-    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
+
+    uint32_t getSubObjectCount() const override { return 1u; }
 };
 
 class ImGuiRenderStateBuilder : public RenderStateBuilderI
@@ -303,15 +328,30 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     void setTexture(std::weak_ptr<Texture> texture) override
     {
     }
-    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+        m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
-    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePred = pred;
+        m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
+    }
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePred = pred;
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+        m_product->m_instanceDescriptorSetEnable = enable;
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+        m_product->m_materialDescriptorSetEnable = enable;
+    }
 
     std::unique_ptr<RenderStateABC> build() override;
 };
@@ -327,7 +367,9 @@ class SkyboxRenderState : public RenderStateABC
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
                               const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
-    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
+
+    uint32_t getSubObjectCount() const override { return 1u; }
 };
 
 class SkyboxRenderStateBuilder : public RenderStateBuilderI
@@ -370,15 +412,30 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
-    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+        m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
-    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePred = pred;
+        m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
+    }
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePred = pred;
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+        m_product->m_instanceDescriptorSetEnable = enable;
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+        m_product->m_materialDescriptorSetEnable = enable;
+    }
 
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {
@@ -404,7 +461,9 @@ public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
         const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
-    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer) override;
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex) override;
+
+    uint32_t getSubObjectCount() const override { return 1u; }
 };
 
 class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
@@ -447,15 +506,30 @@ public:
     {
         m_texture = texture;
     }
-    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePredPerFrame = pred;
+        m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
-    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
-        m_product->m_descriptorSetUpdatePred = pred;
+        m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
+    }
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePred = pred;
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+        m_product->m_instanceDescriptorSetEnable = enable;
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+        m_product->m_materialDescriptorSetEnable = enable;
+    }
 
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {

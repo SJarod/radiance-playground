@@ -125,17 +125,20 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     for (int i = 0; i < renderStates.size(); ++i)
     {
         RenderStateABC* renderState = renderStates[i].get();
-        renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
 
-        if (const auto &pipeline = renderState->getPipeline())
+        if (const auto& pipeline = renderState->getPipeline())
         {
             pipeline->recordBind(commandBuffer, imageIndex, renderArea);
         }
 
-        renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, m_backBufferIndex);
-        renderState->recordBackBufferDrawObjectCommands(commandBuffer);
+        renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
+        for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
+        {
+            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
+            renderState->recordBackBufferDrawObjectCommands(commandBuffer, subObjectIndex);
+        }
     }
 
     vkCmdEndRenderPass(commandBuffer);

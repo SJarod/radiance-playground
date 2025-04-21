@@ -69,7 +69,7 @@ std::unique_ptr<Model> ModelBuilder::build()
                 auto loadedTextureIt = loadedTextures.find(texturePath);
                 if (loadedTextureIt != loadedTextures.end())
                 {
-                    const auto &[texturePath, meshTexture] = *loadedTextureIt;
+                    meshTexture = loadedTextureIt->second;
                 }
                 else
                 {

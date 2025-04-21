@@ -7,7 +7,7 @@ layout(location = 3) in vec3 fragPos;
 
 layout(location = 0) out vec4 oColor;
 
-layout(binding = 4) uniform samplerCube[1] environmentMaps;
+layout(set = 0, binding = 4) uniform samplerCube[1] environmentMaps;
 
 layout(push_constant, std430) uniform pc
 {

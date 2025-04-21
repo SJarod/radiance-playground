@@ -442,45 +442,47 @@ void Application::runLoop()
 
     PipelineDirector irradianceConvolutionPd;
     irradianceConvolutionPd.createColorDepthRasterizerBuilder(irradianceConvolutionPb);
-    irradianceConvolutionPb.setUniformDescriptorPack(irradianceConvolutionUdb.buildAndRestart());
+    irradianceConvolutionPb.addUniformDescriptorPack(irradianceConvolutionUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> irradianceConvolutionPipeline = irradianceConvolutionPb.build();
 
     // material
-    UniformDescriptorBuilder phongUdb;
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    UniformDescriptorBuilder phongInstanceUdb;
+    phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
     });
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-    });
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-    phongUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    UniformDescriptorBuilder phongMaterialUdb;
+    phongMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
@@ -499,44 +501,47 @@ void Application::runLoop()
 
     PipelineDirector phongPd;
     phongPd.createColorDepthRasterizerBuilder(phongPb);
-    phongPb.setUniformDescriptorPack(phongUdb.buildAndRestart());
+    phongPb.addUniformDescriptorPack(phongInstanceUdb.buildAndRestart());
+    phongPb.addUniformDescriptorPack(phongMaterialUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> phongPipeline = phongPb.build();
 
-    UniformDescriptorBuilder phongCaptureUdb;
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    UniformDescriptorBuilder phongCaptureInstanceUdb;
+    phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
         });
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-    phongCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    UniformDescriptorBuilder phongCaptureMaterialUdb;
+        phongCaptureMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
@@ -555,7 +560,8 @@ void Application::runLoop()
 
     PipelineDirector phongCapturePd;
     phongCapturePd.createColorDepthRasterizerBuilder(phongCapturePb);
-    phongCapturePb.setUniformDescriptorPack(phongCaptureUdb.buildAndRestart());
+    phongCapturePb.addUniformDescriptorPack(phongCaptureInstanceUdb.buildAndRestart());
+    phongCapturePb.addUniformDescriptorPack(phongCaptureMaterialUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> phongCapturePipeline = phongCapturePb.build();
 
@@ -587,7 +593,7 @@ void Application::runLoop()
 
     PipelineDirector environmentMapPd;
     environmentMapPd.createColorDepthRasterizerBuilder(environmentMapPb);
-    environmentMapPb.setUniformDescriptorPack(environmentMapUdb.buildAndRestart());
+    environmentMapPb.addUniformDescriptorPack(environmentMapUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> environmentMapPipeline = environmentMapPb.build();
 
@@ -619,7 +625,7 @@ void Application::runLoop()
 
     PipelineDirector environmentMapCapturePd;
     environmentMapCapturePd.createColorDepthRasterizerBuilder(environmentMapCapturePb);
-    environmentMapCapturePb.setUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
+    environmentMapCapturePb.addUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> environmentMapCapturePipeline = environmentMapCapturePb.build();
 
@@ -631,24 +637,23 @@ void Application::runLoop()
         ModelRenderStateBuilder mrsb;
         mrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.setDevice(mainDevice);
-        mrsb.setTexture(objects[i]->getMesh()->getTexture());
      
         ModelRenderStateBuilder captureMrsb;
         captureMrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         captureMrsb.setDevice(mainDevice);
-        captureMrsb.setTexture(objects[i]->getMesh()->getTexture());
 
         mrsb.setModel(objects[i]);
         captureMrsb.setModel(objects[i]);
@@ -661,7 +666,6 @@ void Application::runLoop()
 
             mrsb.setEnvironmentMaps(irradianceMaps);
             captureMrsb.setEnvironmentMaps(irradianceMaps);
-            mrsb.setMaxProbeCount(maxProbeCount);
         }
         else
         {
@@ -677,7 +681,6 @@ void Application::runLoop()
 
             mrsb.setEnvironmentMaps(irradianceMaps);
             captureMrsb.setEnvironmentMaps(irradianceMaps);
-            mrsb.setMaxProbeCount(maxProbeCount);
         }
 
         m_opaquePhase->registerRenderStateToAllPool(mrsb.build());
@@ -709,7 +712,7 @@ void Application::runLoop()
     skyboxPb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
-    skyboxPb.setUniformDescriptorPack(skyboxUdb.buildAndRestart());
+    skyboxPb.addUniformDescriptorPack(skyboxUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
 
@@ -738,7 +741,7 @@ void Application::runLoop()
     skyboxCapturePb.setExtent(m_window->getSwapChain()->getExtent());
     skyboxCapturePb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
 
-    skyboxCapturePb.setUniformDescriptorPack(skyboxOpaqueUdb.buildAndRestart());
+    skyboxCapturePb.addUniformDescriptorPack(skyboxOpaqueUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> skyboxCapturePipeline = skyboxCapturePb.build();
 
@@ -800,7 +803,7 @@ void Application::runLoop()
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
     quadRsb.setModel(postProcessQuadModel);
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    quadRsb.setDescriptorSetUpdatePred([&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
+    quadRsb.setMaterialDescriptorSetUpdatePred([&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
         auto deviceHandle = mainDevice->getHandle();
         const auto &sampler = m_window->getSwapChain()->getSampler();
         if (!sampler.has_value())
@@ -841,7 +844,7 @@ void Application::runLoop()
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
-    postProcessPb.setUniformDescriptorPack(postProcessUdb.buildAndRestart());
+    postProcessPb.addUniformDescriptorPack(postProcessUdb.buildAndRestart());
     quadRsb.setPipeline(postProcessPb.build());
     m_postProcessPhase->registerRenderStateToAllPool(quadRsb.build());
 

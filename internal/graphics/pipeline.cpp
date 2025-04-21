@@ -59,7 +59,12 @@ Pipeline::~Pipeline()
     auto deviceHandle = m_device.lock()->getHandle();
 
     vkDestroyPipelineLayout(deviceHandle, m_pipelineLayout, nullptr);
-    vkDestroyDescriptorSetLayout(deviceHandle, m_descriptorSetLayout, nullptr);
+
+    for (uint32_t i = 0u; i < m_descriptorSetLayouts.size(); i++)
+    {
+        vkDestroyDescriptorSetLayout(deviceHandle, m_descriptorSetLayouts[i], nullptr);
+    }
+
     vkDestroyPipeline(deviceHandle, m_handle, nullptr);
 }
 
@@ -247,21 +252,26 @@ std::unique_ptr<Pipeline> PipelineBuilder::build()
 
     // descriptor set layout
 
-    std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
-    if (m_uniformDescriptorPack)
-        layoutBindings = m_uniformDescriptorPack->getSetLayoutBindings();
-    VkDescriptorSetLayoutCreateInfo createInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-        .pBindings = layoutBindings.data(),
-    };
-    VkResult res = vkCreateDescriptorSetLayout(deviceHandle, &createInfo, nullptr, &m_product->m_descriptorSetLayout);
-    if (res != VK_SUCCESS)
+    for (uint32_t i = 0u; i < m_uniformDescriptorPacks.size(); i++)
     {
-        std::cerr << "Failed to create descriptor set layout : " << res << std::endl;
-        return nullptr;
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = m_uniformDescriptorPacks[i]->getSetLayoutBindings();
+        VkDescriptorSetLayoutCreateInfo createInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+            .pBindings = layoutBindings.data(),
+        };
+        VkDescriptorSetLayout descriptorSetLayout;
+        VkResult res = vkCreateDescriptorSetLayout(deviceHandle, &createInfo, nullptr, &descriptorSetLayout);
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create descriptor set layout : " << res << std::endl;
+            return nullptr;
+        }
+
+        m_product->m_descriptorSetLayouts.push_back(descriptorSetLayout);
     }
-    std::vector<VkDescriptorSetLayout> setLayouts = {m_product->m_descriptorSetLayout};
+
+    std::vector<VkDescriptorSetLayout> setLayouts = m_product->m_descriptorSetLayouts;
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
@@ -269,7 +279,7 @@ std::unique_ptr<Pipeline> PipelineBuilder::build()
         .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
         .pPushConstantRanges = m_pushConstantRanges.data(),
     };
-    res = vkCreatePipelineLayout(deviceHandle, &pipelineLayoutCreateInfo, nullptr, &m_product->m_pipelineLayout);
+    VkResult res = vkCreatePipelineLayout(deviceHandle, &pipelineLayoutCreateInfo, nullptr, &m_product->m_pipelineLayout);
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to create pipeline layout : " << res << std::endl;
@@ -301,6 +311,7 @@ std::unique_ptr<Pipeline> PipelineBuilder::build()
 
     res =
         vkCreateGraphicsPipelines(deviceHandle, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_product->m_handle);
+
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to create graphics pipeline : " << res << std::endl;

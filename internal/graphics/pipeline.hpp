@@ -17,7 +17,7 @@ class Pipeline
   private:
     std::weak_ptr<Device> m_device;
 
-    VkDescriptorSetLayout m_descriptorSetLayout;
+    std::vector<VkDescriptorSetLayout> m_descriptorSetLayouts;
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_handle;
 
@@ -33,9 +33,17 @@ class Pipeline
     {
         return m_pipelineLayout;
     }
-    [[nodiscard]] const VkDescriptorSetLayout &getDescriptorSetLayout() const
+    [[nodiscard]] const std::vector<VkDescriptorSetLayout> &getDescriptorSetLayouts() const
     {
-        return m_descriptorSetLayout;
+        return m_descriptorSetLayouts;
+    }
+
+    [[nodiscard]] const std::optional<VkDescriptorSetLayout> getDescriptorSetLayoutAtIndex(uint32_t index = 0u) const
+    {
+        if (index >= m_descriptorSetLayouts.size())
+            return std::nullopt;
+
+        return m_descriptorSetLayouts[index];
     }
 };
 
@@ -107,7 +115,7 @@ class PipelineBuilder
     // descriptor set layout
     std::vector<VkPushConstantRange> m_pushConstantRanges;
 
-    std::shared_ptr<UniformDescriptor> m_uniformDescriptorPack;
+    std::vector<std::shared_ptr<UniformDescriptor>> m_uniformDescriptorPacks;
 
     const RenderPass *m_renderPass;
 
@@ -277,9 +285,9 @@ class PipelineBuilder
         m_blendConstants[2] = c;
         m_blendConstants[3] = d;
     }
-    void setUniformDescriptorPack(std::shared_ptr<UniformDescriptor> desc)
+    void addUniformDescriptorPack(std::shared_ptr<UniformDescriptor> desc)
     {
-        m_uniformDescriptorPack = desc;
+        m_uniformDescriptorPacks.push_back(desc);
     }
     void setRenderPass(const RenderPass *a)
     {
