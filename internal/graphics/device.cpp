@@ -105,6 +105,14 @@ void Device::cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const
     vkFreeCommandBuffers(m_handle, m_commandPoolTransient, 1, &commandBuffer);
 }
 
+void Device::addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo)
+{
+    if (!vkSetDebugUtilsObjectNameEXT)
+        vkSetDebugUtilsObjectNameEXT = PFN_vkSetDebugUtilsObjectNameEXT(
+            vkGetInstanceProcAddr(m_cx.lock()->getInstanceHandle(), "vkSetDebugUtilsObjectNameEXT"));
+    vkSetDebugUtilsObjectNameEXT(m_handle, &nameInfo);
+}
+
 std::unique_ptr<Device> DeviceBuilder::build()
 {
     assert(m_product->m_physicalHandle);

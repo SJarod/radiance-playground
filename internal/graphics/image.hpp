@@ -351,5 +351,5 @@ class SamplerBuilder
         m_minFilter = minFilter;
     }
 
-    std::unique_ptr<VkSampler> buildAndRestart();
+    std::unique_ptr<VkSampler> build();
 };

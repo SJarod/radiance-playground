@@ -8,7 +8,7 @@
 
 Image::~Image()
 {
-    if (!m_device.lock())
+    if (m_device.expired())
         return;
 
     auto deviceHandle = m_device.lock()->getHandle();
@@ -319,7 +319,7 @@ std::unique_ptr<ImageLayoutTransition> ImageLayoutTransitionBuilder::buildAndRes
     return result;
 }
 
-std::unique_ptr<VkSampler> SamplerBuilder::buildAndRestart()
+std::unique_ptr<VkSampler> SamplerBuilder::build()
 {
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
@@ -351,6 +351,5 @@ std::unique_ptr<VkSampler> SamplerBuilder::buildAndRestart()
     }
 
     auto result = std::move(m_product);
-    restart();
     return result;
 }

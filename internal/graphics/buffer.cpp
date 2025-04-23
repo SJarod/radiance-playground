@@ -35,10 +35,11 @@ void Buffer::transferBufferToBuffer(VkBuffer src)
 
 Buffer::~Buffer()
 {
+    if (m_device.expired())
+        return;
+
     auto deviceHandle = m_device.lock()->getHandle();
-
     vkFreeMemory(deviceHandle, m_memory, nullptr);
-
     vkDestroyBuffer(deviceHandle, m_handle, nullptr);
 }
 
@@ -60,6 +61,13 @@ std::unique_ptr<Buffer> BufferBuilder::build()
         std::cerr << "Failed to create buffer : " << res << std::endl;
         return nullptr;
     }
+    static int bufferCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_BUFFER,
+        .objectHandle = (uint64_t)m_product->m_handle,
+        .pObjectName = std::string("Buffer " + std::to_string(bufferCount++)).c_str(),
+    });
 
     VkMemoryRequirements memReq;
     vkGetBufferMemoryRequirements(deviceHandle, m_product->m_handle, &memReq);
@@ -68,6 +76,14 @@ std::unique_ptr<Buffer> BufferBuilder::build()
                                       .allocationSize = memReq.size,
                                       .memoryTypeIndex = memoryTypeIndex.value()};
     res = vkAllocateMemory(deviceHandle, &allocInfo, nullptr, &m_product->m_memory);
+    static int deviceMemoryCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_DEVICE_MEMORY,
+        .objectHandle = (uint64_t)m_product->m_memory,
+        .pObjectName = std::string("Buffer Device Memory " + std::to_string(deviceMemoryCount++)).c_str(),
+    });
+
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to allocate buffer memory : " << res << std::endl;
@@ -100,7 +116,7 @@ void BufferDirector::createUniformBufferBuilder(BufferBuilder &builder)
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
-void BufferDirector::createStorageBufferBuilder(BufferBuilder& builder)
+void BufferDirector::createStorageBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

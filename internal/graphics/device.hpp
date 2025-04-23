@@ -17,6 +17,9 @@ class Device
     friend DeviceBuilder;
 
   private:
+    PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
+
+  private:
     std::weak_ptr<Context> m_cx;
 
     std::vector<const char *> m_deviceExtensions;
@@ -61,6 +64,8 @@ class Device
 
     VkCommandBuffer cmdBeginOneTimeSubmit() const;
     void cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const;
+
+    void addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo);
 
   public:
     [[nodiscard]] std::vector<VkQueueFamilyProperties> getQueueFamilyProperties() const;
@@ -158,17 +163,15 @@ class DeviceBuilder
     {
         m_product->m_physicalHandle = a;
 
-        m_product->m_multiviewFeature = VkPhysicalDeviceMultiviewFeatures{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-            .multiview = true,
-            .multiviewGeometryShader = false,
-            .multiviewTessellationShader = false
-        };
+        m_product->m_multiviewFeature =
+            VkPhysicalDeviceMultiviewFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+                                              .multiview = true,
+                                              .multiviewGeometryShader = false,
+                                              .multiviewTessellationShader = false};
 
         m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-            .pNext = &m_product->m_multiviewFeature
-        };
+            .pNext = &m_product->m_multiviewFeature};
 
         m_product->m_features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,

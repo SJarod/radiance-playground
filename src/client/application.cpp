@@ -101,50 +101,50 @@ Application::Application()
         td.configureUNORMTextureBuilder(captureEnvMapBuilder);
         capturedEnvMaps.push_back(captureEnvMapBuilder.buildAndRestart());
     }
-    
+
     // Opaque capture
     RenderPassBuilder opaqueCaptureRpb;
     opaqueCaptureRpb.setDevice(mainDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(opaqueCaptureRpb, capturedEnvMaps, true);
-    
+
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(capturedEnvMaps[0]->getImageFormat());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto opaqueCaptureColorAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addColorAttachment(*opaqueCaptureColorAttachment);
-    
+
     rpad.configureAttachmentClearBuilder(rpab);
     rpab.setFormat(capturedEnvMaps[0]->getDepthImageFormat().value());
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
-    
+
     RenderPhaseBuilder opaqueCaptureRb;
     opaqueCaptureRb.setDevice(mainDevice);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
     auto opaqueCapturePhase = opaqueCaptureRb.build();
     m_opaqueCapturePhase = opaqueCapturePhase.get();
-    
+
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
     skyboxCaptureRpb.setDevice(mainDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(skyboxCaptureRpb, capturedEnvMaps, true);
-    
+
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(capturedEnvMaps[0]->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     auto skyboxCaptureColorAttachment = rpab.buildAndRestart();
     skyboxCaptureRpb.addColorAttachment(*skyboxCaptureColorAttachment);
-    
+
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(capturedEnvMaps[0]->getDepthImageFormat().value());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
     skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
-    
+
     RenderPhaseBuilder skyboxCaptureRb;
     skyboxCaptureRb.setDevice(mainDevice);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
@@ -306,6 +306,7 @@ Application::Application()
 
 Application::~Application()
 {
+    // ensure all commands have finished
     vkDeviceWaitIdle(m_devices[0]->getHandle());
 
     capturedEnvMaps.clear();
@@ -363,7 +364,7 @@ void Application::initImgui()
     }
 }
 
-void Application::displayImgui() 
+void Application::displayImgui()
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -372,7 +373,6 @@ void Application::displayImgui()
     ImGui::Begin("Radiance playground");
 
     ImGui::Text(std::format("Average FPS: {0}", ImGui::GetIO().Framerate).c_str());
-
 
     if (ImGui::CollapsingHeader("Scene Objects", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
     {
@@ -387,7 +387,7 @@ void Application::displayImgui()
                 bool isTransformEdited = false;
                 ImGui::PushID(object->getName().c_str());
                 isTransformEdited |= ImGui::DragFloat3("Position", &t.position[0]);
-                if (ImGui::DragFloat3("Rotation", &euler[0])) 
+                if (ImGui::DragFloat3("Rotation", &euler[0]))
                 {
                     isTransformEdited = true;
                     t.rotation = glm::quat(glm::radians(euler));
@@ -395,7 +395,7 @@ void Application::displayImgui()
                 isTransformEdited |= ImGui::DragFloat3("Scale", &t.scale[0]);
                 ImGui::PopID();
 
-                if (isTransformEdited) 
+                if (isTransformEdited)
                 {
                     object->setTransform(t);
                 }
@@ -452,7 +452,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene>(mainDevice, m_window.get());
+    m_scene = std::make_unique<SampleScene2D>(mainDevice);
 
     UniformDescriptorBuilder irradianceConvolutionUdb;
 
@@ -461,14 +461,14 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
 
     irradianceConvolutionUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder irradianceConvolutionPb;
     irradianceConvolutionPb.setDevice(mainDevice);
@@ -508,13 +508,13 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     UniformDescriptorBuilder phongMaterialUdb;
     phongMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -522,7 +522,7 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder phongPb;
     phongPb.setDevice(mainDevice);
@@ -549,39 +549,39 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     UniformDescriptorBuilder phongCaptureMaterialUdb;
-        phongCaptureMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+    phongCaptureMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder phongCapturePb;
     phongCapturePb.setDevice(mainDevice);
@@ -593,7 +593,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = 16,
-        });
+    });
 
     PipelineDirector phongCapturePd;
     phongCapturePd.createColorDepthRasterizerBuilder(phongCapturePb);
@@ -608,13 +608,13 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     environmentMapUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder environmentMapPb;
     environmentMapPb.setDevice(mainDevice);
@@ -626,7 +626,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = 16,
-        });
+    });
 
     PipelineDirector environmentMapPd;
     environmentMapPd.createColorDepthRasterizerBuilder(environmentMapPb);
@@ -640,13 +640,13 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     environmentMapCaptureUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder environmentMapCapturePb;
     environmentMapCapturePb.setDevice(mainDevice);
@@ -658,7 +658,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = 16,
-        });
+    });
 
 
     const std::vector<unsigned char> defaultDiffusePixels = {
@@ -696,7 +696,7 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.setDevice(mainDevice);
-     
+
         ModelRenderStateBuilder captureMrsb;
         captureMrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -841,13 +841,13 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     skyboxOpaqueUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
     PipelineBuilder skyboxCapturePb;
     PipelineDirector skyboxCapturePd;
@@ -921,28 +921,29 @@ void Application::runLoop()
     quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
     quadRsb.setModel(postProcessQuadModel);
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    quadRsb.setMaterialDescriptorSetUpdatePred([&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
-        auto deviceHandle = mainDevice->getHandle();
-        const auto &sampler = m_window->getSwapChain()->getSampler();
-        if (!sampler.has_value())
-            return;
+    quadRsb.setMaterialDescriptorSetUpdatePred(
+        [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
+            auto deviceHandle = mainDevice->getHandle();
+            const auto &sampler = m_window->getSwapChain()->getSampler();
+            if (!sampler.has_value())
+                return;
 
-        VkDescriptorImageInfo imageInfo = {
-            .sampler = *sampler.value(),
-            .imageView = parentPhase->getRenderPass()->getImageView(0u, imageIndex),
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkWriteDescriptorSet write = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = set,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo = &imageInfo,
-        };
-        vkUpdateDescriptorSets(deviceHandle, 1, &write, 0, nullptr);
-    });
+            VkDescriptorImageInfo imageInfo = {
+                .sampler = *sampler.value(),
+                .imageView = parentPhase->getRenderPass()->getImageView(0u, imageIndex),
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            };
+            VkWriteDescriptorSet write = {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = set,
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &imageInfo,
+            };
+            vkUpdateDescriptorSets(deviceHandle, 1, &write, 0, nullptr);
+        });
     PipelineBuilder postProcessPb;
     PipelineDirector postProcessPd;
     postProcessPd.createColorDepthRasterizerBuilder(postProcessPb);
@@ -978,7 +979,6 @@ void Application::runLoop()
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
-
         displayImgui();
 
         m_inputManager.UpdateInputStates();
@@ -994,11 +994,13 @@ void Application::runLoop()
             *mainCamera, lights, grid);
         if (res == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            // TODO : recreate framebuffers
             m_window->recreateSwapChain();
             m_renderer->setSwapChain(m_window->getSwapChain());
         }
 
         m_window->swapBuffers();
     }
+
+    // ensure all commands have finished before destroying objects in this scope
+    vkDeviceWaitIdle(mainDevice->getHandle());
 }
