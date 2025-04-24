@@ -75,7 +75,7 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
 }
 
 void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
-                                   const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid) const
+                                   const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid) const
 {
     if (singleFrameRenderIndex > 0)
     {

@@ -18,7 +18,7 @@ void RenderGraph::addRenderPhase(std::unique_ptr<RenderPhase> renderPhase)
 }
 
 void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<RenderPhase>> &toProcess, uint32_t imageIndex, VkRect2D renderArea, const CameraABC& mainCamera,
-    const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
+    const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid, const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
 {
     const VkSemaphore* lastAcquireSemaphore = inWaitSemaphore;
     for (int i = 0; i < toProcess.size(); ++i)
@@ -41,7 +41,7 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Rend
 }
 
 void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
-                                   const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid)
+                                   const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid)
 {
     const VkSemaphore *lastAcquireSemaphore = nullptr;
     if (m_shouldRenderOneTimePhases)

@@ -37,7 +37,7 @@ public:
 		return m_probes[index].get();
 	}
 
-	inline const glm::vec3& getDimensions() const
+	inline const glm::uvec3& getDimensions() const
 	{
 		return m_dimensions;
 	}

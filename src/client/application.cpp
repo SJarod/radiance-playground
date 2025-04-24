@@ -205,6 +205,30 @@ Application::Application()
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
 
+    RenderPassBuilder probesDebugRpb;
+    probesDebugRpb.setDevice(mainDevice);
+    rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *m_window->getSwapChain());
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    auto probesDebugColorAttachment = rpab.buildAndRestart();
+    probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
+
+    rpad.configureAttachmentLoadBuilder(rpab);
+    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
+    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto probesDebugDepthAttachment = rpab.buildAndRestart();
+    probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
+
+    RenderPhaseBuilder probesDebugRb;
+    probesDebugRb.setDevice(mainDevice);
+    probesDebugRb.setRenderPass(probesDebugRpb.build());
+    auto probesDebugPhase = probesDebugRb.build();
+    m_probesDebugPhase = probesDebugPhase.get();
+
     // Skybox
     RenderPassBuilder skyboxRpb;
     skyboxRpb.setDevice(mainDevice);
@@ -254,7 +278,7 @@ Application::Application()
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
@@ -264,30 +288,6 @@ Application::Application()
     auto imguiPhase = imguiRb.build();
     m_imguiPhase = imguiPhase.get();
 
-    RenderPassBuilder probesDebugRpb;
-    probesDebugRpb.setDevice(mainDevice);
-    rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *m_window->getSwapChain());
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    auto probesDebugColorAttachment = rpab.buildAndRestart();
-    probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getDepthImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto probesDebugDepthAttachment = rpab.buildAndRestart();
-    probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
-
-    RenderPhaseBuilder probesDebugRb;
-    probesDebugRb.setDevice(mainDevice);
-    probesDebugRb.setRenderPass(probesDebugRpb.build());
-    auto probesDebugPhase = probesDebugRb.build();
-    m_probesDebugPhase = probesDebugPhase.get();
-
     RendererBuilder rb;
     rb.setDevice(mainDevice);
     rb.setSwapChain(m_window->getSwapChain());
@@ -296,10 +296,10 @@ Application::Application()
     renderGraph->addOneTimeRenderPhase(std::move(skyboxCapturePhase));
     renderGraph->addOneTimeRenderPhase(std::move(irradianceConvolutionPhase));
     renderGraph->addRenderPhase(std::move(opaquePhase));
+    renderGraph->addRenderPhase(std::move(probesDebugPhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
-    renderGraph->addRenderPhase(std::move(probesDebugPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
 }
@@ -739,6 +739,72 @@ void Application::runLoop()
         m_opaqueCapturePhase->registerRenderStateToAllPool(captureMrsb.build());
     }
 
+    UniformDescriptorBuilder probeGridDebugUdb;
+    probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        });
+    probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = maxProbeCount,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+    probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 5,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+
+    PipelineBuilder probeGridDebugPb;
+    probeGridDebugPb.setDevice(mainDevice);
+    probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
+    probeGridDebugPb.addFragmentShaderStage("probe_grid_debug");
+    probeGridDebugPb.setRenderPass(m_probesDebugPhase->getRenderPass());
+    probeGridDebugPb.setExtent(m_window->getSwapChain()->getExtent());
+    probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = 16,
+        });
+
+    PipelineDirector probeGridDebugPd;
+    probeGridDebugPd.createColorDepthRasterizerBuilder(probeGridDebugPb);
+    probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
+
+    std::shared_ptr<Pipeline> probeGridDebugPipeline = probeGridDebugPb.build();
+
+    // probes
+    ProbeGridBuilder gridBuilder;
+    const glm::vec3 extent = glm::vec3(20.f, 30.f, 20.f);
+    const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, extent.y * 0.5f, extent.z * -0.5f);
+    gridBuilder.setXAxisProbeCount(4u);
+    gridBuilder.setYAxisProbeCount(4u);
+    gridBuilder.setZAxisProbeCount(4u);
+    gridBuilder.setExtent(extent);
+    gridBuilder.setCornerPosition(cornerPosition);
+    std::shared_ptr<ProbeGrid> grid = gridBuilder.build();
+
+    MeshDirector md;
+    MeshBuilder sphereMb;
+    md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
+    sphereMb.setDevice(mainDevice);
+    std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
+
+    ProbeGridRenderStateBuilder prsb;
+    prsb.setFrameInFlightCount(3);
+    prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    prsb.setDevice(mainDevice);
+    prsb.setPipeline(probeGridDebugPipeline);
+    prsb.setProbeGrid(grid);
+    prsb.setEnvironmentMaps(irradianceMaps);
+    prsb.setMesh(sphereMesh);
+    m_probesDebugPhase->registerRenderStateToAllPool(prsb.build());
+
     // skybox
     UniformDescriptorBuilder skyboxUdb;
     skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -905,15 +971,6 @@ void Application::runLoop()
     auto &lights = m_scene->getLights();
 
     CameraABC *mainCamera = m_scene->getMainCamera();
-
-    ProbeGridBuilder gridBuilder;
-    const float gridSize = 10.f;
-    gridBuilder.setXAxisProbeCount(4u);
-    gridBuilder.setYAxisProbeCount(4u);
-    gridBuilder.setZAxisProbeCount(4u);
-    gridBuilder.setExtent(glm::vec3(gridSize));
-    gridBuilder.setCornerPosition(-0.5f * glm::vec3(gridSize));
-    std::unique_ptr<ProbeGrid> grid = gridBuilder.build();
 
     m_scene->beginSimulation();
     while (!m_window->shouldClose())

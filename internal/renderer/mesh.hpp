@@ -128,4 +128,5 @@ class MeshDirector
 {
   public:
     void createAssimpMeshBuilder(MeshBuilder &builder);
+    void createSphereMeshBuilder(MeshBuilder &builder, float radius, float latitude, float longitude);
 };

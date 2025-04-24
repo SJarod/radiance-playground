@@ -21,6 +21,7 @@ class ModelRenderStateBuilder;
 class ImGuiRenderStateBuilder;
 class SkyboxRenderStateBuilder;
 class EnvironmentCaptureRenderStateBuilder;
+class ProbeGridRenderStateBuilder;
 class Texture;
 class RenderPhase;
 
@@ -118,7 +119,7 @@ class RenderStateABC
                                       const std::vector<std::shared_ptr<Light>> &lights) { }
 
     virtual void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                                      const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
+                                      const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
@@ -173,7 +174,7 @@ class ModelRenderState : public RenderStateABC
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
     
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
+        const std::vector<std::shared_ptr<Light>>& lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     uint32_t getSubObjectCount() const override;
 
@@ -369,7 +370,7 @@ class SkyboxRenderState : public RenderStateABC
 
   public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
-                              const std::vector<std::shared_ptr<Light>> &lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
+                              const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
 
@@ -463,7 +464,7 @@ private:
 
 public:
     void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
-        const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
+        const std::vector<std::shared_ptr<Light>>& lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex) override;
 
@@ -543,6 +544,106 @@ public:
     void setTextureDescriptorEnable(bool a)
     {
         m_textureDescriptorEnable = a;
+    }
+
+    std::unique_ptr<RenderStateABC> build() override;
+};
+
+class ProbeGridRenderState : public RenderStateABC
+{
+    friend ProbeGridRenderStateBuilder;
+
+private:
+    std::weak_ptr<ProbeGrid> m_grid;
+
+    std::shared_ptr<Mesh> m_mesh;
+
+public:
+    void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC& camera,
+        const std::vector<std::shared_ptr<Light>>& lights, const std::shared_ptr<ProbeGrid>& probeGrid, bool captureModeEnabled) override;
+
+    void recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex) override;
+
+    uint32_t getSubObjectCount() const override;
+};
+
+class ProbeGridRenderStateBuilder : public RenderStateBuilderI
+{
+private:
+    std::unique_ptr<ProbeGridRenderState> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    std::vector<std::weak_ptr<Texture>> m_environmentMaps;
+
+    std::vector<VkDescriptorPoolSize> m_poolSizes;
+    uint32_t m_frameInFlightCount;
+
+    void restart() override
+    {
+        m_product = std::unique_ptr<ProbeGridRenderState>(new ProbeGridRenderState);
+    }
+
+public:
+    ProbeGridRenderStateBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device) override
+    {
+        m_device = device;
+        m_product->m_device = device;
+    }
+    void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
+    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void setFrameInFlightCount(uint32_t a) override
+    {
+        m_frameInFlightCount = a;
+    }
+
+    void setProbeGrid(std::weak_ptr<ProbeGrid> grid)
+    {
+        m_product->m_grid = grid;
+    }
+
+    void setMesh(std::shared_ptr<Mesh> mesh)
+    {
+        m_product->m_mesh = mesh;
+    }
+    void setTexture(std::weak_ptr<Texture> texture) override
+    {
+
+    }
+    void setEnvironmentMaps(const std::vector<std::shared_ptr<Texture>>& textures)
+    {
+        m_environmentMaps.reserve(textures.size());
+        for (const std::shared_ptr<Texture>& texture : textures)
+            m_environmentMaps.push_back(texture);
+    }
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
+    }
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_instanceDescriptorSetUpdatePred = pred;
+    }
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
+    }
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_materialDescriptorSetUpdatePred = pred;
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+        m_product->m_instanceDescriptorSetEnable = enable;
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+        m_product->m_materialDescriptorSetEnable = enable;
     }
 
     std::unique_ptr<RenderStateABC> build() override;

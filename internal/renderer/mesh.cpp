@@ -128,3 +128,61 @@ void MeshDirector::createAssimpMeshBuilder(MeshBuilder &builder)
     builder.setModelImporterFlags(aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs |
                                   aiProcess_JoinIdenticalVertices | aiProcess_ForceGenNormals);
 }
+
+void createSphereMesh(std::vector<Vertex> &vertices, std::vector<uint16_t> &indices, float radius, float latitude, float longitude)
+{
+    unsigned int uint_lon = static_cast<unsigned int>(longitude);
+    unsigned int uint_lat = static_cast<unsigned int>(latitude);
+    vertices.reserve((size_t)uint_lat * (size_t)uint_lon);
+
+    const float R = 1.f / (latitude - 1.f);
+    const float S = 1.f / (longitude - 1.f);
+
+    for (unsigned int r = 0; r < uint_lat; r++)
+    {
+        for (unsigned int s = 0; s < uint_lon; s++)
+        {
+            Vertex vertex;
+
+            const float y = glm::sin(-glm::half_pi<float>() + glm::pi<float>() * r * R);
+            const float x = glm::cos(glm::two_pi<float>() * s * S) * glm::sin(glm::pi<float>() * r * R);
+            const float z = glm::sin(glm::two_pi<float>() * s * S) * glm::sin(glm::pi<float>() * r * R);
+
+            vertex.uv.x = s * S;
+            vertex.uv.y = r * R;
+
+            vertex.position = { x, y, z };
+            vertex.position = glm::normalize(vertex.position) * radius;
+            vertex.normal = glm::vec3(x, y, z);
+
+            vertices.push_back(vertex);
+        }
+    }
+
+    indices.reserve((size_t)uint_lat * (size_t)uint_lon * 6);
+
+    for (unsigned int r = 0; r < uint_lat; r++)
+    {
+        for (unsigned int s = 0; s < uint_lon; s++)
+        {
+            indices.push_back(r * uint_lon + s);
+            indices.push_back((r + 1) * uint_lon + s);
+            indices.push_back(r * uint_lon + (s + 1));
+
+            indices.push_back((r + 1) * uint_lon + (s + 1));
+            indices.push_back(r * uint_lon + (s + 1));
+            indices.push_back((r + 1) * uint_lon + s);
+        }
+    }
+}
+
+void MeshDirector::createSphereMeshBuilder(MeshBuilder &builder, float radius, float latitude, float longitude)
+{
+    std::vector<Vertex> vertices;
+    std::vector<uint16_t> indices;
+        
+    createSphereMesh(vertices, indices, radius, latitude, longitude);
+
+    builder.setVertices(vertices);
+    builder.setIndices(indices);
+}

@@ -120,9 +120,8 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     m_objects.push_back(modelBuilder2.build());
 
     MeshBuilder sphereMb;
-    md.createAssimpMeshBuilder(sphereMb);
+    md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
     sphereMb.setDevice(device);
-    sphereMb.setModelFilename("assets/sphere.obj");
     std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
 
     ModelBuilder sphereModelBuilder;
