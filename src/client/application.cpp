@@ -67,12 +67,15 @@ Application::Application()
         db.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         db.addDeviceExtension(VK_KHR_MULTIVIEW_EXTENSION_NAME);
         m_devices.emplace_back(db.build());
+        if (m_devices.back()->isDiscrete())
+        {
+            m_discreteDevice = m_devices.back();
+            std::cout << "Using device : " << m_discreteDevice->getDeviceName() << std::endl;
+        }
     }
 
-    std::weak_ptr<Device> mainDevice = m_devices[0];
-
     SwapChainBuilder scb;
-    scb.setDevice(mainDevice);
+    scb.setDevice(m_discreteDevice);
     scb.setWidth(1366);
     scb.setHeight(768);
     scb.setSwapchainImageFormat(VkSurfaceFormatKHR{
@@ -93,7 +96,7 @@ Application::Application()
     for (int i = 0; i < maxProbeCount; i++)
     {
         CubemapBuilder captureEnvMapBuilder;
-        captureEnvMapBuilder.setDevice(mainDevice);
+        captureEnvMapBuilder.setDevice(m_discreteDevice);
         captureEnvMapBuilder.setWidth(256);
         captureEnvMapBuilder.setHeight(256);
         captureEnvMapBuilder.setCreateFromUserData(false);
@@ -104,7 +107,7 @@ Application::Application()
 
     // Opaque capture
     RenderPassBuilder opaqueCaptureRpb;
-    opaqueCaptureRpb.setDevice(mainDevice);
+    opaqueCaptureRpb.setDevice(m_discreteDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(opaqueCaptureRpb, capturedEnvMaps, true);
 
     rpad.configureAttachmentClearBuilder(rpab);
@@ -120,7 +123,7 @@ Application::Application()
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
 
     RenderPhaseBuilder opaqueCaptureRb;
-    opaqueCaptureRb.setDevice(mainDevice);
+    opaqueCaptureRb.setDevice(m_discreteDevice);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
     auto opaqueCapturePhase = opaqueCaptureRb.build();
@@ -128,7 +131,7 @@ Application::Application()
 
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
-    skyboxCaptureRpb.setDevice(mainDevice);
+    skyboxCaptureRpb.setDevice(m_discreteDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(skyboxCaptureRpb, capturedEnvMaps, true);
 
     rpad.configureAttachmentLoadBuilder(rpab);
@@ -146,7 +149,7 @@ Application::Application()
     skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
 
     RenderPhaseBuilder skyboxCaptureRb;
-    skyboxCaptureRb.setDevice(mainDevice);
+    skyboxCaptureRb.setDevice(m_discreteDevice);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
     auto skyboxCapturePhase = skyboxCaptureRb.build();
@@ -156,7 +159,7 @@ Application::Application()
     for (int i = 0; i < maxProbeCount; i++)
     {
         CubemapBuilder irradianceMapBuilder;
-        irradianceMapBuilder.setDevice(mainDevice);
+        irradianceMapBuilder.setDevice(m_discreteDevice);
         irradianceMapBuilder.setWidth(128);
         irradianceMapBuilder.setHeight(128);
         irradianceMapBuilder.setCreateFromUserData(false);
@@ -167,7 +170,7 @@ Application::Application()
 
     // Irradiance convolution
     RenderPassBuilder irradianceConvolutionRpb;
-    irradianceConvolutionRpb.setDevice(mainDevice);
+    irradianceConvolutionRpb.setDevice(m_discreteDevice);
     rpd.configurePooledCubemapsRenderPassBuilder(irradianceConvolutionRpb, irradianceMaps, true, false);
     rpad.configureAttachmentDontCareBuilder(rpab);
     rpab.setFormat(irradianceMaps[0]->getImageFormat());
@@ -176,7 +179,7 @@ Application::Application()
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
 
     RenderPhaseBuilder irradianceConvolutionRb;
-    irradianceConvolutionRb.setDevice(mainDevice);
+    irradianceConvolutionRb.setDevice(m_discreteDevice);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
     auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
@@ -184,7 +187,7 @@ Application::Application()
 
     // Opaque
     RenderPassBuilder opaqueRpb;
-    opaqueRpb.setDevice(mainDevice);
+    opaqueRpb.setDevice(m_discreteDevice);
     rpd.configureSwapChainRenderPassBuilder(opaqueRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentClearBuilder(rpab);
@@ -200,7 +203,7 @@ Application::Application()
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
     RenderPhaseBuilder opaqueRb;
-    opaqueRb.setDevice(mainDevice);
+    opaqueRb.setDevice(m_discreteDevice);
     opaqueRb.setRenderPass(opaqueRpb.build());
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
@@ -231,7 +234,7 @@ Application::Application()
 
     // Skybox
     RenderPassBuilder skyboxRpb;
-    skyboxRpb.setDevice(mainDevice);
+    skyboxRpb.setDevice(m_discreteDevice);
     rpd.configureSwapChainRenderPassBuilder(skyboxRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentLoadBuilder(rpab);
@@ -249,13 +252,13 @@ Application::Application()
     skyboxRpb.addDepthAttachment(*loadDepthAttachment);
 
     RenderPhaseBuilder skyboxRb;
-    skyboxRb.setDevice(mainDevice);
+    skyboxRb.setDevice(m_discreteDevice);
     skyboxRb.setRenderPass(skyboxRpb.build());
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
     RenderPassBuilder postProcessRpb;
-    postProcessRpb.setDevice(mainDevice);
+    postProcessRpb.setDevice(m_discreteDevice);
     rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(m_window->getSwapChain()->getImageFormat());
@@ -265,14 +268,14 @@ Application::Application()
     postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
 
     RenderPhaseBuilder postProcessRb;
-    postProcessRb.setDevice(mainDevice);
+    postProcessRb.setDevice(m_discreteDevice);
     postProcessRb.setRenderPass(postProcessRpb.build());
     postProcessRb.setParentPhase(m_skyboxPhase);
     auto postProcessPhase = postProcessRb.build();
     m_postProcessPhase = postProcessPhase.get();
 
     RenderPassBuilder imguiRpb;
-    imguiRpb.setDevice(mainDevice);
+    imguiRpb.setDevice(m_discreteDevice);
     rpd.configureSwapChainRenderPassBuilder(imguiRpb, *m_window->getSwapChain(), false);
 
     rpad.configureAttachmentLoadBuilder(rpab);
@@ -283,13 +286,13 @@ Application::Application()
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
     RenderPhaseBuilder imguiRb;
-    imguiRb.setDevice(mainDevice);
+    imguiRb.setDevice(m_discreteDevice);
     imguiRb.setRenderPass(imguiRpb.build());
     auto imguiPhase = imguiRb.build();
     m_imguiPhase = imguiPhase.get();
 
     RendererBuilder rb;
-    rb.setDevice(mainDevice);
+    rb.setDevice(m_discreteDevice);
     rb.setSwapChain(m_window->getSwapChain());
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
     renderGraph->addOneTimeRenderPhase(std::move(opaqueCapturePhase));
@@ -307,7 +310,7 @@ Application::Application()
 Application::~Application()
 {
     // ensure all commands have finished
-    vkDeviceWaitIdle(m_devices[0]->getHandle());
+    vkDeviceWaitIdle(m_discreteDevice->getHandle());
 
     capturedEnvMaps.clear();
     irradianceMaps.clear();
@@ -329,11 +332,11 @@ Application::~Application()
 
 void Application::initImgui()
 {
-    VkDevice deviceHandle = m_devices[0]->getHandle();
+    VkDevice deviceHandle = m_discreteDevice->getHandle();
 
     ImGuiRenderStateBuilder imguirsb;
 
-    imguirsb.setDevice(m_devices[0]);
+    imguirsb.setDevice(m_discreteDevice);
     imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
     ImGui::CreateContext();
@@ -349,9 +352,9 @@ void Application::initImgui()
     // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = m_context->getInstanceHandle();
-    init_info.PhysicalDevice = m_devices[0]->getPhysicalHandle();
+    init_info.PhysicalDevice = m_discreteDevice->getPhysicalHandle();
     init_info.Device = deviceHandle;
-    init_info.Queue = m_devices[0]->getGraphicsQueue();
+    init_info.Queue = m_discreteDevice->getGraphicsQueue();
     init_info.DescriptorPool = render_state->getDescriptorPool();
     init_info.MinImageCount = 2;
     init_info.ImageCount = 2;
@@ -446,13 +449,11 @@ void Application::displayImgui()
 
 void Application::runLoop()
 {
-    std::shared_ptr<Device> mainDevice = m_devices[0];
-
     m_window->makeContextCurrent();
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene2D>(mainDevice);
+    m_scene = std::make_unique<SampleScene2D>(m_discreteDevice);
 
     UniformDescriptorBuilder irradianceConvolutionUdb;
 
@@ -471,7 +472,7 @@ void Application::runLoop()
     });
 
     PipelineBuilder irradianceConvolutionPb;
-    irradianceConvolutionPb.setDevice(mainDevice);
+    irradianceConvolutionPb.setDevice(m_discreteDevice);
     irradianceConvolutionPb.addVertexShaderStage("skybox");
     irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
     irradianceConvolutionPb.setRenderPass(m_irradianceConvolutionPhase->getRenderPass());
@@ -525,7 +526,7 @@ void Application::runLoop()
     });
 
     PipelineBuilder phongPb;
-    phongPb.setDevice(mainDevice);
+    phongPb.setDevice(m_discreteDevice);
     phongPb.addVertexShaderStage("phong");
     phongPb.addFragmentShaderStage("phong");
     phongPb.setRenderPass(m_opaquePhase->getRenderPass());
@@ -584,7 +585,7 @@ void Application::runLoop()
     });
 
     PipelineBuilder phongCapturePb;
-    phongCapturePb.setDevice(mainDevice);
+    phongCapturePb.setDevice(m_discreteDevice);
     phongCapturePb.addVertexShaderStage("phong");
     phongCapturePb.addFragmentShaderStage("phong");
     phongCapturePb.setRenderPass(m_opaqueCapturePhase->getRenderPass());
@@ -617,7 +618,7 @@ void Application::runLoop()
     });
 
     PipelineBuilder environmentMapPb;
-    environmentMapPb.setDevice(mainDevice);
+    environmentMapPb.setDevice(m_discreteDevice);
     environmentMapPb.addVertexShaderStage("environment_map");
     environmentMapPb.addFragmentShaderStage("environment_map");
     environmentMapPb.setRenderPass(m_skyboxPhase->getRenderPass());
@@ -649,7 +650,7 @@ void Application::runLoop()
     });
 
     PipelineBuilder environmentMapCapturePb;
-    environmentMapCapturePb.setDevice(mainDevice);
+    environmentMapCapturePb.setDevice(m_discreteDevice);
     environmentMapCapturePb.addVertexShaderStage("environment_map");
     environmentMapCapturePb.addFragmentShaderStage("environment_map");
     environmentMapCapturePb.setRenderPass(m_skyboxCapturePhase->getRenderPass());
@@ -695,7 +696,7 @@ void Application::runLoop()
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        mrsb.setDevice(mainDevice);
+        mrsb.setDevice(m_discreteDevice);
 
         ModelRenderStateBuilder captureMrsb;
         captureMrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
@@ -705,7 +706,7 @@ void Application::runLoop()
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        captureMrsb.setDevice(mainDevice);
+        captureMrsb.setDevice(m_discreteDevice);
 
         mrsb.setModel(objects[i]);
         captureMrsb.setModel(objects[i]);
@@ -823,7 +824,7 @@ void Application::runLoop()
     PipelineBuilder skyboxPb;
     PipelineDirector skyboxPd;
     skyboxPd.createColorDepthRasterizerBuilder(skyboxPb);
-    skyboxPb.setDevice(mainDevice);
+    skyboxPb.setDevice(m_discreteDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
     skyboxPb.setRenderPass(m_skyboxPhase->getRenderPass());
@@ -852,7 +853,7 @@ void Application::runLoop()
     PipelineBuilder skyboxCapturePb;
     PipelineDirector skyboxCapturePd;
     skyboxCapturePd.createColorDepthRasterizerBuilder(skyboxCapturePb);
-    skyboxCapturePb.setDevice(mainDevice);
+    skyboxCapturePb.setDevice(m_discreteDevice);
     skyboxCapturePb.addVertexShaderStage("skybox");
     skyboxCapturePb.addFragmentShaderStage("skybox");
     skyboxCapturePb.setRenderPass(m_skyboxCapturePhase->getRenderPass());
@@ -871,7 +872,7 @@ void Application::runLoop()
             irsb.setFrameInFlightCount(1);
             irsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             irsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            irsb.setDevice(mainDevice);
+            irsb.setDevice(m_discreteDevice);
             irsb.setSkybox(skybox);
             irsb.setTexture(capturedEnvMaps[i]);
             irsb.setPipeline(irradianceConvolutionPipeline);
@@ -882,7 +883,7 @@ void Application::runLoop()
         srsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         srsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        srsb.setDevice(mainDevice);
+        srsb.setDevice(m_discreteDevice);
         srsb.setSkybox(skybox);
         srsb.setTexture(skybox->getTexture());
         srsb.setPipeline(skyboxPipeline);
@@ -892,7 +893,7 @@ void Application::runLoop()
         captureSrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         captureSrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         captureSrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        captureSrsb.setDevice(mainDevice);
+        captureSrsb.setDevice(m_discreteDevice);
         captureSrsb.setSkybox(skybox);
         captureSrsb.setTexture(skybox->getTexture());
         captureSrsb.setPipeline(skyboxCapturePipeline);
@@ -900,7 +901,7 @@ void Application::runLoop()
     }
 
     MeshBuilder mb;
-    mb.setDevice(mainDevice);
+    mb.setDevice(m_discreteDevice);
     mb.setVertices({{{-1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {1.0f, 0.0f, 0.0f, 1.f}, {0.f, 0.f}},
                     {{1.f, -1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 1.0f, 0.0f, 1.f}, {1.f, 0.f}},
                     {{1.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {0.0f, 0.0f, 1.0f, 1.f}, {1.f, 1.f}},
@@ -912,7 +913,7 @@ void Application::runLoop()
     modelBuilder.setName("Viking Room");
     std::shared_ptr<Model> postProcessQuadModel = modelBuilder.build();
     ModelRenderStateBuilder quadRsb;
-    quadRsb.setDevice(mainDevice);
+    quadRsb.setDevice(m_discreteDevice);
     quadRsb.setProbeDescriptorEnable(false);
     quadRsb.setLightDescriptorEnable(false);
     quadRsb.setTextureDescriptorEnable(false);
@@ -923,7 +924,7 @@ void Application::runLoop()
     quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     quadRsb.setMaterialDescriptorSetUpdatePred(
         [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
-            auto deviceHandle = mainDevice->getHandle();
+            auto deviceHandle = m_discreteDevice->getHandle();
             const auto &sampler = m_window->getSwapChain()->getSampler();
             if (!sampler.has_value())
                 return;
@@ -947,7 +948,7 @@ void Application::runLoop()
     PipelineBuilder postProcessPb;
     PipelineDirector postProcessPd;
     postProcessPd.createColorDepthRasterizerBuilder(postProcessPb);
-    postProcessPb.setDevice(mainDevice);
+    postProcessPb.setDevice(m_discreteDevice);
     postProcessPb.setRenderPass(m_postProcessPhase->getRenderPass());
     postProcessPb.addVertexShaderStage("screen");
     postProcessPb.addFragmentShaderStage("postprocess");
@@ -1002,5 +1003,5 @@ void Application::runLoop()
     }
 
     // ensure all commands have finished before destroying objects in this scope
-    vkDeviceWaitIdle(mainDevice->getHandle());
+    vkDeviceWaitIdle(m_discreteDevice->getHandle());
 }

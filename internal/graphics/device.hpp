@@ -125,6 +125,16 @@ class Device
     {
         return m_presentQueue;
     }
+
+    [[nodiscard]] inline bool isDiscrete() const
+    {
+        return m_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    }
+
+    [[nodiscard]] inline const char *getDeviceName() const
+    {
+        return m_props.deviceName;
+    }
 };
 
 class DeviceBuilder

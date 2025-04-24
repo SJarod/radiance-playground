@@ -21,6 +21,7 @@ class Application
 
     std::shared_ptr<Context> m_context;
     std::vector<std::shared_ptr<Device>> m_devices;
+    std::shared_ptr<Device> m_discreteDevice;
 
     std::shared_ptr<Renderer> m_renderer;
     RenderPhase *m_opaqueCapturePhase;

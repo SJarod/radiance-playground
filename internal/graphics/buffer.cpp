@@ -45,7 +45,7 @@ Buffer::~Buffer()
 
 std::unique_ptr<Buffer> BufferBuilder::build()
 {
-    assert(m_device.lock());
+    assert(!m_device.expired());
 
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
