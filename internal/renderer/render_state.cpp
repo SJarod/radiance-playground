@@ -22,6 +22,8 @@
 
 #include "render_state.hpp"
 
+std::shared_ptr<Texture> ModelRenderState::s_defaultDiffuseTexture;
+
 const glm::vec3 captureViewCenter[] =
 {
    glm::vec3(-1.f, 0.f, 0.f),
@@ -503,10 +505,6 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         }
     }
 
-    std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-    if (!writes.empty())
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-
     for (uint32_t i = 0u; i < m_product->m_materialDescriptorSetsPerSubObject.size(); ++i)
     {
         auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
@@ -514,7 +512,14 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             if (m_textureDescriptorEnable)
             {
-                std::weak_ptr<Texture> currentTexture = !m_texture.expired() ? m_texture : m_product->m_model.lock()->getMesh(i)->getTexture();
+                std::weak_ptr<Texture> currentTexture = m_texture;
+
+                if (currentTexture.expired())
+                    currentTexture = m_product->m_model.lock()->getMesh(i)->getTexture();
+
+                if (currentTexture.expired())
+                    currentTexture = ModelRenderState::s_defaultDiffuseTexture;
+
                 if (!currentTexture.expired())
                 {
                     std::shared_ptr<Texture> texPtr = currentTexture.lock();
@@ -538,7 +543,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         }
     }
 
-    writes = udb.buildAndRestart()->getSetWrites();
+    std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
     if (!writes.empty())
         vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 

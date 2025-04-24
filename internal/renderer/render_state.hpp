@@ -176,6 +176,8 @@ class ModelRenderState : public RenderStateABC
         const std::vector<std::shared_ptr<Light>>& lights, const std::unique_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     uint32_t getSubObjectCount() const override;
+
+    static std::shared_ptr<Texture> s_defaultDiffuseTexture;
 };
 
 class ModelRenderStateBuilder : public RenderStateBuilderI

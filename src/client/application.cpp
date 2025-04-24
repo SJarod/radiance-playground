@@ -660,6 +660,21 @@ void Application::runLoop()
         .size = 16,
         });
 
+
+    const std::vector<unsigned char> defaultDiffusePixels = {
+        178, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 0, 178, 0, 255, 255,
+    };
+
+    TextureDirector td;
+    TextureBuilder tb;
+    td.configureSRGBTextureBuilder(tb);
+    tb.setWidth(2);
+    tb.setHeight(2);
+    tb.setImageData(defaultDiffusePixels);
+    tb.setDevice(mainDevice);
+    tb.setImageData(defaultDiffusePixels);
+    ModelRenderState::s_defaultDiffuseTexture = tb.buildAndRestart();
+
     PipelineDirector environmentMapCapturePd;
     environmentMapCapturePd.createColorDepthRasterizerBuilder(environmentMapCapturePb);
     environmentMapCapturePb.addUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
