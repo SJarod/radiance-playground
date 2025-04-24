@@ -94,8 +94,8 @@ Application::Application()
     {
         CubemapBuilder captureEnvMapBuilder;
         captureEnvMapBuilder.setDevice(mainDevice);
-        captureEnvMapBuilder.setWidth(128);
-        captureEnvMapBuilder.setHeight(128);
+        captureEnvMapBuilder.setWidth(256);
+        captureEnvMapBuilder.setHeight(256);
         captureEnvMapBuilder.setCreateFromUserData(false);
         captureEnvMapBuilder.setDepthImageEnable(true);
         td.configureUNORMTextureBuilder(captureEnvMapBuilder);
@@ -157,8 +157,8 @@ Application::Application()
     {
         CubemapBuilder irradianceMapBuilder;
         irradianceMapBuilder.setDevice(mainDevice);
-        irradianceMapBuilder.setWidth(32);
-        irradianceMapBuilder.setHeight(32);
+        irradianceMapBuilder.setWidth(128);
+        irradianceMapBuilder.setHeight(128);
         irradianceMapBuilder.setCreateFromUserData(false);
         irradianceMapBuilder.setResolveEnable(true);
         td.configureUNORMTextureBuilder(irradianceMapBuilder);
@@ -779,8 +779,8 @@ void Application::runLoop()
 
     // probes
     ProbeGridBuilder gridBuilder;
-    const glm::vec3 extent = glm::vec3(20.f, 30.f, 20.f);
-    const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, extent.y * 0.5f, extent.z * -0.5f);
+    const glm::vec3 extent = glm::vec3(60.f, 10.f, 20.f);
+    const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, 0.f, extent.z * -0.5f);
     gridBuilder.setXAxisProbeCount(4u);
     gridBuilder.setYAxisProbeCount(4u);
     gridBuilder.setZAxisProbeCount(4u);
@@ -790,7 +790,7 @@ void Application::runLoop()
 
     MeshDirector md;
     MeshBuilder sphereMb;
-    md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
+    md.createSphereMeshBuilder(sphereMb, 0.5f, 50, 50);
     sphereMb.setDevice(mainDevice);
     std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
 

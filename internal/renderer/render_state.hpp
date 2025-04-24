@@ -36,13 +36,16 @@ class RenderStateABC
         struct Probe
         {
             glm::vec3 position;
+            float pad0[1];
         };
 
         glm::uvec3 dimensions;
         float pad0[1];
         glm::vec3 extent;
+        float pad1[1];
         glm::vec3 cornerPosition;
-        Probe probes[8];
+        float pad2[1];
+        Probe probes[64];
     };
 
     struct PointLightContainer

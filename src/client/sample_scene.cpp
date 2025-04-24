@@ -127,8 +127,11 @@ SampleScene::SampleScene(std::weak_ptr<Device> device, WindowGLFW *window)
     ModelBuilder sphereModelBuilder;
     sphereModelBuilder.setMesh(sphereMesh);
     sphereModelBuilder.setName("Sphere");
-
-    m_objects.push_back(sphereModelBuilder.build());
+    std::shared_ptr<Model> sphereModel = sphereModelBuilder.build();
+    Transform sphereTransform = sphereModel->getTransform();
+    sphereTransform.position = glm::vec3(1.f, 1.f, 0.f);
+    sphereModel->setTransform(sphereTransform);
+    m_objects.push_back(sphereModel);
 
 
     MeshBuilder cubeMb;

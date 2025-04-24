@@ -54,6 +54,7 @@ layout(set = 0, binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps
 struct Probe
 {
 	vec3 position;
+	float pad0[1];
 };
 
 layout(std430, set = 0, binding = 5) readonly buffer ProbesData
@@ -61,7 +62,9 @@ layout(std430, set = 0, binding = 5) readonly buffer ProbesData
 	ivec3 dimensions;
 	float pad0[1];
 	vec3 extent;
+	float pad1[1];
 	vec3 cornerPosition;
+	float pad2[1];
 	Probe probes[];
 };
 
