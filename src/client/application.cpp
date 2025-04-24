@@ -1,6 +1,7 @@
 #include <assimp/Importer.hpp>
 #include <memory>
 #include <string>
+#include <format>
 
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -375,8 +376,8 @@ void Application::displayImgui()
 
     if (ImGui::CollapsingHeader("Scene Objects", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
     {
-        auto objects = m_scene->getObjects();
-        for (auto object : objects) 
+        const auto &objects = m_scene->getObjects();
+        for (auto &object : objects) 
         {
             if (ImGui::TreeNode(object->getName().c_str()))
             {
@@ -403,6 +404,42 @@ void Application::displayImgui()
             }
         }
     }
+
+    if (ImGui::CollapsingHeader("Scene Lights", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
+    {
+        const auto &lights = m_scene->getLights();
+
+        int lightIndex = 0u;
+        for (auto& light : lights)
+        {
+            if (ImGui::TreeNode(std::format("Light {0}", lightIndex).c_str()))
+            {
+                ImGui::PushID(lightIndex);
+                if (PointLight* pointLight = dynamic_cast<PointLight*>(light.get()))
+                {
+                    ImGui::DragFloat3("Position", &pointLight->position.x);
+                    ImGui::DragFloat3("Attenuation", &pointLight->attenuation[0]);
+                }
+                else if (DirectionalLight* directionalLight = dynamic_cast<DirectionalLight*>(light.get()))
+                {
+                    ImGui::DragFloat3("Direction", &directionalLight->direction.x);
+                }
+
+                ImGui::ColorEdit3("Diffuse Color", &light->diffuseColor.r);
+                ImGui::DragFloat("Diffuse Power", &light->diffusePower);
+
+                ImGui::ColorEdit3("Specular Color", &light->specularColor.r);
+                ImGui::DragFloat("Specular Power", &light->specularPower);
+
+                ImGui::PopID();
+
+                ImGui::TreePop();
+            }
+
+            lightIndex++;
+        }
+    }
+
 
     ImGui::End();
 }
