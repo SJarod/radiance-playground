@@ -1,6 +1,11 @@
 #version 450
 
 #define MAX_PROBE_COUNT 64
+#define DEFAULT_AMBIENT vec3(0.0)
+
+#ifndef DEFAULT_AMBIENT
+	#define DEFAULT_AMBIENT vec3(0.0)
+#endif
 
 vec3 lerp(in vec3 a, in vec3 b, in float t)
 {
@@ -192,7 +197,7 @@ void main()
 
 	vec3 viewDirection = normalize(fragPos - viewPos);
 
-	LightingResult fragLighting = { vec3(0.0), vec3(0.0), vec3(0.0) };
+	LightingResult fragLighting = { DEFAULT_AMBIENT, vec3(0.0), vec3(0.0) };
 
 	for (int i = 0; i < pointLightCount; i++)
 	{
