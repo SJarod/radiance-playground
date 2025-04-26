@@ -142,7 +142,7 @@ void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal
 {
 	const ivec3 indexBorders = dimensions - ivec3(1u);
 	const vec3 fragPosLocalToGrid = max(fragPos - cornerPosition, 0.0);
-	const ivec3 probeCornerIndex = ivec3(fragPosLocalToGrid / extent);
+	const ivec3 probeCornerIndex = ivec3(fragPosLocalToGrid / extent * dimensions);
 
 	const ivec3 probe3DIndex000 = min(probeCornerIndex + ivec3(0, 0, 0), indexBorders);
 	const ivec3 probe3DIndex010 = min(probeCornerIndex + ivec3(0, 1, 0), indexBorders);
