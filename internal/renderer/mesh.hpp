@@ -128,5 +128,6 @@ class MeshDirector
 {
   public:
     void createAssimpMeshBuilder(MeshBuilder &builder);
-    void createSphereMeshBuilder(MeshBuilder &builder, float radius, float latitude, float longitude);
+    void createSphereMeshBuilder(MeshBuilder& builder, float radius, float latitude, float longitude);
+    void createCubeMeshBuilder(MeshBuilder &builder, const glm::vec3& halfExtent);
 };

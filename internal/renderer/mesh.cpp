@@ -186,3 +186,62 @@ void MeshDirector::createSphereMeshBuilder(MeshBuilder &builder, float radius, f
     builder.setVertices(vertices);
     builder.setIndices(indices);
 }
+
+void createCubeMesh(std::vector<Vertex>& vertices, std::vector<uint16_t>& indices, const glm::vec3& halfExtent)
+{
+    vertices.reserve(8u);
+
+    for (uint32_t i = 0u; i < 8u; i++)
+    {
+        int xSign = 1 - 2 * (i % (2 * 2) < 2);
+        int ySign = 1 - 2 * (i % (2 * 4) < 4);
+        int zSign = 1 - 2 * (i % (2 * 1) < 1);
+
+        Vertex vertex;
+
+        vertex.position.x = xSign * halfExtent.x;
+        vertex.position.y = ySign * halfExtent.y;
+        vertex.position.z = zSign * halfExtent.z;
+
+        vertex.normal = glm::vec3((float)xSign, (float)ySign, (float)zSign);
+
+        vertices.push_back(vertex);
+    }
+
+    indices.reserve(36u);
+
+    //Above ABC, BCD
+    indices.push_back(0u); indices.push_back(2u); indices.push_back(1u);
+    indices.push_back(3u); indices.push_back(1u); indices.push_back(2u);
+                       
+    //Following EFG, FGH
+    indices.push_back(6u); indices.push_back(4u); indices.push_back(5u);
+    indices.push_back(5u); indices.push_back(7u); indices.push_back(6u);
+                       
+    //Left ABF, AEF     
+    indices.push_back(5u); indices.push_back(0u); indices.push_back(1u);
+    indices.push_back(0u); indices.push_back(5u); indices.push_back(4u);
+                        
+    //Right side CDH, CGH
+    indices.push_back(2u); indices.push_back(7u); indices.push_back(3u);
+    indices.push_back(7u); indices.push_back(2u); indices.push_back(6u);
+                      
+    //Bottom ACG, AEG         
+    indices.push_back(0u); indices.push_back(6u); indices.push_back(2u);
+    indices.push_back(6u); indices.push_back(0u); indices.push_back(4u);
+                      
+    //Behind BFH, BDH  
+    indices.push_back(1u); indices.push_back(7u); indices.push_back(5u);
+    indices.push_back(7u); indices.push_back(1u); indices.push_back(3u);
+}
+
+void MeshDirector::createCubeMeshBuilder(MeshBuilder& builder, const glm::vec3& halfExtent)
+{
+    std::vector<Vertex> vertices;
+    std::vector<uint16_t> indices;
+
+    createCubeMesh(vertices, indices, halfExtent);
+
+    builder.setVertices(vertices);
+    builder.setIndices(indices);
+}
