@@ -2,10 +2,12 @@
 
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
-#include "renderer/texture.hpp"
 #include "renderer/model.hpp"
+#include "renderer/texture.hpp"
 
 #include "engine/camera.hpp"
+
+#include "scripts/radiance_cascades.hpp"
 
 #include "sample_scene_2d.hpp"
 
@@ -19,6 +21,10 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
         .scale = {1.f, 1.f, 1.f},
     });
     m_mainCamera->setNear(-1000.f);
+
+    auto radianceCascadesScript = std::make_unique<RadianceCascades>();
+    radianceCascadesScript->init(&device);
+    m_scripts.push_back(std::move(radianceCascadesScript));
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
     light->position = glm::vec3(0.0, 0.25, 0.1);
