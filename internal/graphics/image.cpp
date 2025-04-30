@@ -198,6 +198,13 @@ std::unique_ptr<Image> ImageBuilder::build()
         std::cerr << "Failed to create image : " << res << std::endl;
         return nullptr;
     }
+    static int imageCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE,
+        .objectHandle = (uint64_t)m_product->m_handle,
+        .pObjectName = std::string("Image " + std::to_string(imageCount++)).c_str(),
+    });
 
     VkMemoryRequirements memReq;
     vkGetImageMemoryRequirements(deviceHandle, m_product->m_handle, &memReq);
@@ -215,6 +222,13 @@ std::unique_ptr<Image> ImageBuilder::build()
         std::cerr << "Failed to allocate memory : " << res << std::endl;
         return nullptr;
     }
+    static int imageMemoryCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_DEVICE_MEMORY,
+        .objectHandle = (uint64_t)m_product->m_memory,
+        .pObjectName = std::string("Image Memory " + std::to_string(imageMemoryCount++)).c_str(),
+    });
 
     vkBindImageMemory(deviceHandle, m_product->m_handle, m_product->m_memory, 0);
 
@@ -351,6 +365,13 @@ std::unique_ptr<VkSampler> SamplerBuilder::build()
         std::cerr << "Failed to create image sampler : " << res << std::endl;
         return nullptr;
     }
+    static int samplerCount = 0;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_SAMPLER,
+        .objectHandle = (uint64_t)(*m_product),
+        .pObjectName = std::string("Image Sampler " + std::to_string(samplerCount++)).c_str(),
+    });
 
     auto result = std::move(m_product);
     return result;
