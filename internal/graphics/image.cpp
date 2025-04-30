@@ -266,12 +266,13 @@ void ImageDirector::configureSampledImage2DBuilder(ImageBuilder &builder)
 void ImageDirector::configureSampledImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
-    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
     builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -279,7 +280,7 @@ void ImageDirector::configureNonSampledImageCubeBuilder(ImageBuilder& builder)
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
     builder.setFormat(VK_FORMAT_D32_SFLOAT_S8_UINT);
@@ -289,10 +290,11 @@ void ImageDirector::configureDepthImageCubeBuilder(ImageBuilder& builder)
     builder.setAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }
 
-void ImageDirector::configureSampledResolveImageCubeBuilder(ImageBuilder& builder)
+void ImageDirector::configureSampledResolveImageCubeBuilder(ImageBuilder &builder)
 {
     configureImageCubeBuilder(builder);
-    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    builder.setUsage(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     builder.setAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
 }

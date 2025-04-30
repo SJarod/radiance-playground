@@ -328,7 +328,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createUniformBufferBuilder(bb);
+            bd.configureUniformBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::MVP));
             bb.setDevice(m_device);
             m_product->m_mvpUniformBuffers[i] = bb.build();
@@ -347,7 +347,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::ProbeContainer));
             bb.setDevice(m_device);
             m_product->m_probeStorageBuffers[i] = bb.build();
@@ -366,7 +366,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::PointLightContainer));
             bb.setDevice(m_device);
             m_product->m_pointLightStorageBuffers[i] = bb.build();
@@ -382,7 +382,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
         {
             BufferBuilder bb;
             BufferDirector bd;
-            bd.createStorageBufferBuilder(bb);
+            bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
             bb.setDevice(m_device);
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
@@ -733,7 +733,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
+        bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
@@ -913,7 +913,7 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
     {
         BufferBuilder bb;
         BufferDirector bd;
-        bd.createUniformBufferBuilder(bb);
+        bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();

@@ -29,7 +29,7 @@ void SkyboxBuilder::createVertexBuffer()
     stagingBuffer->copyDataToMemory(m_product->m_vertices.data());
 
     bb.restart();
-    bd.createVertexBufferBuilder(bb);
+    bd.configureVertexBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(vertexBufferSize);
     m_product->m_vertexBuffer = bb.build();
@@ -59,7 +59,7 @@ void SkyboxBuilder::createIndexBuffer()
     stagingBuffer->copyDataToMemory(m_product->m_indices.data());
 
     bb.restart();
-    bd.createIndexBufferBuilder(bb);
+    bd.configureIndexBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
     m_product->m_indexBuffer = bb.build();

@@ -100,23 +100,23 @@ void BufferDirector::configureStagingBufferBuilder(BufferBuilder &builder)
     builder.setUsage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
-void BufferDirector::createVertexBufferBuilder(BufferBuilder &builder)
+void BufferDirector::configureVertexBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
-void BufferDirector::createIndexBufferBuilder(BufferBuilder &builder)
+void BufferDirector::configureIndexBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
-void BufferDirector::createUniformBufferBuilder(BufferBuilder &builder)
+void BufferDirector::configureUniformBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
-void BufferDirector::createStorageBufferBuilder(BufferBuilder &builder)
+void BufferDirector::configureStorageBufferBuilder(BufferBuilder &builder)
 {
     builder.setUsage(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     builder.setProperties(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

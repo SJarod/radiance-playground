@@ -48,7 +48,7 @@ class SceneABC
     [[nodiscard]] CameraABC *getMainCamera() const
     {
         return m_mainCamera;
-	}
+    }
 
     [[nodiscard]] const std::shared_ptr<Skybox> getSkybox() const
     {
