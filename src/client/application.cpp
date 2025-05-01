@@ -31,6 +31,8 @@
 #include "sample_scene.hpp"
 #include "sample_scene_2d.hpp"
 
+#include "scripts/radiance_cascades.hpp"
+
 #include "application.hpp"
 
 constexpr uint32_t maxProbeCount = 64u;
@@ -934,7 +936,8 @@ void Application::runLoop()
                 .imageView = parentPhase->getRenderPass()->getImageView(0u, imageIndex),
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             };
-            VkWriteDescriptorSet write = {
+            std::vector<VkWriteDescriptorSet> writes;
+            writes.push_back(VkWriteDescriptorSet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .dstSet = set,
                 .dstBinding = 0,
@@ -942,8 +945,63 @@ void Application::runLoop()
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .pImageInfo = &imageInfo,
-            };
-            vkUpdateDescriptorSets(deviceHandle, 1, &write, 0, nullptr);
+            });
+
+            auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
+            if (!s.empty())
+            {
+                auto rc = s[0];
+
+                {
+                    VkDescriptorBufferInfo bufferInfo = {
+                        .buffer = rc->getCascadesDescBufferHandle()->getHandle(),
+                        .offset = 0,
+                        .range = rc->getCascadesDescBufferHandle()->getSize(),
+                    };
+                    writes.push_back(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = set,
+                        .dstBinding = 1,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .pBufferInfo = &bufferInfo,
+                    });
+                }
+                {
+                    VkDescriptorBufferInfo bufferInfo = {
+                        .buffer = rc->getProbePositionsBufferHandle()->getHandle(),
+                        .offset = 0,
+                        .range = rc->getProbePositionsBufferHandle()->getSize(),
+                    };
+                    writes.push_back(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = set,
+                        .dstBinding = 2,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .pBufferInfo = &bufferInfo,
+                    });
+                }
+                {
+                    VkDescriptorBufferInfo bufferInfo = {
+                        .buffer = rc->getRadianceIntervalsStorageBufferHandle()->getHandle(),
+                        .offset = 0,
+                        .range = rc->getRadianceIntervalsStorageBufferHandle()->getSize(),
+                    };
+                    writes.push_back(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = set,
+                        .dstBinding = 3,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .pBufferInfo = &bufferInfo,
+                    });
+                }
+            }
+            vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
         });
     PipelineBuilder postProcessPb;
     PipelineDirector postProcessPd;
