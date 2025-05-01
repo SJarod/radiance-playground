@@ -14,10 +14,6 @@ int RadianceCascades::getTotalProbeCount(std::vector<cascade> cascades) const
     return probeCount;
 }
 
-void RadianceCascades::init(void *userData)
-{
-    m_device = (*(std::weak_ptr<Device> *)(userData));
-}
 RadianceCascades::cascade RadianceCascades::createCascade(cascade_desc cd) const
 {
     cascade result(cd.p);
@@ -52,11 +48,11 @@ RadianceCascades::cascade RadianceCascades::createCascade(cascade_desc cd) const
 std::vector<RadianceCascades::cascade> RadianceCascades::createCascades(cascade_desc desc0, int cascadeCount) const
 {
     std::vector<cascade> result;
-    result.resize(cascadeCount);
+    result.reserve(cascadeCount);
 
     for (int i = 0; i < cascadeCount; ++i)
     {
-        result[i] = createCascade(desc0);
+        result.push_back(createCascade(desc0));
         // P1 = P0/4
         desc0.p /= 4;
         // Q1 = 2Q0
@@ -67,10 +63,11 @@ std::vector<RadianceCascades::cascade> RadianceCascades::createCascades(cascade_
 
     return result;
 }
-void RadianceCascades::begin()
+void RadianceCascades::init(void *userData)
 {
-    std::cout << "Radiance Cascades Begin" << std::endl;
+    std::cout << "Radiance Cascades Init" << std::endl;
 
+    m_device = (*(std::weak_ptr<Device> *)(userData));
     // create probes in a cascade
 
     cascade_desc cd0 = cascade_desc(m_maxProbeCount, m_minDiscreteValueCount, m_minRadianceintervalLength);
@@ -78,14 +75,77 @@ void RadianceCascades::begin()
     // create cascades
     auto cascades = createCascades(cd0, m_maxCascadeCount);
 
-    BufferDirector bd;
-    BufferBuilder bb;
-    bd.configureUniformBufferBuilder(bb);
-    bb.setDevice(m_device);
-    int probeCount = getTotalProbeCount(cascades);
-    bb.setSize(sizeof(RadianceCascades::probe) * probeCount);
-    m_probePositionBuffer = bb.build();
-    m_probePositionBuffer->copyDataToMemory
+    // buffer 1 is for the descriptors of each cascade used in the fragment shader
+    // all cascades descriptors
+    {
+        std::vector<cascade_desc> descs;
+        descs.reserve(cascades.size());
+        for (int i = 0; i < cascades.size(); ++i)
+        {
+            descs.push_back(cascades[i].desc);
+        }
+
+        BufferDirector bd;
+        BufferBuilder bb;
+        bd.configureUniformBufferBuilder(bb);
+        bb.setDevice(m_device);
+        bb.setSize(sizeof(cascade_desc) * cascades.size());
+
+        m_cascadesDescBuffer = bb.build();
+        m_cascadesDescBuffer->copyDataToMemory(descs.data());
+    }
+
+    // buffer 2 is for all the actual probe data (positions)
+    // all cascades probes positions
+    {
+        // total number of probes combining all the cascades
+        int probeCount = 0;
+        std::vector<glm::vec2> positions;
+        for (int i = 0; i < cascades.size(); ++i)
+        {
+            probeCount += cascades[i].desc.p;
+
+            for (const probe &p : cascades[i].probes)
+            {
+                positions.push_back(p.position);
+            }
+        }
+
+        BufferDirector bd;
+        BufferBuilder bb;
+        bd.configureUniformBufferBuilder(bb);
+        bb.setDevice(m_device);
+        bb.setSize(sizeof(glm::vec2) * probeCount);
+
+        m_probePositionBuffer = bb.build();
+        m_probePositionBuffer->copyDataToMemory(positions.data());
+    }
+
+    // buffer 3 is a storage buffer for the radiance gathering
+    // write : writting the radiance intervals in the gather phase
+    // read : fragment shader read the radiance intervals and merge and apply for the indirect lighting computation
+    {
+        BufferDirector bd;
+        BufferBuilder bb;
+        bd.configureStorageBufferBuilder(bb);
+        bb.setDevice(m_device);
+
+        // total number of interval combining all the cascades
+        int intervalCount = 0;
+        for (int i = 0; i < cascades.size(); ++i)
+        {
+            intervalCount += cascades[i].m;
+        }
+
+        bb.setSize(sizeof(float) * intervalCount);
+
+        m_radianceIntervalsStorageBufferRW = bb.build();
+    }
+}
+
+void RadianceCascades::begin()
+{
+    std::cout << "Radiance Cascades Begin" << std::endl;
 }
 void RadianceCascades::update(float deltaTime)
 {

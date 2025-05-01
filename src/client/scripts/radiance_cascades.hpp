@@ -60,7 +60,7 @@ class RadianceCascades : public ScriptableABC
         cascade() = delete;
         explicit cascade(int probeCount)
         {
-            probes.reserve(probeCount);
+            probes.resize(probeCount);
         }
     };
 
@@ -76,6 +76,11 @@ class RadianceCascades : public ScriptableABC
      *
      */
     std::unique_ptr<Buffer> m_probePositionBuffer;
+    /**
+     * @brief buffer containing the probe radiance intervals information for write and read
+     *
+     */
+    std::unique_ptr<Buffer> m_radianceIntervalsStorageBufferRW;
 
     cascade createCascade(cascade_desc cd) const;
     std::vector<cascade> createCascades(cascade_desc desc0, int cascadeCount) const;
@@ -86,4 +91,18 @@ class RadianceCascades : public ScriptableABC
     virtual void init(void *userData) override;
     virtual void begin() override;
     virtual void update(float deltaTime) override;
+
+  public:
+    [[nodiscard]] inline const Buffer *getCascadesDescBufferHandle() const
+    {
+        return m_cascadesDescBuffer.get();
+    }
+    [[nodiscard]] inline const Buffer *getProbePositionsBufferHandle() const
+    {
+        return m_probePositionBuffer.get();
+    }
+    [[nodiscard]] inline const Buffer *getRadianceIntervalsStorageBufferHandle() const
+    {
+        return m_radianceIntervalsStorageBufferRW.get();
+    }
 };

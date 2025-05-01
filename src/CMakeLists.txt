@@ -25,6 +25,7 @@ set(SHADER_SOURCES
 	shaders/irradiance_convolution.frag
 	shaders/screen.vert
 	shaders/postprocess.frag
+	shaders/radiance_cascades.frag
 	shaders/probe_grid_debug.frag
 	shaders/probe_grid_debug.vert
 )

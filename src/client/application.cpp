@@ -910,7 +910,7 @@ void Application::runLoop()
     std::shared_ptr<Mesh> postProcessQuadMesh = mb.buildAndRestart();
     ModelBuilder modelBuilder;
     modelBuilder.setMesh(postProcessQuadMesh);
-    modelBuilder.setName("Viking Room");
+    modelBuilder.setName("post process quad");
     std::shared_ptr<Model> postProcessQuadModel = modelBuilder.build();
     ModelRenderStateBuilder quadRsb;
     quadRsb.setDevice(m_discreteDevice);
@@ -958,9 +958,31 @@ void Application::runLoop()
     postProcessPb.setBlendEnable(VK_FALSE);
     postProcessPb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
     UniformDescriptorBuilder postProcessUdb;
+    // rendered image
     postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    });
+    // cascade desc buffer
+    postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    });
+    // cascade probes position buffer
+    postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+    });
+    // radiance interval storage buffer
+    postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
