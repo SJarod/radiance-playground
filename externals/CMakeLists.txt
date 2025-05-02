@@ -25,6 +25,13 @@ target_sources(stb INTERFACE
 )
 target_include_directories(stb INTERFACE ./stb/)
 
+add_library(legitprofiler INTERFACE)
+target_sources(legitprofiler INTERFACE
+    LegitProfiler/ProfilerTask.h
+	LegitProfiler/ImGuiProfilerRenderer.h
+)
+target_include_directories(legitprofiler INTERFACE ./LegitProfiler/)
+
 add_library(imgui STATIC)
 target_sources(imgui PUBLIC
     imgui/imgui.h

@@ -22,3 +22,6 @@
 [submodule "externals/tracy"]
 	path = externals/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "externals/LegitProfiler"]
+	path = externals/LegitProfiler
+	url = https://github.com/Raikiri/LegitProfiler.git
