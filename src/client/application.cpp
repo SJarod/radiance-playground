@@ -691,7 +691,7 @@ void Application::runLoop()
     for (int i = 0; i < objects.size(); ++i)
     {
         ModelRenderStateBuilder mrsb;
-        mrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
+        mrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -702,7 +702,7 @@ void Application::runLoop()
         mrsb.setDevice(m_discreteDevice);
 
         ModelRenderStateBuilder captureMrsb;
-        captureMrsb.setFrameInFlightCount(m_window->getSwapChain()->getSwapChainImageCount());
+        captureMrsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
