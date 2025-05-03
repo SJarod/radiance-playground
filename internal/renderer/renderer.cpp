@@ -69,7 +69,21 @@ VkResult Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
     return res;
 }
 
+void Renderer::setSwapChain(const SwapChain *swapchain)
+{
+    m_swapchain = swapchain;
+    m_renderGraph->updateSwapchainOnRenderPhases(swapchain);
+}
+
 std::unique_ptr<Renderer> RendererBuilder::build()
 {
+    for (int i = 0; i < m_product->m_renderGraph->m_oneTimeRenderPhases.size(); ++i)
+    {
+        auto *phase = m_product->m_renderGraph->m_oneTimeRenderPhases[i].get();
+    }
+    for (int i = 0; i < m_product->m_renderGraph->m_renderPhases.size(); ++i)
+    {
+        auto *phase = m_product->m_renderGraph->m_oneTimeRenderPhases[i].get();
+    }
     return std::move(m_product);
 }

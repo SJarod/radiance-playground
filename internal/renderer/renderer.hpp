@@ -51,11 +51,7 @@ class Renderer
     }
 
   public:
-    void setSwapChain(const SwapChain *swapchain)
-    {
-        m_swapchain = swapchain;
-        m_renderGraph->updateSwapchainOnRenderPhases(swapchain);
-    }
+    void setSwapChain(const SwapChain *swapchain);
 };
 
 class RendererBuilder

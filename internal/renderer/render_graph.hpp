@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "renderer.hpp"
+
 class RenderPhase;
 class CameraABC;
 class Light;
@@ -17,11 +19,15 @@ class SwapChain;
  */
 class RenderGraph
 {
+    friend std::unique_ptr<Renderer> RendererBuilder::build();
+
   private:
-  // TODO : better way to retrieve each phase to register new render states
-      bool m_shouldRenderOneTimePhases = true;
-      std::vector<std::unique_ptr<RenderPhase>> m_oneTimeRenderPhases;
-      std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
+    // TODO : better way to retrieve each phase to register new render states
+    bool m_shouldRenderOneTimePhases = true;
+    std::vector<std::unique_ptr<RenderPhase>> m_oneTimeRenderPhases;
+    std::vector<std::unique_ptr<RenderPhase>> m_renderPhases;
+
+    int a = -1;
 
   public:
     void addOneTimeRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
@@ -37,7 +43,7 @@ class RenderGraph
 
     void swapAllRenderPhasesBackBuffers();
 
-    void updateSwapchainOnRenderPhases(const SwapChain* swapchain);
+    void updateSwapchainOnRenderPhases(const SwapChain *swapchain);
 
   public:
     [[nodiscard]] VkSemaphore getFirstPhaseCurrentAcquireSemaphore() const;
