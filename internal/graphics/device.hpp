@@ -39,9 +39,11 @@ class Device
 
     std::optional<uint32_t> m_graphicsFamilyIndex;
     std::optional<uint32_t> m_presentFamilyIndex;
+    std::optional<uint32_t> m_computeFamilyIndex;
 
     VkQueue m_graphicsQueue;
     VkQueue m_presentQueue;
+    VkQueue m_computeQueue;
 
     VkCommandPool m_commandPool;
     VkCommandPool m_commandPoolTransient;
@@ -125,6 +127,10 @@ class Device
     {
         return m_presentQueue;
     }
+    [[nodiscard]] inline const VkQueue& getComputeQueue() const
+    {
+        return m_computeQueue;
+    }
 
     [[nodiscard]] inline bool isDiscrete() const
     {
@@ -169,30 +175,7 @@ class DeviceBuilder
         m_product->m_deviceExtensions.push_back(extension);
     }
 
-    void setPhysicalDevice(VkPhysicalDevice a)
-    {
-        m_product->m_physicalHandle = a;
-
-        m_product->m_multiviewFeature =
-            VkPhysicalDeviceMultiviewFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-                                              .multiview = true,
-                                              .multiviewGeometryShader = false,
-                                              .multiviewTessellationShader = false};
-
-        m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-            .pNext = &m_product->m_multiviewFeature};
-
-        m_product->m_features = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &m_product->m_bufferDeviceAddressFeature,
-        };
-
-        vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);
-        vkGetPhysicalDeviceProperties(a, &m_product->m_props);
-
-        m_product->m_graphicsFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-    }
+    void setPhysicalDevice(VkPhysicalDevice a);
 
     void setSurface(const Surface *surface)
     {

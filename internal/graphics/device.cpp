@@ -113,6 +113,32 @@ void Device::addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo)
     vkSetDebugUtilsObjectNameEXT(m_handle, &nameInfo);
 }
 
+void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
+{
+    m_product->m_physicalHandle = a;
+
+    m_product->m_multiviewFeature =
+        VkPhysicalDeviceMultiviewFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+                                          .multiview = true,
+                                          .multiviewGeometryShader = false,
+                                          .multiviewTessellationShader = false};
+
+    m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .pNext = &m_product->m_multiviewFeature};
+
+    m_product->m_features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = &m_product->m_bufferDeviceAddressFeature,
+    };
+
+    vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);
+    vkGetPhysicalDeviceProperties(a, &m_product->m_props);
+
+    m_product->m_graphicsFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+    m_product->m_computeFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
+}
+
 std::unique_ptr<Device> DeviceBuilder::build()
 {
     assert(m_product->m_physicalHandle);
@@ -124,6 +150,8 @@ std::unique_ptr<Device> DeviceBuilder::build()
         uniqueQueueFamilies.insert(m_product->m_graphicsFamilyIndex.value());
     if (m_product->m_presentFamilyIndex.has_value())
         uniqueQueueFamilies.insert(m_product->m_presentFamilyIndex.value());
+    if (m_product->m_computeFamilyIndex.has_value())
+        uniqueQueueFamilies.insert(m_product->m_computeFamilyIndex.value());
 
     float queuePriority = 1.f;
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -161,6 +189,8 @@ std::unique_ptr<Device> DeviceBuilder::build()
     vkGetDeviceQueue(m_product->m_handle, m_product->m_graphicsFamilyIndex.value(), 0, &m_product->m_graphicsQueue);
     if (m_product->m_surface)
         vkGetDeviceQueue(m_product->m_handle, m_product->m_presentFamilyIndex.value(), 0, &m_product->m_presentQueue);
+    if (m_product->m_computeFamilyIndex.has_value())
+        vkGetDeviceQueue(m_product->m_handle, m_product->m_computeFamilyIndex.value(), 0, &m_product->m_computeQueue);
 
     // command pools
 
