@@ -24,12 +24,18 @@ class Application
     std::shared_ptr<Device> m_discreteDevice;
 
     std::shared_ptr<Renderer> m_renderer;
+
     RenderPhase *m_opaqueCapturePhase;
     RenderPhase *m_skyboxCapturePhase;
+
     RenderPhase *m_irradianceConvolutionPhase;
     RenderPhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
+
     RenderPhase *m_postProcessPhase;
+    // compute
+    // post process
+
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
 

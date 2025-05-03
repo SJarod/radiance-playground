@@ -67,7 +67,8 @@ void RadianceCascades::init(void *userData)
 {
     std::cout << "Radiance Cascades Init" << std::endl;
 
-    m_device = (*(std::weak_ptr<Device> *)(userData));
+    auto data = (init_data *)userData;
+    m_device = data->device;
     // create probes in a cascade
 
     cascade_desc cd0 = cascade_desc(m_maxProbeCount, m_minDiscreteValueCount, m_minRadianceintervalLength);
@@ -125,21 +126,24 @@ void RadianceCascades::init(void *userData)
     // write : writting the radiance intervals in the gather phase
     // read : fragment shader read the radiance intervals and merge and apply for the indirect lighting computation
     {
-        BufferDirector bd;
-        BufferBuilder bb;
-        bd.configureStorageBufferBuilder(bb);
-        bb.setDevice(m_device);
-
-        // total number of interval combining all the cascades
-        int intervalCount = 0;
-        for (int i = 0; i < cascades.size(); ++i)
+        for (int i = 0; i < data->frameInFlightCount; ++i)
         {
-            intervalCount += cascades[i].m;
+            BufferDirector bd;
+            BufferBuilder bb;
+            bd.configureStorageBufferBuilder(bb);
+            bb.setDevice(m_device);
+
+            // total number of interval combining all the cascades
+            int intervalCount = 0;
+            for (int i = 0; i < cascades.size(); ++i)
+            {
+                intervalCount += cascades[i].m;
+            }
+
+            bb.setSize(sizeof(float) * intervalCount);
+
+            m_radianceIntervalsStorageBufferRW.push_back(bb.build());
         }
-
-        bb.setSize(sizeof(float) * intervalCount);
-
-        m_radianceIntervalsStorageBufferRW = bb.build();
     }
 }
 

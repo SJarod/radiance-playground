@@ -296,6 +296,7 @@ Application::Application()
     RendererBuilder rb;
     rb.setDevice(m_discreteDevice);
     rb.setSwapChain(m_window->getSwapChain());
+    rb.setFrameInFlightCount(3);
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
     renderGraph->addOneTimeRenderPhase(std::move(opaqueCapturePhase));
     renderGraph->addOneTimeRenderPhase(std::move(skyboxCapturePhase));
@@ -473,15 +474,15 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder irradianceConvolutionPb;
+    PipelineBuilder<PipelineType::GRAPHICS> irradianceConvolutionPb;
     irradianceConvolutionPb.setDevice(m_discreteDevice);
     irradianceConvolutionPb.addVertexShaderStage("skybox");
     irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
     irradianceConvolutionPb.setRenderPass(m_irradianceConvolutionPhase->getRenderPass());
     irradianceConvolutionPb.setExtent(m_window->getSwapChain()->getExtent());
 
-    PipelineDirector irradianceConvolutionPd;
-    irradianceConvolutionPd.createColorDepthRasterizerBuilder(irradianceConvolutionPb);
+    PipelineDirector<PipelineType::GRAPHICS> irradianceConvolutionPd;
+    irradianceConvolutionPd.configureColorDepthRasterizerBuilder(irradianceConvolutionPb);
     irradianceConvolutionPb.addUniformDescriptorPack(irradianceConvolutionUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> irradianceConvolutionPipeline = irradianceConvolutionPb.build();
@@ -527,7 +528,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder phongPb;
+    PipelineBuilder<PipelineType::GRAPHICS> phongPb;
     phongPb.setDevice(m_discreteDevice);
     phongPb.addVertexShaderStage("phong");
     phongPb.addFragmentShaderStage("phong");
@@ -539,8 +540,8 @@ void Application::runLoop()
         .size = 16,
     });
 
-    PipelineDirector phongPd;
-    phongPd.createColorDepthRasterizerBuilder(phongPb);
+    PipelineDirector<PipelineType::GRAPHICS> phongPd;
+    phongPd.configureColorDepthRasterizerBuilder(phongPb);
     phongPb.addUniformDescriptorPack(phongInstanceUdb.buildAndRestart());
     phongPb.addUniformDescriptorPack(phongMaterialUdb.buildAndRestart());
 
@@ -586,7 +587,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder phongCapturePb;
+    PipelineBuilder<PipelineType::GRAPHICS> phongCapturePb;
     phongCapturePb.setDevice(m_discreteDevice);
     phongCapturePb.addVertexShaderStage("phong");
     phongCapturePb.addFragmentShaderStage("phong");
@@ -598,8 +599,8 @@ void Application::runLoop()
         .size = 16,
     });
 
-    PipelineDirector phongCapturePd;
-    phongCapturePd.createColorDepthRasterizerBuilder(phongCapturePb);
+    PipelineDirector<PipelineType::GRAPHICS> phongCapturePd;
+    phongCapturePd.configureColorDepthRasterizerBuilder(phongCapturePb);
     phongCapturePb.addUniformDescriptorPack(phongCaptureInstanceUdb.buildAndRestart());
     phongCapturePb.addUniformDescriptorPack(phongCaptureMaterialUdb.buildAndRestart());
 
@@ -619,7 +620,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder environmentMapPb;
+    PipelineBuilder<PipelineType::GRAPHICS> environmentMapPb;
     environmentMapPb.setDevice(m_discreteDevice);
     environmentMapPb.addVertexShaderStage("environment_map");
     environmentMapPb.addFragmentShaderStage("environment_map");
@@ -631,8 +632,8 @@ void Application::runLoop()
         .size = 16,
     });
 
-    PipelineDirector environmentMapPd;
-    environmentMapPd.createColorDepthRasterizerBuilder(environmentMapPb);
+    PipelineDirector<PipelineType::GRAPHICS> environmentMapPd;
+    environmentMapPd.configureColorDepthRasterizerBuilder(environmentMapPb);
     environmentMapPb.addUniformDescriptorPack(environmentMapUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> environmentMapPipeline = environmentMapPb.build();
@@ -651,7 +652,7 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder environmentMapCapturePb;
+    PipelineBuilder<PipelineType::GRAPHICS> environmentMapCapturePb;
     environmentMapCapturePb.setDevice(m_discreteDevice);
     environmentMapCapturePb.addVertexShaderStage("environment_map");
     environmentMapCapturePb.addFragmentShaderStage("environment_map");
@@ -823,9 +824,9 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder skyboxPb;
-    PipelineDirector skyboxPd;
-    skyboxPd.createColorDepthRasterizerBuilder(skyboxPb);
+    PipelineBuilder<PipelineType::GRAPHICS> skyboxPb;
+    PipelineDirector<PipelineType::GRAPHICS> skyboxPd;
+    skyboxPd.configureColorDepthRasterizerBuilder(skyboxPb);
     skyboxPb.setDevice(m_discreteDevice);
     skyboxPb.addVertexShaderStage("skybox");
     skyboxPb.addFragmentShaderStage("skybox");
@@ -852,9 +853,9 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
     });
 
-    PipelineBuilder skyboxCapturePb;
-    PipelineDirector skyboxCapturePd;
-    skyboxCapturePd.createColorDepthRasterizerBuilder(skyboxCapturePb);
+    PipelineBuilder<PipelineType::GRAPHICS> skyboxCapturePb;
+    PipelineDirector<PipelineType::GRAPHICS> skyboxCapturePd;
+    skyboxCapturePd.configureColorDepthRasterizerBuilder(skyboxCapturePb);
     skyboxCapturePb.setDevice(m_discreteDevice);
     skyboxCapturePb.addVertexShaderStage("skybox");
     skyboxCapturePb.addFragmentShaderStage("skybox");
@@ -1003,9 +1004,9 @@ void Application::runLoop()
             }
             vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
         });
-    PipelineBuilder postProcessPb;
-    PipelineDirector postProcessPd;
-    postProcessPd.createColorDepthRasterizerBuilder(postProcessPb);
+    PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
+    PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
+    postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
     postProcessPb.setDevice(m_discreteDevice);
     postProcessPb.setRenderPass(m_postProcessPhase->getRenderPass());
     postProcessPb.addVertexShaderStage("screen");

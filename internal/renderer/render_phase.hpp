@@ -21,7 +21,7 @@ struct BackBufferT
 {
     VkCommandBuffer commandBuffer;
 
-    // TODO : make acquire semaphore optional
+    // TODO : make acquire semaphore optional (first phase may not need one)
     VkSemaphore acquireSemaphore;
     VkSemaphore renderSemaphore;
     VkFence inFlightFence;
@@ -45,7 +45,7 @@ class RenderPhase
 
     std::vector<std::vector<std::shared_ptr<RenderStateABC>>> m_pooledRenderStates;
 
-    uint32_t m_singleFrameRendeerCount = 1u;
+    uint32_t m_singleFrameRenderCount = 1u;
 
     int m_backBufferIndex = 0;
     std::vector<std::vector<BackBufferT>> m_pooledBackBuffers;
@@ -69,20 +69,21 @@ class RenderPhase
     RenderPhase &operator=(RenderPhase &&) = delete;
 
     void registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState);
-    void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState, uint32_t pooledFramebufferIndex);
+    void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState,
+                                           uint32_t pooledFramebufferIndex);
 
     void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
                           const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid) const;
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
     void swapBackBuffers(uint32_t pooledFramebufferIndex);
-    
-    void updateSwapchainOnRenderPass(const SwapChain* newSwapchain);
+
+    void updateSwapchainOnRenderPass(const SwapChain *newSwapchain);
 
   public:
     [[nodiscard]] const int getSingleFrameRenderCount() const
     {
-          return m_singleFrameRendeerCount;
+        return m_singleFrameRenderCount;
     }
 
     [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const
@@ -142,7 +143,7 @@ class RenderPhaseBuilder
     }
     void setSingleFrameRenderCount(uint32_t renderCount)
     {
-        m_product->m_singleFrameRendeerCount = renderCount;
+        m_product->m_singleFrameRenderCount = renderCount;
     }
     void setCaptureEnable(bool enable)
     {

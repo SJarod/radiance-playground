@@ -2,9 +2,14 @@
 
 #include <memory>
 
+#include <vulkan/vulkan.h>
+
 class RenderGraph;
 class SwapChain;
 class Device;
+class CameraABC;
+class Light;
+class ProbeGrid;
 
 class RendererBuilder;
 
@@ -24,9 +29,11 @@ class Renderer
 
     /**
      * @brief buffering type
+     * 2 = double buffering
+     * 3 = triple buffering
      *
      */
-    int m_framesInFlight = 2;
+    int m_framesInFlight = -1;
 
     Renderer() = default;
 
@@ -75,6 +82,12 @@ class RendererBuilder
     void setSwapChain(const SwapChain *swapchain)
     {
         m_product->m_swapchain = swapchain;
+    }
+
+    void setFrameInFlightCount(uint32_t inFlightCount)
+    {
+        assert(inFlightCount == 2 || inFlightCount == 3);
+        m_product->m_framesInFlight = inFlightCount;
     }
 
     void setRenderGraph(std::unique_ptr<RenderGraph> renderGraph)

@@ -14,6 +14,13 @@ class Device;
 
 class RadianceCascades : public ScriptableABC
 {
+  public:
+    struct init_data
+    {
+        std::weak_ptr<Device> device;
+        uint32_t frameInFlightCount;
+    };
+
   private:
     const int m_maxCascadeCount = 3;
     // p = probe count is a square number
@@ -78,9 +85,10 @@ class RadianceCascades : public ScriptableABC
     std::unique_ptr<Buffer> m_probePositionBuffer;
     /**
      * @brief buffer containing the probe radiance intervals information for write and read
+     * It is an array because there are as many as frames in flight.
      *
      */
-    std::unique_ptr<Buffer> m_radianceIntervalsStorageBufferRW;
+    std::vector<std::unique_ptr<Buffer>> m_radianceIntervalsStorageBufferRW;
 
     cascade createCascade(cascade_desc cd) const;
     std::vector<cascade> createCascades(cascade_desc desc0, int cascadeCount) const;
@@ -101,8 +109,8 @@ class RadianceCascades : public ScriptableABC
     {
         return m_probePositionBuffer.get();
     }
-    [[nodiscard]] inline const Buffer *getRadianceIntervalsStorageBufferHandle() const
+    [[nodiscard]] inline const Buffer *getRadianceIntervalsStorageBufferHandle(uint32_t inFlightCount) const
     {
-        return m_radianceIntervalsStorageBufferRW.get();
+        return m_radianceIntervalsStorageBufferRW[inFlightCount].get();
     }
 };
