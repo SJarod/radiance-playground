@@ -10,8 +10,8 @@
 #include "texture.hpp"
 
 #include "engine/camera.hpp"
-#include "engine/uniform.hpp"
 #include "engine/probe_grid.hpp"
+#include "engine/uniform.hpp"
 
 #include "render_state.hpp"
 
@@ -29,10 +29,10 @@ RenderPhase::~RenderPhase()
 
     for (uint32_t i = 0u; i < m_pooledBackBuffers.size(); i++)
     {
-        const auto& backBuffers = m_pooledBackBuffers[i];
+        const auto &backBuffers = m_pooledBackBuffers[i];
         for (uint32_t j = 0u; j < backBuffers.size(); j++)
         {
-            const BackBufferT& backbuffer = backBuffers[j];
+            const BackBufferT &backbuffer = backBuffers[j];
             vkDestroyFence(deviceHandle, backbuffer.inFlightFence, nullptr);
             vkDestroySemaphore(deviceHandle, backbuffer.renderSemaphore, nullptr);
             vkDestroySemaphore(deviceHandle, backbuffer.acquireSemaphore, nullptr);
@@ -55,7 +55,8 @@ void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> r
     }
 }
 
-void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState, uint32_t pooledFramebufferIndex)
+void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState,
+                                                    uint32_t pooledFramebufferIndex)
 {
     if (pooledFramebufferIndex >= m_pooledRenderStates.size())
     {
@@ -108,8 +109,10 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     };
     std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
 
-    renderArea.extent.width = std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
-    renderArea.extent.height = std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
+    renderArea.extent.width =
+        std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
+    renderArea.extent.height =
+        std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
 
     VkRenderPassBeginInfo renderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -121,19 +124,20 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     };
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    const auto& renderStates = m_pooledRenderStates[pooledFramebufferIndex];
+    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
     for (int i = 0; i < renderStates.size(); ++i)
     {
-        RenderStateABC* renderState = renderStates[i].get();
+        RenderStateABC *renderState = renderStates[i].get();
 
-        if (const auto& pipeline = renderState->getPipeline())
+        if (const auto &pipeline = renderState->getPipeline())
         {
             pipeline->recordBind(commandBuffer, imageIndex, renderArea);
         }
 
         renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
+                                          lights, probeGrid, m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex, m_backBufferIndex);
         for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
         {
             renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
@@ -150,8 +154,9 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
 void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
 {
-    const BackBufferT& currentBackBuffer = getCurrentBackBuffer(pooledFramebufferIndex);
-    VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride : currentBackBuffer.acquireSemaphore};
+    const BackBufferT &currentBackBuffer = getCurrentBackBuffer(pooledFramebufferIndex);
+    VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
+                                                          : currentBackBuffer.acquireSemaphore};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore(pooledFramebufferIndex)};
     VkSubmitInfo submitInfo = {
@@ -165,7 +170,8 @@ void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uin
         .pSignalSemaphores = signalSemaphores,
     };
 
-    VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence(pooledFramebufferIndex));
+    VkResult res =
+        vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence(pooledFramebufferIndex));
     if (res != VK_SUCCESS)
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
 }
@@ -192,7 +198,7 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
     {
         m_product->m_pooledBackBuffers[poolIndex].resize(m_bufferingType);
 
-        auto& backBuffers = m_product->m_pooledBackBuffers[poolIndex];
+        auto &backBuffers = m_product->m_pooledBackBuffers[poolIndex];
 
         VkCommandBufferAllocateInfo commandBufferAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -222,16 +228,15 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
         };
         for (int i = 0; i < m_bufferingType; ++i)
         {
-            VkResult res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                &backBuffers[i].acquireSemaphore);
+            VkResult res =
+                vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr, &backBuffers[i].acquireSemaphore);
             if (res != VK_SUCCESS)
             {
                 std::cerr << "Failed to create semaphore : " << res << std::endl;
                 return nullptr;
             }
 
-            res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                &backBuffers[i].renderSemaphore);
+            res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr, &backBuffers[i].renderSemaphore);
             if (res != VK_SUCCESS)
             {
                 std::cerr << "Failed to create semaphore : " << res << std::endl;
@@ -250,9 +255,9 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
     return std::move(m_product);
 }
 
-void RenderPhase::updateSwapchainOnRenderPass(const SwapChain* newSwapchain) 
+void RenderPhase::updateSwapchainOnRenderPass(const SwapChain *newSwapchain)
 {
-    const std::vector<std::vector<VkImageView>>& imageViewPool = { newSwapchain->getImageViews() };
-    const std::vector<VkImageView>& depthImageViewPool = { newSwapchain->getDepthImageView() };
+    const std::vector<std::vector<VkImageView>> &imageViewPool = {newSwapchain->getImageViews()};
+    const std::vector<VkImageView> &depthImageViewPool = {newSwapchain->getDepthImageView()};
     m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
 }

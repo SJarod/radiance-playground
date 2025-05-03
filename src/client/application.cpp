@@ -1,7 +1,7 @@
 #include <assimp/Importer.hpp>
+#include <format>
 #include <memory>
 #include <string>
-#include <format>
 
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -211,7 +211,7 @@ Application::Application()
     m_opaquePhase = opaquePhase.get();
 
     RenderPassBuilder probesDebugRpb;
-    probesDebugRpb.setDevice(mainDevice);
+    probesDebugRpb.setDevice(m_discreteDevice);
     rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *m_window->getSwapChain());
 
     rpad.configureAttachmentLoadBuilder(rpab);
@@ -229,7 +229,7 @@ Application::Application()
     probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
 
     RenderPhaseBuilder probesDebugRb;
-    probesDebugRb.setDevice(mainDevice);
+    probesDebugRb.setDevice(m_discreteDevice);
     probesDebugRb.setRenderPass(probesDebugRpb.build());
     auto probesDebugPhase = probesDebugRb.build();
     m_probesDebugPhase = probesDebugPhase.get();
@@ -383,7 +383,7 @@ void Application::displayImgui()
     if (ImGui::CollapsingHeader("Scene Objects", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
     {
         const auto &objects = m_scene->getObjects();
-        for (auto &object : objects) 
+        for (auto &object : objects)
         {
             if (ImGui::TreeNode(object->getName().c_str()))
             {
@@ -416,17 +416,17 @@ void Application::displayImgui()
         const auto &lights = m_scene->getLights();
 
         int lightIndex = 0u;
-        for (auto& light : lights)
+        for (auto &light : lights)
         {
             if (ImGui::TreeNode(std::format("Light {0}", lightIndex).c_str()))
             {
                 ImGui::PushID(lightIndex);
-                if (PointLight* pointLight = dynamic_cast<PointLight*>(light.get()))
+                if (PointLight *pointLight = dynamic_cast<PointLight *>(light.get()))
                 {
                     ImGui::DragFloat3("Position", &pointLight->position.x);
                     ImGui::DragFloat3("Attenuation", &pointLight->attenuation[0]);
                 }
-                else if (DirectionalLight* directionalLight = dynamic_cast<DirectionalLight*>(light.get()))
+                else if (DirectionalLight *directionalLight = dynamic_cast<DirectionalLight *>(light.get()))
                 {
                     ImGui::DragFloat3("Direction", &directionalLight->direction.x);
                 }
@@ -445,7 +445,6 @@ void Application::displayImgui()
             lightIndex++;
         }
     }
-
 
     ImGui::End();
 }
@@ -664,7 +663,6 @@ void Application::runLoop()
         .size = 16,
     });
 
-
     const std::vector<unsigned char> defaultDiffusePixels = {
         178, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 0, 178, 0, 255, 255,
     };
@@ -675,12 +673,12 @@ void Application::runLoop()
     tb.setWidth(2);
     tb.setHeight(2);
     tb.setImageData(defaultDiffusePixels);
-    tb.setDevice(mainDevice);
+    tb.setDevice(m_discreteDevice);
     tb.setImageData(defaultDiffusePixels);
     ModelRenderState::s_defaultDiffuseTexture = tb.buildAndRestart();
 
-    PipelineDirector environmentMapCapturePd;
-    environmentMapCapturePd.createColorDepthRasterizerBuilder(environmentMapCapturePb);
+    PipelineDirector<PipelineType::GRAPHICS> environmentMapCapturePd;
+    environmentMapCapturePd.configureColorDepthRasterizerBuilder(environmentMapCapturePb);
     environmentMapCapturePb.addUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> environmentMapCapturePipeline = environmentMapCapturePb.build();
@@ -749,22 +747,22 @@ void Application::runLoop()
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
+    });
     probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = maxProbeCount,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
     probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+    });
 
-    PipelineBuilder probeGridDebugPb;
-    probeGridDebugPb.setDevice(mainDevice);
+    PipelineBuilder<PipelineType::GRAPHICS> probeGridDebugPb;
+    probeGridDebugPb.setDevice(m_discreteDevice);
     probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
     probeGridDebugPb.addFragmentShaderStage("probe_grid_debug");
     probeGridDebugPb.setRenderPass(m_probesDebugPhase->getRenderPass());
@@ -773,10 +771,10 @@ void Application::runLoop()
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = 16,
-        });
+    });
 
-    PipelineDirector probeGridDebugPd;
-    probeGridDebugPd.createColorDepthRasterizerBuilder(probeGridDebugPb);
+    PipelineDirector<PipelineType::GRAPHICS> probeGridDebugPd;
+    probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
     probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> probeGridDebugPipeline = probeGridDebugPb.build();
@@ -795,14 +793,14 @@ void Application::runLoop()
     MeshDirector md;
     MeshBuilder sphereMb;
     md.createSphereMeshBuilder(sphereMb, 0.5f, 50, 50);
-    sphereMb.setDevice(mainDevice);
+    sphereMb.setDevice(m_discreteDevice);
     std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
 
     ProbeGridRenderStateBuilder prsb;
     prsb.setFrameInFlightCount(3);
     prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    prsb.setDevice(mainDevice);
+    prsb.setDevice(m_discreteDevice);
     prsb.setPipeline(probeGridDebugPipeline);
     prsb.setProbeGrid(grid);
     prsb.setEnvironmentMaps(irradianceMaps);
@@ -985,11 +983,24 @@ void Application::runLoop()
                         .pBufferInfo = &bufferInfo,
                     });
                 }
+            }
+            vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+        });
+    quadRsb.setMaterialDescriptorSetUpdatePredPerFrame(
+        [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set, uint32_t backBufferIndex) {
+            auto deviceHandle = m_discreteDevice->getHandle();
+            std::vector<VkWriteDescriptorSet> writes;
+
+            auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
+            if (!s.empty())
+            {
+                auto rc = s[0];
+
                 {
                     VkDescriptorBufferInfo bufferInfo = {
-                        .buffer = rc->getRadianceIntervalsStorageBufferHandle()->getHandle(),
+                        .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
                         .offset = 0,
-                        .range = rc->getRadianceIntervalsStorageBufferHandle()->getSize(),
+                        .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
                     };
                     writes.push_back(VkWriteDescriptorSet{
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
