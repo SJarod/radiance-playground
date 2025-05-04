@@ -17,19 +17,32 @@
 
 #include "render_phase.hpp"
 
+struct RenderPhase::impl
+{
+    std::unique_ptr<RenderPass> m_renderPass;
+
+    std::vector<std::vector<std::shared_ptr<RenderStateABC>>> m_pooledRenderStates;
+
+    uint32_t m_singleFrameRenderCount = 1u;
+
+    int m_backBufferIndex = 0;
+    std::vector<std::vector<BackBufferT>> m_pooledBackBuffers;
+
+    bool m_isCapturePhase = false;
+};
+
 RenderPhase::~RenderPhase()
 {
-    if (!m_device.lock())
+    if (m_device.expired())
         return;
-
     auto deviceHandle = m_device.lock()->getHandle();
 
     // TODO : wait queue instead of device
     vkDeviceWaitIdle(deviceHandle);
 
-    for (uint32_t i = 0u; i < m_pooledBackBuffers.size(); i++)
+    for (uint32_t i = 0u; i < pImpl->m_pooledBackBuffers.size(); i++)
     {
-        const auto &backBuffers = m_pooledBackBuffers[i];
+        const auto &backBuffers = pImpl->m_pooledBackBuffers[i];
         for (uint32_t j = 0u; j < backBuffers.size(); j++)
         {
             const BackBufferT &backbuffer = backBuffers[j];
@@ -39,40 +52,69 @@ RenderPhase::~RenderPhase()
         }
     }
 
-    m_renderPass.reset();
+    pImpl->m_renderPass.reset();
+
+    pImpl.reset();
+}
+
+const BackBufferT &RenderPhase::getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const
+{
+    return pImpl->m_pooledBackBuffers[pooledFramebufferIndex][pImpl->m_backBufferIndex];
+}
+
+const int RenderPhase::getSingleFrameRenderCount() const
+{
+    return pImpl->m_singleFrameRenderCount;
+}
+
+const VkSemaphore &RenderPhase::getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const
+{
+    return getCurrentBackBuffer(pooledFramebufferIndex).acquireSemaphore;
+}
+const VkSemaphore &RenderPhase::getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const
+{
+    return getCurrentBackBuffer(pooledFramebufferIndex).renderSemaphore;
+}
+const VkFence &RenderPhase::getCurrentFence(uint32_t pooledFramebufferIndex) const
+{
+    return getCurrentBackBuffer(pooledFramebufferIndex).inFlightFence;
+}
+const RenderPass *RenderPhase::getRenderPass() const
+{
+    return pImpl->m_renderPass.get();
 }
 
 void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState)
 {
-    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
+    for (int poolIndex = 0; poolIndex < pImpl->m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
-        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        for (int imageIndex = 0; imageIndex < pImpl->m_renderPass->getImageCount(poolIndex); ++imageIndex)
         {
             renderState->updateDescriptorSets(m_parentPhase, imageIndex);
         }
 
-        m_pooledRenderStates[poolIndex].push_back(renderState);
+        pImpl->m_pooledRenderStates[poolIndex].push_back(renderState);
     }
 }
 
 void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState,
                                                     uint32_t pooledFramebufferIndex)
 {
-    if (pooledFramebufferIndex >= m_pooledRenderStates.size())
+    if (pooledFramebufferIndex >= pImpl->m_pooledRenderStates.size())
     {
         std::cerr << "Failed to add renderstate to renderstate pool" << std::endl;
         return;
     }
 
-    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
+    for (int poolIndex = 0; poolIndex < pImpl->m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
-        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        for (int imageIndex = 0; imageIndex < pImpl->m_renderPass->getImageCount(poolIndex); ++imageIndex)
         {
             renderState->updateDescriptorSets(m_parentPhase, imageIndex);
         }
     }
 
-    m_pooledRenderStates[pooledFramebufferIndex].push_back(renderState);
+    pImpl->m_pooledRenderStates[pooledFramebufferIndex].push_back(renderState);
 }
 
 void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
@@ -110,21 +152,21 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
 
     renderArea.extent.width =
-        std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
+        std::min(renderArea.extent.width - renderArea.offset.x, pImpl->m_renderPass->getMinRenderArea().extent.width);
     renderArea.extent.height =
-        std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
+        std::min(renderArea.extent.height - renderArea.offset.y, pImpl->m_renderPass->getMinRenderArea().extent.height);
 
     VkRenderPassBeginInfo renderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = m_renderPass->getHandle(),
-        .framebuffer = m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
+        .renderPass = pImpl->m_renderPass->getHandle(),
+        .framebuffer = pImpl->m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
         .renderArea = renderArea,
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),
     };
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
+    const auto &renderStates = pImpl->m_pooledRenderStates[pooledFramebufferIndex];
     for (int i = 0; i < renderStates.size(); ++i)
     {
         RenderStateABC *renderState = renderStates[i].get();
@@ -135,12 +177,13 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         }
 
         renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
-                                          lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex, m_backBufferIndex);
+        renderState->updateUniformBuffers(pImpl->m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex,
+                                          camera, lights, probeGrid, pImpl->m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex, pImpl->m_backBufferIndex);
         for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
         {
-            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
+            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex,
+                                                                pImpl->m_backBufferIndex);
             renderState->recordBackBufferDrawObjectCommands(commandBuffer, subObjectIndex);
         }
     }
@@ -178,27 +221,28 @@ void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uin
 
 void RenderPhase::swapBackBuffers(uint32_t pooledFramebufferIndex)
 {
-    m_backBufferIndex = (m_backBufferIndex + 1) % m_pooledBackBuffers[pooledFramebufferIndex].size();
+    pImpl->m_backBufferIndex =
+        (pImpl->m_backBufferIndex + 1) % pImpl->m_pooledBackBuffers[pooledFramebufferIndex].size();
 }
 
 std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
 {
-    assert(m_product->m_renderPass);
+    assert(m_product->pImpl->m_renderPass);
     assert(m_device.lock());
 
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 
     // back buffers
-    const uint32_t poolSize = m_product->m_renderPass->getFramebufferPoolSize();
+    const uint32_t poolSize = m_product->pImpl->m_renderPass->getFramebufferPoolSize();
 
-    m_product->m_pooledRenderStates.resize(poolSize);
-    m_product->m_pooledBackBuffers.resize(poolSize);
+    m_product->pImpl->m_pooledRenderStates.resize(poolSize);
+    m_product->pImpl->m_pooledBackBuffers.resize(poolSize);
     for (uint32_t poolIndex = 0u; poolIndex < poolSize; poolIndex++)
     {
-        m_product->m_pooledBackBuffers[poolIndex].resize(m_bufferingType);
+        m_product->pImpl->m_pooledBackBuffers[poolIndex].resize(m_bufferingType);
 
-        auto &backBuffers = m_product->m_pooledBackBuffers[poolIndex];
+        auto &backBuffers = m_product->pImpl->m_pooledBackBuffers[poolIndex];
 
         VkCommandBufferAllocateInfo commandBufferAllocInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -259,5 +303,24 @@ void RenderPhase::updateSwapchainOnRenderPass(const SwapChain *newSwapchain)
 {
     const std::vector<std::vector<VkImageView>> &imageViewPool = {newSwapchain->getImageViews()};
     const std::vector<VkImageView> &depthImageViewPool = {newSwapchain->getDepthImageView()};
-    m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
+    pImpl->m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
+}
+
+void RenderPhaseBuilder::restart()
+{
+    m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
+    m_product->pImpl = std::make_unique<RenderPhase::impl>();
+}
+
+void RenderPhaseBuilder::setRenderPass(std::unique_ptr<RenderPass> renderPass)
+{
+    m_product->pImpl->m_renderPass = std::move(renderPass);
+}
+void RenderPhaseBuilder::setSingleFrameRenderCount(uint32_t renderCount)
+{
+    m_product->pImpl->m_singleFrameRenderCount = renderCount;
+}
+void RenderPhaseBuilder::setCaptureEnable(bool enable)
+{
+    m_product->pImpl->m_isCapturePhase = enable;
 }
