@@ -33,8 +33,8 @@ class Application
     RenderPhase *m_skyboxPhase;
 
     RenderPhase *m_postProcessPhase;
-    // compute
-    // post process
+    RenderPhase *m_computePhase;
+    RenderPhase *m_postProcess2Phase;
 
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
