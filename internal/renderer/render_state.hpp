@@ -128,7 +128,8 @@ class RenderStateABC
 
     virtual void updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
-    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex);
+    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
+        uint32_t backBufferIndex);
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
 
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
@@ -639,7 +640,7 @@ public:
         for (const std::shared_ptr<Texture>& texture : textures)
             m_environmentMaps.push_back(texture);
     }
-    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -647,7 +648,7 @@ public:
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }

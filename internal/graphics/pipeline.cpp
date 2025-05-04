@@ -78,6 +78,48 @@ void BasePipelineBuilder::restart()
     m_product = std::unique_ptr<Pipeline>(new Pipeline);
 }
 
+bool BasePipelineBuilder::createPipelineLayout()
+{
+    const VkDevice &deviceHandle = m_device.lock()->getHandle();
+
+    for (uint32_t i = 0u; i < m_uniformDescriptorPacks.size(); i++)
+    {
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = m_uniformDescriptorPacks[i]->getSetLayoutBindings();
+        VkDescriptorSetLayoutCreateInfo createInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+            .pBindings = layoutBindings.data(),
+        };
+        VkDescriptorSetLayout descriptorSetLayout;
+        VkResult res = vkCreateDescriptorSetLayout(deviceHandle, &createInfo, nullptr, &descriptorSetLayout);
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create descriptor set layout : " << res << std::endl;
+            return false;
+        }
+
+        m_product->m_descriptorSetLayouts.push_back(descriptorSetLayout);
+    }
+
+    std::vector<VkDescriptorSetLayout> setLayouts = m_product->m_descriptorSetLayouts;
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
+        .pSetLayouts = setLayouts.data(),
+        .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
+        .pPushConstantRanges = m_pushConstantRanges.data(),
+    };
+    VkResult res =
+        vkCreatePipelineLayout(deviceHandle, &pipelineLayoutCreateInfo, nullptr, &m_product->m_pipelineLayout);
+    if (res != VK_SUCCESS)
+    {
+        std::cerr << "Failed to create pipeline layout : " << res << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void PipelineBuilder<PipelineType::GRAPHICS>::restart()
 {
     BasePipelineBuilder::restart();
@@ -118,6 +160,8 @@ void PipelineBuilder<PipelineType::GRAPHICS>::addFragmentShaderStage(const char 
 
 void PipelineBuilder<PipelineType::COMPUTE>::addComputeShaderStage(const char *shaderName, const char *entryPoint)
 {
+    assert(m_shaderStageCreateInfos.empty());
+
     std::vector<char> shader;
     if (!read_binary_file("shaders/" + std::string(shaderName) + ".comp.spv", shader))
         return;
@@ -272,41 +316,8 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
     };
 
     // descriptor set layout
-
-    for (uint32_t i = 0u; i < m_uniformDescriptorPacks.size(); i++)
-    {
-        std::vector<VkDescriptorSetLayoutBinding> layoutBindings = m_uniformDescriptorPacks[i]->getSetLayoutBindings();
-        VkDescriptorSetLayoutCreateInfo createInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-            .pBindings = layoutBindings.data(),
-        };
-        VkDescriptorSetLayout descriptorSetLayout;
-        VkResult res = vkCreateDescriptorSetLayout(deviceHandle, &createInfo, nullptr, &descriptorSetLayout);
-        if (res != VK_SUCCESS)
-        {
-            std::cerr << "Failed to create descriptor set layout : " << res << std::endl;
-            return nullptr;
-        }
-
-        m_product->m_descriptorSetLayouts.push_back(descriptorSetLayout);
-    }
-
-    std::vector<VkDescriptorSetLayout> setLayouts = m_product->m_descriptorSetLayouts;
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
-        .pSetLayouts = setLayouts.data(),
-        .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
-        .pPushConstantRanges = m_pushConstantRanges.data(),
-    };
-    VkResult res =
-        vkCreatePipelineLayout(deviceHandle, &pipelineLayoutCreateInfo, nullptr, &m_product->m_pipelineLayout);
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to create pipeline layout : " << res << std::endl;
+    if (!createPipelineLayout())
         return nullptr;
-    }
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -331,7 +342,7 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
         .basePipelineIndex = -1,
     };
 
-    res =
+    VkResult res =
         vkCreateGraphicsPipelines(deviceHandle, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_product->m_handle);
 
     if (res != VK_SUCCESS)
@@ -403,6 +414,26 @@ void PipelineDirector<PipelineType::GRAPHICS>::configureColorDepthRasterizerBuil
 
 void PipelineDirector<PipelineType::COMPUTE>::configureComputeBuilder(PipelineBuilder<PipelineType::COMPUTE> &builder)
 {
+    // do nothing
+}
+
+std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
+{
+    assert(!m_device.expired());
+
+    auto deviceHandle = m_device.lock()->getHandle();
+
+    if (!createPipelineLayout())
+        return nullptr;
+
+    VkComputePipelineCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage = m_shaderStageCreateInfos[0],
+        .layout = m_product->m_pipelineLayout,
+    };
+    vkCreateComputePipelines(deviceHandle, VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_product->m_handle);
+
+    return std::move(m_product);
 }
 
 void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent)

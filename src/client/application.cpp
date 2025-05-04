@@ -128,6 +128,7 @@ Application::Application()
     opaqueCaptureRb.setDevice(m_discreteDevice);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
+    opaqueCaptureRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto opaqueCapturePhase = opaqueCaptureRb.build();
     m_opaqueCapturePhase = opaqueCapturePhase.get();
 
@@ -154,6 +155,7 @@ Application::Application()
     skyboxCaptureRb.setDevice(m_discreteDevice);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
+    skyboxCaptureRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto skyboxCapturePhase = skyboxCaptureRb.build();
     m_skyboxCapturePhase = skyboxCapturePhase.get();
 
@@ -184,6 +186,7 @@ Application::Application()
     irradianceConvolutionRb.setDevice(m_discreteDevice);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
+    irradianceConvolutionRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
     m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
 
@@ -207,6 +210,7 @@ Application::Application()
     RenderPhaseBuilder opaqueRb;
     opaqueRb.setDevice(m_discreteDevice);
     opaqueRb.setRenderPass(opaqueRpb.build());
+    opaqueRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
 
@@ -256,25 +260,59 @@ Application::Application()
     RenderPhaseBuilder skyboxRb;
     skyboxRb.setDevice(m_discreteDevice);
     skyboxRb.setRenderPass(skyboxRpb.build());
+    skyboxRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
-    RenderPassBuilder postProcessRpb;
-    postProcessRpb.setDevice(m_discreteDevice);
-    rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto finalLoadColorAttachment = rpab.buildAndRestart();
-    postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
+    std::unique_ptr<RenderPhase> postProcessPhase;
+    {
+        RenderPassBuilder postProcessRpb;
+        postProcessRpb.setDevice(m_discreteDevice);
+        rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        auto finalLoadColorAttachment = rpab.buildAndRestart();
+        postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
+        RenderPhaseBuilder postProcessRb;
+        postProcessRb.setDevice(m_discreteDevice);
+        postProcessRb.setRenderPass(postProcessRpb.build());
+        postProcessRb.setParentPhase(m_skyboxPhase);
+        postProcessRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        postProcessPhase = postProcessRb.build();
+        m_postProcessPhase = postProcessPhase.get();
+    }
 
-    RenderPhaseBuilder postProcessRb;
-    postProcessRb.setDevice(m_discreteDevice);
-    postProcessRb.setRenderPass(postProcessRpb.build());
-    postProcessRb.setParentPhase(m_skyboxPhase);
-    auto postProcessPhase = postProcessRb.build();
-    m_postProcessPhase = postProcessPhase.get();
+    std::unique_ptr<RenderPhase> computePhase;
+    {
+        RenderPhaseBuilder computePhaseRb;
+        computePhaseRb.setDevice(m_discreteDevice);
+        computePhaseRb.setParentPhase(m_postProcessPhase);
+        computePhaseRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        computePhase = computePhaseRb.build();
+        m_computePhase = computePhase.get();
+    }
+
+    std::unique_ptr<RenderPhase> postProcess2Phase;
+    {
+        RenderPassBuilder postProcessRpb;
+        postProcessRpb.setDevice(m_discreteDevice);
+        rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(m_window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        auto finalLoadColorAttachment = rpab.buildAndRestart();
+        postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
+        RenderPhaseBuilder postProcessRb;
+        postProcessRb.setDevice(m_discreteDevice);
+        postProcessRb.setRenderPass(postProcessRpb.build());
+        postProcessRb.setParentPhase(m_computePhase);
+        postProcessRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        postProcess2Phase = postProcessRb.build();
+        m_postProcess2Phase = postProcess2Phase.get();
+    }
 
     RenderPassBuilder imguiRpb;
     imguiRpb.setDevice(m_discreteDevice);
@@ -290,6 +328,7 @@ Application::Application()
     RenderPhaseBuilder imguiRb;
     imguiRb.setDevice(m_discreteDevice);
     imguiRb.setRenderPass(imguiRpb.build());
+    imguiRb.setBufferingType(m_renderer->getFrameInFlightCount());
     auto imguiPhase = imguiRb.build();
     m_imguiPhase = imguiPhase.get();
 
@@ -305,6 +344,8 @@ Application::Application()
     renderGraph->addRenderPhase(std::move(probesDebugPhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
+    renderGraph->addRenderPhase(std::move(computePhase));
+    renderGraph->addRenderPhase(std::move(postProcess2Phase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
     rb.setRenderGraph(std::move(renderGraph));
     m_renderer = rb.build();
@@ -776,7 +817,7 @@ void Application::runLoop()
         });
 
     PipelineDirector<PipelineType::GRAPHICS> probeGridDebugPd;
-    probeGridDebugPd.createColorDepthRasterizerBuilder(probeGridDebugPb);
+    probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
     probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
 
     std::shared_ptr<Pipeline> probeGridDebugPipeline = probeGridDebugPb.build();

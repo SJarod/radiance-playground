@@ -76,6 +76,8 @@ class BasePipelineBuilder
 
     virtual void restart();
 
+    virtual bool createPipelineLayout();
+
   public:
     virtual ~BasePipelineBuilder() = default;
 
@@ -325,7 +327,14 @@ template <> class PipelineBuilder<PipelineType::COMPUTE> : public BasePipelineBu
 {
   private:
   public:
+    PipelineBuilder()
+    {
+        restart();
+    }
+
     void addComputeShaderStage(const char *shaderName, const char *entryPoint = "main");
+
+    std::unique_ptr<Pipeline> build();
 };
 
 template <PipelineType TType> class PipelineDirector
