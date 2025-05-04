@@ -36,6 +36,7 @@
 #include "application.hpp"
 
 constexpr uint32_t maxProbeCount = 64u;
+constexpr uint32_t bufferingType = 3;
 
 Application::Application()
 {
@@ -128,7 +129,7 @@ Application::Application()
     opaqueCaptureRb.setDevice(m_discreteDevice);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
-    opaqueCaptureRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    opaqueCaptureRb.setBufferingType(bufferingType);
     auto opaqueCapturePhase = opaqueCaptureRb.build();
     m_opaqueCapturePhase = opaqueCapturePhase.get();
 
@@ -155,7 +156,7 @@ Application::Application()
     skyboxCaptureRb.setDevice(m_discreteDevice);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
-    skyboxCaptureRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    skyboxCaptureRb.setBufferingType(bufferingType);
     auto skyboxCapturePhase = skyboxCaptureRb.build();
     m_skyboxCapturePhase = skyboxCapturePhase.get();
 
@@ -186,7 +187,7 @@ Application::Application()
     irradianceConvolutionRb.setDevice(m_discreteDevice);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
-    irradianceConvolutionRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    irradianceConvolutionRb.setBufferingType(bufferingType);
     auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
     m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
 
@@ -210,7 +211,7 @@ Application::Application()
     RenderPhaseBuilder opaqueRb;
     opaqueRb.setDevice(m_discreteDevice);
     opaqueRb.setRenderPass(opaqueRpb.build());
-    opaqueRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    opaqueRb.setBufferingType(bufferingType);
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
 
@@ -260,7 +261,7 @@ Application::Application()
     RenderPhaseBuilder skyboxRb;
     skyboxRb.setDevice(m_discreteDevice);
     skyboxRb.setRenderPass(skyboxRpb.build());
-    skyboxRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    skyboxRb.setBufferingType(bufferingType);
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 
@@ -279,7 +280,7 @@ Application::Application()
         postProcessRb.setDevice(m_discreteDevice);
         postProcessRb.setRenderPass(postProcessRpb.build());
         postProcessRb.setParentPhase(m_skyboxPhase);
-        postProcessRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        postProcessRb.setBufferingType(bufferingType);
         postProcessPhase = postProcessRb.build();
         m_postProcessPhase = postProcessPhase.get();
     }
@@ -289,7 +290,7 @@ Application::Application()
         RenderPhaseBuilder computePhaseRb;
         computePhaseRb.setDevice(m_discreteDevice);
         computePhaseRb.setParentPhase(m_postProcessPhase);
-        computePhaseRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        computePhaseRb.setBufferingType(bufferingType);
         computePhase = computePhaseRb.build();
         m_computePhase = computePhase.get();
     }
@@ -309,7 +310,7 @@ Application::Application()
         postProcessRb.setDevice(m_discreteDevice);
         postProcessRb.setRenderPass(postProcessRpb.build());
         postProcessRb.setParentPhase(m_computePhase);
-        postProcessRb.setBufferingType(m_renderer->getFrameInFlightCount());
+        postProcessRb.setBufferingType(bufferingType);
         postProcess2Phase = postProcessRb.build();
         m_postProcess2Phase = postProcess2Phase.get();
     }
@@ -328,14 +329,14 @@ Application::Application()
     RenderPhaseBuilder imguiRb;
     imguiRb.setDevice(m_discreteDevice);
     imguiRb.setRenderPass(imguiRpb.build());
-    imguiRb.setBufferingType(m_renderer->getFrameInFlightCount());
+    imguiRb.setBufferingType(bufferingType);
     auto imguiPhase = imguiRb.build();
     m_imguiPhase = imguiPhase.get();
 
     RendererBuilder rb;
     rb.setDevice(m_discreteDevice);
     rb.setSwapChain(m_window->getSwapChain());
-    rb.setFrameInFlightCount(3);
+    rb.setFrameInFlightCount(bufferingType);
     std::unique_ptr<RenderGraph> renderGraph = std::make_unique<RenderGraph>();
     renderGraph->addOneTimeRenderPhase(std::move(opaqueCapturePhase));
     renderGraph->addOneTimeRenderPhase(std::move(skyboxCapturePhase));
