@@ -29,16 +29,33 @@ struct BackBufferT
 
 class RenderPhaseBuilder;
 
+class BaseRenderPhase
+{
+  protected:
+    std::weak_ptr<Device> m_device;
+
+    BaseRenderPhase() = default;
+
+  private:
+    virtual [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
+
+  public:
+    virtual ~BaseRenderPhase() = default;
+
+    virtual [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
+    virtual [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
+    virtual [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const = 0;
+};
+
 /**
- * @brief manages the command buffers and the render states
+ * @brief manages the command buffers and the render states and render passes
  *
  */
-class RenderPhase
+class RenderPhase : public BaseRenderPhase
 {
     friend RenderPhaseBuilder;
 
   private:
-    std::weak_ptr<Device> m_device;
     const RenderPhase *m_parentPhase = nullptr;
 
     std::unique_ptr<RenderPass> m_renderPass;
@@ -55,7 +72,7 @@ class RenderPhase
     RenderPhase() = default;
 
   private:
-    [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const
+    [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const override
     {
         return m_pooledBackBuffers[pooledFramebufferIndex][m_backBufferIndex];
     }
@@ -72,8 +89,10 @@ class RenderPhase
     void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState,
                                            uint32_t pooledFramebufferIndex);
 
-    void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
-                          const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid) const;
+    void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex,
+                          VkRect2D renderArea, const CameraABC &camera,
+                          const std::vector<std::shared_ptr<Light>> &lights,
+                          const std::shared_ptr<ProbeGrid> &probeGrid) const;
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
     void swapBackBuffers(uint32_t pooledFramebufferIndex);
@@ -86,15 +105,15 @@ class RenderPhase
         return m_singleFrameRenderCount;
     }
 
-    [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const
+    [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const override
     {
         return getCurrentBackBuffer(pooledFramebufferIndex).acquireSemaphore;
     }
-    [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const
+    [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const override
     {
         return getCurrentBackBuffer(pooledFramebufferIndex).renderSemaphore;
     }
-    [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const
+    [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const override
     {
         return getCurrentBackBuffer(pooledFramebufferIndex).inFlightFence;
     }
@@ -151,4 +170,86 @@ class RenderPhaseBuilder
     }
 
     std::unique_ptr<RenderPhase> build();
+};
+
+class ComputePhaseBuilder;
+
+/**
+ * @brief manages the command buffers for the compute shader
+ *
+ */
+class ComputePhase : public BaseRenderPhase
+{
+    friend ComputePhaseBuilder;
+
+  private:
+    int m_backBufferIndex = 0;
+    std::vector<BackBufferT> m_backBuffers;
+
+    ComputePhase() = default;
+
+    [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex = -1) const override
+    {
+        return m_backBuffers[m_backBufferIndex];
+    }
+
+  public:
+    ~ComputePhase();
+
+    ComputePhase(const ComputePhase &) = delete;
+    ComputePhase &operator=(const ComputePhase &) = delete;
+    ComputePhase(ComputePhase &&) = delete;
+    ComputePhase &operator=(ComputePhase &&) = delete;
+
+    void recordBackBuffer() const;
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
+
+    void swapBackBuffers();
+
+  public:
+    [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex = -1) const override
+    {
+        return getCurrentBackBuffer().acquireSemaphore;
+    }
+    [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex = -1) const override
+    {
+        return getCurrentBackBuffer().renderSemaphore;
+    }
+    [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex = -1) const override
+    {
+        return getCurrentBackBuffer().inFlightFence;
+    }
+};
+
+class ComputePhaseBuilder
+{
+  private:
+    std::unique_ptr<ComputePhase> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    uint32_t m_bufferingType = 2;
+
+    void restart()
+    {
+        m_product = std::unique_ptr<ComputePhase>(new ComputePhase);
+    }
+
+  public:
+    ComputePhaseBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device)
+    {
+        m_device = device;
+        m_product->m_device = device;
+    }
+    void setBufferingType(uint32_t type)
+    {
+        m_bufferingType = type;
+    }
+
+    std::unique_ptr<ComputePhase> build();
 };
