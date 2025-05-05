@@ -125,7 +125,8 @@ Application::Application()
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
 
-    RenderPhaseBuilder opaqueCaptureRb;
+    RenderPhaseDeferredBuilder opaqueCaptureRb;
+    opaqueCaptureRb.instanciate<PhaseType::RENDER_PASS>();
     opaqueCaptureRb.setDevice(m_discreteDevice);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
@@ -152,7 +153,8 @@ Application::Application()
     auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
     skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
 
-    RenderPhaseBuilder skyboxCaptureRb;
+    RenderPhaseDeferredBuilder skyboxCaptureRb;
+    skyboxCaptureRb.instanciate<PhaseType::RENDER_PASS>();
     skyboxCaptureRb.setDevice(m_discreteDevice);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
@@ -183,7 +185,8 @@ Application::Application()
     auto irradianceColorAttachment = rpab.buildAndRestart();
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
 
-    RenderPhaseBuilder irradianceConvolutionRb;
+    RenderPhaseDeferredBuilder irradianceConvolutionRb;
+    irradianceConvolutionRb.instanciate<PhaseType::RENDER_PASS>();
     irradianceConvolutionRb.setDevice(m_discreteDevice);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
@@ -208,7 +211,8 @@ Application::Application()
     auto clearDepthAttachment = rpab.buildAndRestart();
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder opaqueRb;
+    RenderPhaseDeferredBuilder opaqueRb;
+    opaqueRb.instanciate<PhaseType::RENDER_PASS>();
     opaqueRb.setDevice(m_discreteDevice);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setBufferingType(bufferingType);
@@ -258,7 +262,8 @@ Application::Application()
     auto loadDepthAttachment = rpab.buildAndRestart();
     skyboxRpb.addDepthAttachment(*loadDepthAttachment);
 
-    RenderPhaseBuilder skyboxRb;
+    RenderPhaseDeferredBuilder skyboxRb;
+    skyboxRb.instanciate<PhaseType::RENDER_PASS>();
     skyboxRb.setDevice(m_discreteDevice);
     skyboxRb.setRenderPass(skyboxRpb.build());
     skyboxRb.setBufferingType(bufferingType);
@@ -276,7 +281,8 @@ Application::Application()
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder postProcessRb;
+        RenderPhaseDeferredBuilder postProcessRb;
+        postProcessRb.instanciate<PhaseType::RENDER_PASS>();
         postProcessRb.setDevice(m_discreteDevice);
         postProcessRb.setRenderPass(postProcessRpb.build());
         postProcessRb.setParentPhase(m_skyboxPhase);
@@ -287,7 +293,8 @@ Application::Application()
 
     std::unique_ptr<RenderPhase> computePhase;
     {
-        RenderPhaseBuilder computePhaseRb;
+        RenderPhaseDeferredBuilder computePhaseRb;
+        computePhaseRb.instanciate<PhaseType::RENDER_PASS>();
         computePhaseRb.setDevice(m_discreteDevice);
         computePhaseRb.setParentPhase(m_postProcessPhase);
         computePhaseRb.setBufferingType(bufferingType);
@@ -306,7 +313,8 @@ Application::Application()
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder postProcessRb;
+        RenderPhaseDeferredBuilder postProcessRb;
+        postProcessRb.instanciate<PhaseType::RENDER_PASS>();
         postProcessRb.setDevice(m_discreteDevice);
         postProcessRb.setRenderPass(postProcessRpb.build());
         postProcessRb.setParentPhase(m_computePhase);
@@ -326,7 +334,8 @@ Application::Application()
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
-    RenderPhaseBuilder imguiRb;
+    RenderPhaseDeferredBuilder imguiRb;
+    imguiRb.instanciate<PhaseType::RENDER_PASS>();
     imguiRb.setDevice(m_discreteDevice);
     imguiRb.setRenderPass(imguiRpb.build());
     imguiRb.setBufferingType(bufferingType);

@@ -27,7 +27,7 @@ struct BackBufferT
     VkFence inFlightFence;
 };
 
-class RenderPhaseBuilder;
+class RenderPhaseDeferredBuilder;
 
 /**
  * @brief manages the command buffers and the render states
@@ -35,14 +35,24 @@ class RenderPhaseBuilder;
  */
 class RenderPhase
 {
-    friend RenderPhaseBuilder;
+    friend RenderPhaseDeferredBuilder;
 
   private:
     std::weak_ptr<Device> m_device;
     const RenderPhase *m_parentPhase = nullptr;
 
-    struct impl;
-    std::unique_ptr<impl> pImpl;
+    struct implABC;
+    struct RenderPassBasedImpl;
+    struct RenderPassLessImpl;
+    /**
+     * @brief pimpl idiom to hide the render phase implementation
+     * the implementation can whether include a render pass or not
+     * if the phase has a render pass, it may by for graphics
+     * the phase with no render pass may either be used for dynamic rendering or compute pass
+     * the type of phase is build by the instanciate<>() function from the deferred builder below
+     *
+     */
+    std::unique_ptr<implABC> pImpl;
 
     RenderPhase() = default;
 
@@ -78,7 +88,29 @@ class RenderPhase
     [[nodiscard]] const RenderPass *getRenderPass() const;
 };
 
-class RenderPhaseBuilder
+enum class PhaseType
+{
+    /**
+     * @brief render phase based on a render pass object
+     *
+     */
+    RENDER_PASS = 0,
+    RENDER_PASS_BASED = RENDER_PASS,
+    /**
+     * @brief render phase based on nothing but the command buffers (just like the dynamic rendering extension)
+     *
+     */
+    DYNAMIC = 1,
+    RENDER_PASS_LESS = DYNAMIC,
+
+    COUNT = 2,
+};
+
+/**
+ * @brief this builder does not automatically instantiate the product
+ *
+ */
+class RenderPhaseDeferredBuilder
 {
   private:
     std::unique_ptr<RenderPhase> m_product;
@@ -91,13 +123,8 @@ class RenderPhaseBuilder
      */
     uint32_t m_bufferingType = 2;
 
-    void restart();
-
   public:
-    RenderPhaseBuilder()
-    {
-        restart();
-    }
+    template <PhaseType TType> void instanciate();
 
     void setDevice(std::weak_ptr<Device> device)
     {
@@ -118,3 +145,9 @@ class RenderPhaseBuilder
 
     std::unique_ptr<RenderPhase> build();
 };
+template <PhaseType TType> void RenderPhaseDeferredBuilder::instanciate()
+{
+    static_assert(sizeof(TType) == -1);
+}
+template <> void RenderPhaseDeferredBuilder::instanciate<PhaseType::RENDER_PASS>();
+template <> void RenderPhaseDeferredBuilder::instanciate<PhaseType::DYNAMIC>();

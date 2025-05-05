@@ -17,7 +17,17 @@
 
 #include "render_phase.hpp"
 
-struct RenderPhase::impl
+struct RenderPhase::implABC
+{
+    virtual void destroy(VkDevice device) = 0;
+
+    virtual const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
+    virtual const int getSingleFrameRenderCount() const = 0;
+
+    virtual void beginRenderPass() = 0;
+};
+
+struct RenderPhase::RenderPassBasedImpl : public RenderPhase::implABC
 {
     std::unique_ptr<RenderPass> m_renderPass;
 
@@ -29,6 +39,70 @@ struct RenderPhase::impl
     std::vector<std::vector<BackBufferT>> m_pooledBackBuffers;
 
     bool m_isCapturePhase = false;
+
+    void destroy(VkDevice device) override;
+
+    const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const override;
+    const int getSingleFrameRenderCount() const override;
+
+    void beginRenderPass() override;
+};
+
+void RenderPhase::RenderPassBasedImpl::destroy(VkDevice device)
+{
+    for (uint32_t i = 0u; i < m_pooledBackBuffers.size(); i++)
+    {
+        const auto &backBuffers = m_pooledBackBuffers[i];
+        for (uint32_t j = 0u; j < backBuffers.size(); j++)
+        {
+            const BackBufferT &backbuffer = backBuffers[j];
+            vkDestroyFence(device, backbuffer.inFlightFence, nullptr);
+            vkDestroySemaphore(device, backbuffer.renderSemaphore, nullptr);
+            vkDestroySemaphore(device, backbuffer.acquireSemaphore, nullptr);
+        }
+    }
+
+    m_renderPass.reset();
+}
+
+const BackBufferT &RenderPhase::RenderPassBasedImpl::getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const
+{
+    return m_pooledBackBuffers[pooledFramebufferIndex][m_backBufferIndex];
+}
+
+const int RenderPhase::RenderPassBasedImpl::getSingleFrameRenderCount() const
+{
+    return m_singleFrameRenderCount;
+}
+
+void RenderPhase::RenderPassBasedImpl::beginRenderPass(VkCommandBuffer commandBuffer, VkRect2D renderArea)
+{
+    VkClearValue clearColor = {
+        .color = {0.2f, 0.2f, 0.2f, 1.f},
+    };
+    VkClearValue clearDepth = {
+        .depthStencil = {1.f, 0},
+    };
+    std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
+
+    renderArea.extent.width =
+        std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
+    renderArea.extent.height =
+        std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
+
+    VkRenderPassBeginInfo renderPassBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = m_renderPass->getHandle(),
+        .framebuffer = m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
+        .renderArea = renderArea,
+        .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+        .pClearValues = clearValues.data(),
+    };
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+struct RenderPhase::RenderPassLessImpl : public RenderPhase::implABC
+{
 };
 
 RenderPhase::~RenderPhase()
@@ -40,31 +114,19 @@ RenderPhase::~RenderPhase()
     // TODO : wait queue instead of device
     vkDeviceWaitIdle(deviceHandle);
 
-    for (uint32_t i = 0u; i < pImpl->m_pooledBackBuffers.size(); i++)
-    {
-        const auto &backBuffers = pImpl->m_pooledBackBuffers[i];
-        for (uint32_t j = 0u; j < backBuffers.size(); j++)
-        {
-            const BackBufferT &backbuffer = backBuffers[j];
-            vkDestroyFence(deviceHandle, backbuffer.inFlightFence, nullptr);
-            vkDestroySemaphore(deviceHandle, backbuffer.renderSemaphore, nullptr);
-            vkDestroySemaphore(deviceHandle, backbuffer.acquireSemaphore, nullptr);
-        }
-    }
-
-    pImpl->m_renderPass.reset();
+    pImpl->destroy(deviceHandle);
 
     pImpl.reset();
 }
 
 const BackBufferT &RenderPhase::getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const
 {
-    return pImpl->m_pooledBackBuffers[pooledFramebufferIndex][pImpl->m_backBufferIndex];
+    return pImpl->getCurrentBackBuffer(pooledFramebufferIndex);
 }
 
 const int RenderPhase::getSingleFrameRenderCount() const
 {
-    return pImpl->m_singleFrameRenderCount;
+    return pImpl->getSingleFrameRenderCount();
 }
 
 const VkSemaphore &RenderPhase::getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const
@@ -143,28 +205,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         return;
     }
 
-    VkClearValue clearColor = {
-        .color = {0.2f, 0.2f, 0.2f, 1.f},
-    };
-    VkClearValue clearDepth = {
-        .depthStencil = {1.f, 0},
-    };
-    std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
-
-    renderArea.extent.width =
-        std::min(renderArea.extent.width - renderArea.offset.x, pImpl->m_renderPass->getMinRenderArea().extent.width);
-    renderArea.extent.height =
-        std::min(renderArea.extent.height - renderArea.offset.y, pImpl->m_renderPass->getMinRenderArea().extent.height);
-
-    VkRenderPassBeginInfo renderPassBeginInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = pImpl->m_renderPass->getHandle(),
-        .framebuffer = pImpl->m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
-        .renderArea = renderArea,
-        .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-        .pClearValues = clearValues.data(),
-    };
-    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    pImpl->beginRenderPass();
 
     const auto &renderStates = pImpl->m_pooledRenderStates[pooledFramebufferIndex];
     for (int i = 0; i < renderStates.size(); ++i)
@@ -225,7 +266,7 @@ void RenderPhase::swapBackBuffers(uint32_t pooledFramebufferIndex)
         (pImpl->m_backBufferIndex + 1) % pImpl->m_pooledBackBuffers[pooledFramebufferIndex].size();
 }
 
-std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
+std::unique_ptr<RenderPhase> RenderPhaseDeferredBuilder::build()
 {
     assert(m_product->pImpl->m_renderPass);
     assert(m_device.lock());
@@ -306,21 +347,27 @@ void RenderPhase::updateSwapchainOnRenderPass(const SwapChain *newSwapchain)
     pImpl->m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
 }
 
-void RenderPhaseBuilder::restart()
+template <> void RenderPhaseDeferredBuilder::instanciate<PhaseType::RENDER_PASS>()
 {
     m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
-    m_product->pImpl = std::make_unique<RenderPhase::impl>();
+    m_product->pImpl = std::make_unique<RenderPhase::RenderPassBasedImpl>();
 }
 
-void RenderPhaseBuilder::setRenderPass(std::unique_ptr<RenderPass> renderPass)
+template <> void RenderPhaseDeferredBuilder::instanciate<PhaseType::DYNAMIC>()
+{
+    m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
+    m_product->pImpl = std::make_unique<RenderPhase::RenderPassLessImpl>();
+}
+
+void RenderPhaseDeferredBuilder::setRenderPass(std::unique_ptr<RenderPass> renderPass)
 {
     m_product->pImpl->m_renderPass = std::move(renderPass);
 }
-void RenderPhaseBuilder::setSingleFrameRenderCount(uint32_t renderCount)
+void RenderPhaseDeferredBuilder::setSingleFrameRenderCount(uint32_t renderCount)
 {
     m_product->pImpl->m_singleFrameRenderCount = renderCount;
 }
-void RenderPhaseBuilder::setCaptureEnable(bool enable)
+void RenderPhaseDeferredBuilder::setCaptureEnable(bool enable)
 {
     m_product->pImpl->m_isCapturePhase = enable;
 }
