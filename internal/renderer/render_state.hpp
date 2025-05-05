@@ -672,3 +672,5 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
 
     std::unique_ptr<RenderStateABC> build() override;
 };
+
+class ComputeState:

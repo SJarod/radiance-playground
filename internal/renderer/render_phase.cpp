@@ -313,26 +313,34 @@ void ComputePhase::recordBackBuffer() const
     };
     std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
 
-    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
-    for (int i = 0; i < renderStates.size(); ++i)
+    if (const auto &pipeline = renderState->getPipeline())
     {
-        RenderStateABC *renderState = renderStates[i].get();
+        pipeline->recordBind(commandBuffer, imageIndex, renderArea);
+    }
 
-        if (const auto &pipeline = renderState->getPipeline())
-        {
-            pipeline->recordBind(commandBuffer, imageIndex, renderArea);
-        }
+    std::vector<VkDescriptorSet> descriptorSets;
 
-        renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
-                                          lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex, m_backBufferIndex);
-        for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
+    if (m_instanceDescriptorSetEnable && backBufferIndex < m_instanceDescriptorSets.size())
+    {
+        descriptorSets.push_back(m_instanceDescriptorSets[backBufferIndex]);
+    }
+
+    if (subObjectIndex < m_materialDescriptorSetsPerSubObject.size())
+    {
+        if (m_materialDescriptorSetEnable &&
+            backBufferIndex < m_materialDescriptorSetsPerSubObject[subObjectIndex].size())
         {
-            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
-            renderState->recordBackBufferDrawObjectCommands(commandBuffer, subObjectIndex);
+            descriptorSets.push_back(m_materialDescriptorSetsPerSubObject[subObjectIndex][backBufferIndex]);
         }
     }
+
+    if (descriptorSets.size() == 0u)
+        return;
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0,
+                            descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+    vkCmdDispatch(commandBuffer, 128, 1, 1);
 
     vkCmdEndRenderPass(commandBuffer);
 

@@ -1028,35 +1028,36 @@ void Application::runLoop()
             }
             vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
         });
-    quadRsb.setMaterialDescriptorSetUpdatePredPerFrame(
-        [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set, uint32_t backBufferIndex) {
-            auto deviceHandle = m_discreteDevice->getHandle();
-            std::vector<VkWriteDescriptorSet> writes;
+    // quadRsb.setMaterialDescriptorSetUpdatePredPerFrame(
+    //     [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set, uint32_t backBufferIndex)
+    //     {
+    //         auto deviceHandle = m_discreteDevice->getHandle();
+    //         std::vector<VkWriteDescriptorSet> writes;
 
-            auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
-            if (!s.empty())
-            {
-                auto rc = s[0];
+    //         auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
+    //         if (!s.empty())
+    //         {
+    //             auto rc = s[0];
 
-                {
-                    VkDescriptorBufferInfo bufferInfo = {
-                        .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
-                        .offset = 0,
-                        .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
-                    };
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 3,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                        .pBufferInfo = &bufferInfo,
-                    });
-                }
-            }
-            vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
-        });
+    //             {
+    //                 VkDescriptorBufferInfo bufferInfo = {
+    //                     .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
+    //                     .offset = 0,
+    //                     .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
+    //                 };
+    //                 writes.push_back(VkWriteDescriptorSet{
+    //                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+    //                     .dstSet = set,
+    //                     .dstBinding = 3,
+    //                     .dstArrayElement = 0,
+    //                     .descriptorCount = 1,
+    //                     .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    //                     .pBufferInfo = &bufferInfo,
+    //                 });
+    //             }
+    //         }
+    //         vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+    //     });
     PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
     PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
     postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
