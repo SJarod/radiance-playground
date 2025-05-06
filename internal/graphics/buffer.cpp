@@ -52,6 +52,10 @@ Buffer::~Buffer()
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 
+    VmaAllocationInfo info;
+    vmaGetAllocationInfo(devicePtr->getAllocator(), m_allocation, &info);
+    if (info.pMappedData)
+        vmaUnmapMemory(devicePtr->getAllocator(), m_allocation);
     vmaDestroyBuffer(devicePtr->getAllocator(), m_handle, m_allocation);
 }
 

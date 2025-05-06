@@ -31,7 +31,7 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Base
     const VkSemaphore *lastAcquireSemaphore = inWaitSemaphore;
     for (int i = 0; i < toProcess.size(); ++i)
     {
-        if (const RenderPhase *currentPhase = static_cast<RenderPhase *>(toProcess[i].get()))
+        if (const RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(toProcess[i].get()))
         {
             for (uint32_t singleFrameRenderIndex = 0u;
                  singleFrameRenderIndex < currentPhase->getSingleFrameRenderCount(); singleFrameRenderIndex++)
@@ -74,7 +74,7 @@ void RenderGraph::updateSwapchainOnRenderPhases(const SwapChain *swapchain)
 {
     for (unsigned int i = 0; i < m_renderPhases.size(); ++i)
     {
-        if (RenderPhase *currentPhase = static_cast<RenderPhase *>(m_renderPhases[i].get()))
+        if (RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(m_renderPhases[i].get()))
             currentPhase->updateSwapchainOnRenderPass(swapchain);
     }
 }
@@ -83,7 +83,7 @@ void RenderGraph::swapAllRenderPhasesBackBuffers()
 {
     for (auto &phase : m_renderPhases)
     {
-        if (RenderPhase *currentPhase = static_cast<RenderPhase *>(phase.get()))
+        if (RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(phase.get()))
         {
             for (uint32_t poolIndex = 0u; poolIndex < currentPhase->getRenderPass()->getFramebufferPoolSize();
                  poolIndex++)
@@ -112,7 +112,7 @@ VkSemaphore RenderGraph::getLastPhaseCurrentRenderSemaphore() const
     assert(m_renderPhases.size() != 0);
 
     uint32_t pooledFramebufferIndex = 0u;
-    if (const RenderPhase *currentPhase = static_cast<RenderPhase *>(m_renderPhases.back().get()))
+    if (const RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(m_renderPhases.back().get()))
         pooledFramebufferIndex = currentPhase->getRenderPass()->getFramebufferPoolSize() - 1u;
 
     return m_renderPhases.back()->getCurrentRenderSemaphore(pooledFramebufferIndex);
@@ -128,7 +128,7 @@ std::vector<VkFence> RenderGraph::getAllCurrentFences() const
     {
         for (const auto &phase : m_oneTimeRenderPhases)
         {
-            if (RenderPhase *currentPhase = static_cast<RenderPhase *>(phase.get()))
+            if (RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(phase.get()))
             {
                 if (currentPhase->getSingleFrameRenderCount() > 0u)
                 {
@@ -143,7 +143,7 @@ std::vector<VkFence> RenderGraph::getAllCurrentFences() const
     }
     for (const auto &phase : m_renderPhases)
     {
-        if (RenderPhase *currentPhase = static_cast<RenderPhase *>(phase.get()))
+        if (RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(phase.get()))
         {
             if (currentPhase->getSingleFrameRenderCount() > 0u)
             {

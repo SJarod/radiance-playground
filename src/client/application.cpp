@@ -367,6 +367,11 @@ Application::~Application()
 
     m_window.reset();
 
+    for (int i = 0; i < m_devices.size(); ++i)
+    {
+        // TODO : context is cleared before devices ?
+        m_devices[i].reset();
+    }
     m_devices.clear();
     m_context.reset();
 
@@ -495,7 +500,8 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene2D>(m_discreteDevice, bufferingType);
+    m_scene = std::make_unique<SampleScene>(m_discreteDevice, m_window.get());
+    // m_scene = std::make_unique<SampleScene2D>(m_discreteDevice, bufferingType);
 
     UniformDescriptorBuilder irradianceConvolutionUdb;
 

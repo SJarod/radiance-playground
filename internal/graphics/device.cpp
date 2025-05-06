@@ -12,6 +12,8 @@
 
 Device::~Device()
 {
+    std::cout << "Destroying device : " << getDeviceName() << std::endl;
+
     vmaDestroyAllocator(m_allocator);
 
     vkDestroyCommandPool(m_handle, m_commandPool, nullptr);
