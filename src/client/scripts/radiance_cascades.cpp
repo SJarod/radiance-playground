@@ -69,6 +69,26 @@ void RadianceCascades::init(void *userData)
 
     auto data = (init_data *)userData;
     m_device = data->device;
+
+    {
+        BufferDirector bd;
+        BufferBuilder bb;
+        bd.configureUniformBufferBuilder(bb);
+        bb.setDevice(m_device);
+        bb.setSize(sizeof(parameters));
+
+        m_radianceCascadesParametersBuffer = bb.build();
+        parameters params = {
+            .maxCascadeCount = m_maxCascadeCount,
+            .maxProbeCount = m_maxProbeCount,
+            .minDiscreteValueCount = m_minDiscreteValueCount,
+            .minRadianceintervalLength = m_minRadianceintervalLength,
+            .lightIntensity = m_lightIntensity,
+            .maxRayIterationCount = m_maxRayIterationCount,
+        };
+        m_radianceCascadesParametersBuffer->copyDataToMemory(&params);
+    }
+
     // create probes in a cascade
 
     cascade_desc cd0 = cascade_desc(m_maxProbeCount, m_minDiscreteValueCount, m_minRadianceintervalLength);

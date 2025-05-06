@@ -1276,7 +1276,8 @@ void ComputeState::recordBackBufferComputeCommands(const VkCommandBuffer &comman
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline->getPipelineLayout(), 0, 1,
                             &m_descriptorSets[backBufferIndex], 0, nullptr);
 
-    vkCmdDispatch(commandBuffer, 128, 1, 1);
+    assert(m_workGroup.x > 0 && m_workGroup.y > 0 && m_workGroup.z > 0);
+    vkCmdDispatch(commandBuffer, m_workGroup.x, m_workGroup.y, m_workGroup.z);
 }
 
 void ComputeState::updateUniformBuffers(uint32_t imageIndex)

@@ -3,12 +3,12 @@
 #include <memory>
 #include <string>
 
+#include "graphics/buffer.hpp"
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
+#include "graphics/image.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/render_pass.hpp"
-#include "graphics/buffer.hpp"
-#include "graphics/image.hpp"
 
 #include "wsi/window.hpp"
 
@@ -1037,23 +1037,29 @@ void Application::runLoop()
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         });
-        // cascade desc buffer
         udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         });
-        // cascade probes position buffer
+        // cascade desc buffer
         udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 2,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
         });
-        // radiance interval storage buffer
+        // cascade probes position buffer
         udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 3,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        });
+        // radiance interval storage buffer
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 4,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -1064,9 +1070,16 @@ void Application::runLoop()
         csb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         csb.setPipeline(pb.build());
         csb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        csb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
+        if (!s.empty())
+        {
+            auto rc = s[0];
+            csb.setWorkGroup(glm::ivec3(rc->getCascadeCount(), 1, 1));
+        }
         csb.setDescriptorSetUpdatePred(
             [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
                 auto deviceHandle = m_discreteDevice->getHandle();
@@ -1097,6 +1110,22 @@ void Application::runLoop()
 
                     {
                         VkDescriptorBufferInfo bufferInfo = {
+                            .buffer = rc->getParametersBufferHandle()->getHandle(),
+                            .offset = 0,
+                            .range = rc->getParametersBufferHandle()->getSize(),
+                        };
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .dstSet = set,
+                            .dstBinding = 1,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                            .pBufferInfo = &bufferInfo,
+                        });
+                    }
+                    {
+                        VkDescriptorBufferInfo bufferInfo = {
                             .buffer = rc->getCascadesDescBufferHandle()->getHandle(),
                             .offset = 0,
                             .range = rc->getCascadesDescBufferHandle()->getSize(),
@@ -1104,7 +1133,7 @@ void Application::runLoop()
                         writes.push_back(VkWriteDescriptorSet{
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                             .dstSet = set,
-                            .dstBinding = 1,
+                            .dstBinding = 2,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
                             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1120,7 +1149,7 @@ void Application::runLoop()
                         writes.push_back(VkWriteDescriptorSet{
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                             .dstSet = set,
-                            .dstBinding = 2,
+                            .dstBinding = 3,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
                             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1149,7 +1178,7 @@ void Application::runLoop()
                     writes.push_back(VkWriteDescriptorSet{
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                         .dstSet = set,
-                        .dstBinding = 3,
+                        .dstBinding = 4,
                         .dstArrayElement = 0,
                         .descriptorCount = 1,
                         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1173,7 +1202,7 @@ void Application::runLoop()
         quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         quadRsb.setModel(postProcessQuadModel);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -1207,6 +1236,22 @@ void Application::runLoop()
 
                     {
                         VkDescriptorBufferInfo bufferInfo = {
+                            .buffer = rc->getParametersBufferHandle()->getHandle(),
+                            .offset = 0,
+                            .range = rc->getParametersBufferHandle()->getSize(),
+                        };
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .dstSet = set,
+                            .dstBinding = 1,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                            .pBufferInfo = &bufferInfo,
+                        });
+                    }
+                    {
+                        VkDescriptorBufferInfo bufferInfo = {
                             .buffer = rc->getCascadesDescBufferHandle()->getHandle(),
                             .offset = 0,
                             .range = rc->getCascadesDescBufferHandle()->getSize(),
@@ -1214,7 +1259,7 @@ void Application::runLoop()
                         writes.push_back(VkWriteDescriptorSet{
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                             .dstSet = set,
-                            .dstBinding = 1,
+                            .dstBinding = 2,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
                             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1230,7 +1275,7 @@ void Application::runLoop()
                         writes.push_back(VkWriteDescriptorSet{
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                             .dstSet = set,
-                            .dstBinding = 2,
+                            .dstBinding = 3,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
                             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1259,7 +1304,7 @@ void Application::runLoop()
                     writes.push_back(VkWriteDescriptorSet{
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                         .dstSet = set,
-                        .dstBinding = 3,
+                        .dstBinding = 4,
                         .dstArrayElement = 0,
                         .descriptorCount = 1,
                         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -1289,23 +1334,29 @@ void Application::runLoop()
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        // cascade desc buffer
         postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        // cascade probes position buffer
+        // cascade desc buffer
         postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 2,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        // radiance interval storage buffer
+        // cascade probes position buffer
         postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 3,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+        // radiance interval storage buffer
+        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 4,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,

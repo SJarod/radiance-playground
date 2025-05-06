@@ -38,6 +38,17 @@ class RadianceCascades : public ScriptableABC
     // it is for now uniformly distributed (it may not be precise)
     const int m_maxRayIterationCount = 16;
 
+    struct parameters
+    {
+        int maxCascadeCount;
+        int maxProbeCount;
+        int minDiscreteValueCount;
+        float minRadianceintervalLength;
+        float lightIntensity;
+        int maxRayIterationCount;
+    };
+    std::unique_ptr<Buffer> m_radianceCascadesParametersBuffer;
+
     struct probe
     {
         glm::vec2 position;
@@ -101,6 +112,14 @@ class RadianceCascades : public ScriptableABC
     virtual void update(float deltaTime) override;
 
   public:
+    [[nodisacrd]] inline const int getCascadeCount() const
+    {
+        return m_maxCascadeCount;
+    }
+    [[nodiscard]] inline const Buffer *getParametersBufferHandle() const
+    {
+        return m_radianceCascadesParametersBuffer.get();
+    }
     [[nodiscard]] inline const Buffer *getCascadesDescBufferHandle() const
     {
         return m_cascadesDescBuffer.get();

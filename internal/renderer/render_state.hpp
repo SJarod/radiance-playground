@@ -826,6 +826,8 @@ class ComputeState : public GPUStateI
     DescriptorSetUpdatePredPerFrame m_descriptorSetUpdatePredPerFrame = nullptr;
     DescriptorSetUpdatePred m_descriptorSetUpdatePred = nullptr;
 
+    glm::ivec3 m_workGroup = glm::ivec3(0, 0, 0);
+
     ComputeState() = default;
 
   public:
@@ -916,6 +918,10 @@ class ComputeStateBuilder : public RenderStateBuilderI
     void setMaterialDescriptorEnable(bool enable) override
     {
         assert(false);
+    }
+    void setWorkGroup(glm::ivec3 workGroup)
+    {
+        m_product->m_workGroup = workGroup;
     }
 
     std::unique_ptr<GPUStateI> build() override;

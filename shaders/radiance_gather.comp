@@ -1,6 +1,13 @@
 #version 450
 
+#define M_PI 3.1415926535897932384626433832795
+
 layout(binding = 0) uniform sampler2D baseImage;
+
+struct probe
+{
+	vec2 position;
+};
 
 struct cascade_desc
 {
@@ -13,24 +20,156 @@ struct cascade_desc
     float dw;
 };
 
+vec2 get_direction_from_angle(float w)
+{
+	return normalize(vec2(cos(w), sin(w)));
+}
+
+layout (binding = 1) uniform parameters {
+    int maxCascadeCount;
+    int maxProbeCount;
+    int minDiscreteValueCount;
+    float minRadianceintervalLength;
+    float lightIntensity;
+    int maxRayIterationCount;
+} paramsubo;
+
 // cascade desc buffer
-layout (binding = 1) readonly buffer CascadeDescUBO {
+layout (binding = 2) readonly buffer CascadeDescUBO {
     cascade_desc[] descs;
 } cdubo;
 
 // cascade probes position buffer
-layout (binding = 2) readonly buffer CascadeUBO {
+layout (binding = 3) readonly buffer CascadeUBO {
     vec2[] positions;
 } cubo;
 
 // radiance interval storage buffer
-layout (binding = 3) buffer RadianceIntervalUBO {
+layout (binding = 4) buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
-layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+// raycasting to detect incoming radiance to a point p (and detect transparency)
+// R(p, w)
+vec4 raycasting_function(vec2 p, vec2 dir, float len)
+{
+	float stepSize = len / float(paramsubo.maxRayIterationCount);
+	vec2 sampledStep = p;
+    
+	vec4 incomingRadiance = vec4(0.0);
+	for (int i = 0; i < paramsubo.maxRayIterationCount + 1; ++i)
+	{
+		// incoming radiance (direct lighting)
+		// in flatland, the incoming radiance is the color of the render texture
+		// in 3D it would be the lighting value of the hit surface
+		// the raycasting function may use a quadtree or octree to
+		// process through the ray in a scene independent manner
+		vec4 directLighting = texture(baseImage, sampledStep);
+		// directLighting.a == 1.0 : opaque (raycast hit)
+		// directLighting.a == 0.0 : transparent (raycast miss)
+        float hit = step(0.5, directLighting.w);
+        
+		incomingRadiance = directLighting * hit;
+        // radiance.a == 1.0 : transparent (transparency value)
+        // radiance.a == 0.0 : opaque
+        incomingRadiance.a = 1.0 - hit;
+        
+        sampledStep += dir * stepSize * (1.0 - hit); // only move step if hit failed
+	}
+    return incomingRadiance;
+}
+
+vec4 probe_encode_radiance(inout probe p, in int intervalIndex, in int intervalCount, in float intervalLength, in float intervalOffset)
+{
+	// 1D direction (angle)
+	// in 3D it would be a 2D direction (longitude and latitude)
+	float angle = 2.0 * float(M_PI) / float(intervalCount);
+	float w = angle / 2.0 + angle * float(intervalIndex);
+
+	vec2 dir = get_direction_from_angle(w);
+    
+    // radiance interval
+    vec4 interval = raycasting_function(p.position + dir * intervalOffset, dir, intervalLength);
+    // debug : show blue value for interval index
+    //interval.b = float(intervalIndex) / float(intervalCount);
+    return interval;
+}
+
+// the cascades are managed by the dispatch (work group)
+// dimension that manages the number of probes per cascade
+#define LOCAL_SIZE_X 128
+// dimension that manages the number of intervals per probe
+#define LOCAL_SIZE_Y 8
+#define LOCAL_SIZE_Z 1
+layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y, local_size_z = LOCAL_SIZE_Z) in;
+
+int get_computed_probe_index(int cutStrideIndex)
+{
+    int cascadeIndex = int(gl_WorkGroupID.x);
+
+    cascade_desc desc = cdubo.descs[cascadeIndex];
+
+	int probeCount = desc.p;
+    int stride = probeCount;
+
+    // number of "cut" strides in a "cascade stride"
+    int cutStride = stride / max(1, probeCount / LOCAL_SIZE_X);
+
+    return cascadeIndex * stride + int(gl_LocalInvocationID.x) + cutStrideIndex * cutStride;
+}
+int get_computed_interval_index(int cutStrideIndex)
+{
+    return get_computed_probe_index(cutStrideIndex) + int(gl_LocalInvocationID.y);
+}
 
 void main() 
 {
-    riubo.intervals[0] = vec4(1.0, 0.0, 0.0, 1.0);
+    if (gl_WorkGroupID.x > paramsubo.maxCascadeCount)
+        return;
+
+    // radiance gather
+    int cascadeIndex = int(gl_WorkGroupID.x);
+
+    vec4 result = vec4(0.0);
+
+    // every rows are probes from a cascade
+	if (cascadeIndex >= paramsubo.maxCascadeCount)
+	{
+		return;
+	}
+
+    cascade_desc desc = cdubo.descs[cascadeIndex];
+
+	int probeCount = desc.p;
+    int intervalCount = desc.q;
+    // each column is a probe's radiance interval
+    // i00 i01 i02 i03 i10 i11 i12 i13
+
+    // iteration per thread
+    // number of "cut" strides in a "cascade stride"
+    int itPerThread = probeCount / LOCAL_SIZE_X;
+    for (int t = 0; t < itPerThread; ++t)
+    {
+        int probeIndex = int(gl_LocalInvocationID.x) % itPerThread;
+	    if (probeIndex >= probeCount)
+	    {
+		    return;
+	    }
+
+	    float intervalLength = desc.dw;
+	    int intervalIndex = get_computed_interval_index(t);
+    
+        float intervalOffset = 0.0;
+        if (cascadeIndex > 0)
+            intervalOffset = pow(2.0, float(cascadeIndex - 1));
+        intervalOffset *= float(paramsubo.minRadianceintervalLength);
+    
+	    probe p;
+	    p.position = cubo.positions[get_computed_probe_index(t)];
+	    vec4 radianceInterval = probe_encode_radiance(p, intervalIndex, intervalCount, intervalLength, intervalOffset);
+
+        result = radianceInterval;
+
+        riubo.intervals[intervalIndex] = result;
+    }
 }
