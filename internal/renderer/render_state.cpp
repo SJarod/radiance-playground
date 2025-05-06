@@ -331,8 +331,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             bb.setDevice(m_device);
             m_product->m_mvpUniformBuffers[i] = bb.build();
 
-            vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-                        &m_product->m_mvpUniformBuffersMapped[i]);
+            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
         }
     }
 
@@ -350,8 +349,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             bb.setDevice(m_device);
             m_product->m_probeStorageBuffers[i] = bb.build();
 
-            vkMapMemory(deviceHandle, m_product->m_probeStorageBuffers[i]->getMemory(), 0,
-                        sizeof(RenderStateABC::ProbeContainer), 0, &m_product->m_probeStorageBuffersMapped[i]);
+            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
         }
     }
 
@@ -368,9 +366,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             bb.setDevice(m_device);
             m_product->m_pointLightStorageBuffers[i] = bb.build();
 
-            vkMapMemory(deviceHandle, m_product->m_pointLightStorageBuffers[i]->getMemory(), 0,
-                        sizeof(RenderStateABC::PointLightContainer), 0,
-                        &m_product->m_pointLightStorageBuffersMapped[i]);
+            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_pointLightStorageBuffersMapped[i]);
         }
 
         m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
@@ -384,9 +380,7 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             bb.setDevice(m_device);
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
-            vkMapMemory(deviceHandle, m_product->m_directionalLightStorageBuffers[i]->getMemory(), 0,
-                        sizeof(RenderStateABC::DirectionalLightContainer), 0,
-                        &m_product->m_directionalLightStorageBuffersMapped[i]);
+            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_directionalLightStorageBuffersMapped[i]);
         }
     }
 
@@ -744,8 +738,7 @@ std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-                    &m_product->m_mvpUniformBuffersMapped[i]);
+        m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_instanceDescriptorSets.size(); ++i)
@@ -932,8 +925,7 @@ std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-                    &m_product->m_mvpUniformBuffersMapped[i]);
+        m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
     }
 
     for (int i = 0; i < m_product->m_instanceDescriptorSets.size(); ++i)
@@ -1094,8 +1086,7 @@ std::unique_ptr<RenderStateABC> ProbeGridRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_mvpUniformBuffers[i]->getMemory(), 0, sizeof(RenderStateABC::MVP), 0,
-                    &m_product->m_mvpUniformBuffersMapped[i]);
+        m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
     }
 
     m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
@@ -1110,8 +1101,7 @@ std::unique_ptr<RenderStateABC> ProbeGridRenderStateBuilder::build()
         bb.setDevice(m_device);
         m_product->m_probeStorageBuffers[i] = bb.build();
 
-        vkMapMemory(deviceHandle, m_product->m_probeStorageBuffers[i]->getMemory(), 0,
-                    sizeof(RenderStateABC::ProbeContainer), 0, &m_product->m_probeStorageBuffersMapped[i]);
+        m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
     }
 
     std::vector<VkDescriptorBufferInfo> mvpBufferInfos;

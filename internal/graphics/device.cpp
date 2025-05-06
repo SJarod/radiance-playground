@@ -9,6 +9,8 @@
 
 Device::~Device()
 {
+    vmaDestroyAllocator(m_allocator);
+
     vkDestroyCommandPool(m_handle, m_commandPool, nullptr);
     vkDestroyCommandPool(m_handle, m_commandPoolTransient, nullptr);
 
@@ -218,6 +220,20 @@ std::unique_ptr<Device> DeviceBuilder::build()
         std::cerr << "Failed to create transient command pool : " << res << std::endl;
         return nullptr;
     }
+
+    VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo allocatorCreateInfo = {};
+    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorCreateInfo.physicalDevice = m_product->m_physicalHandle;
+    allocatorCreateInfo.device = m_product->m_handle;
+    allocatorCreateInfo.instance = m_cx.lock()->getInstanceHandle();
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+    vmaCreateAllocator(&allocatorCreateInfo, &m_product->m_allocator);
 
     return std::move(m_product);
 }

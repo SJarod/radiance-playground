@@ -7,6 +7,10 @@
 
 #include <vulkan/vulkan.h>
 
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include <vk_mem_alloc.h>
+
 #include "surface.hpp"
 
 class Context;
@@ -47,6 +51,8 @@ class Device
 
     VkCommandPool m_commandPool;
     VkCommandPool m_commandPoolTransient;
+
+    VmaAllocator m_allocator;
 
     Device() = default;
 
@@ -127,7 +133,7 @@ class Device
     {
         return m_presentQueue;
     }
-    [[nodiscard]] inline const VkQueue& getComputeQueue() const
+    [[nodiscard]] inline const VkQueue &getComputeQueue() const
     {
         return m_computeQueue;
     }
@@ -140,6 +146,11 @@ class Device
     [[nodiscard]] inline const char *getDeviceName() const
     {
         return m_props.deviceName;
+    }
+
+    [[nodiscard]] inline const VmaAllocator &getAllocator() const
+    {
+        return m_allocator;
     }
 };
 

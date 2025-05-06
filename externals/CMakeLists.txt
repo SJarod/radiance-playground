@@ -50,3 +50,5 @@ target_link_libraries(imgui PUBLIC
 glfw
 ${Vulkan_LIBRARY}
 )
+
+add_subdirectory(VulkanMemoryAllocator)

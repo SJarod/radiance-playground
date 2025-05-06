@@ -7,16 +7,27 @@
 
 #include "buffer.hpp"
 
+void Buffer::mapMemory(void **ppData)
+{
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
+    vmaMapMemory(devicePtr->getAllocator(), m_allocation, ppData);
+}
+
 void Buffer::copyDataToMemory(const void *srcData)
 {
-    auto deviceHandle = m_device.lock()->getHandle();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
     // filling the VBO (bind and unbind CPU accessible memory)
     void *data;
-    vkMapMemory(deviceHandle, m_memory, 0, m_size, 0, &data);
-    // TODO : flush memory
+
+    vmaMapMemory(devicePtr->getAllocator(), m_allocation, &data);
+
     memcpy(data, srcData, m_size);
-    // TODO : invalidate memory before reading in the pipeline
-    vkUnmapMemory(deviceHandle, m_memory);
+
+    vmaUnmapMemory(devicePtr->getAllocator(), m_allocation);
 }
 
 void Buffer::transferBufferToBuffer(VkBuffer src)
@@ -38,9 +49,10 @@ Buffer::~Buffer()
     if (m_device.expired())
         return;
 
-    auto deviceHandle = m_device.lock()->getHandle();
-    vkFreeMemory(deviceHandle, m_memory, nullptr);
-    vkDestroyBuffer(deviceHandle, m_handle, nullptr);
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
+    vmaDestroyBuffer(devicePtr->getAllocator(), m_handle, m_allocation);
 }
 
 std::unique_ptr<Buffer> BufferBuilder::build()
@@ -55,12 +67,13 @@ std::unique_ptr<Buffer> BufferBuilder::build()
                                      .size = m_size,
                                      .usage = m_usage,
                                      .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
-    VkResult res = vkCreateBuffer(deviceHandle, &createInfo, nullptr, &m_product->m_handle);
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to create buffer : " << res << std::endl;
-        return nullptr;
-    }
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+    vmaCreateBuffer(devicePtr->getAllocator(), &createInfo, &allocInfo, &m_product->m_handle, &m_product->m_allocation,
+                    nullptr);
+
     static int bufferCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -69,28 +82,16 @@ std::unique_ptr<Buffer> BufferBuilder::build()
         .pObjectName = std::string("Buffer " + std::to_string(bufferCount++)).c_str(),
     });
 
-    VkMemoryRequirements memReq;
-    vkGetBufferMemoryRequirements(deviceHandle, m_product->m_handle, &memReq);
-    std::optional<uint32_t> memoryTypeIndex = devicePtr->findMemoryTypeIndex(memReq, m_properties);
-    VkMemoryAllocateInfo allocInfo = {.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                                      .allocationSize = memReq.size,
-                                      .memoryTypeIndex = memoryTypeIndex.value()};
-    res = vkAllocateMemory(deviceHandle, &allocInfo, nullptr, &m_product->m_memory);
+    VmaAllocationInfo info;
+    vmaGetAllocationInfo(devicePtr->getAllocator(), m_product->m_allocation, &info);
+
     static int deviceMemoryCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_DEVICE_MEMORY,
-        .objectHandle = (uint64_t)m_product->m_memory,
+        .objectHandle = (uint64_t)info.deviceMemory,
         .pObjectName = std::string("Buffer Device Memory " + std::to_string(deviceMemoryCount++)).c_str(),
     });
-
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to allocate buffer memory : " << res << std::endl;
-        return nullptr;
-    }
-
-    vkBindBufferMemory(deviceHandle, m_product->m_handle, m_product->m_memory, 0);
 
     return std::move(m_product);
 }

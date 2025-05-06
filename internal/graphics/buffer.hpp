@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <vk_mem_alloc.h>
+
 class Device;
 class BufferBuilder;
 
@@ -15,7 +17,7 @@ class Buffer
     std::weak_ptr<Device> m_device;
 
     VkBuffer m_handle;
-    VkDeviceMemory m_memory;
+    VmaAllocation m_allocation;
     size_t m_size;
 
     Buffer() = default;
@@ -28,6 +30,8 @@ class Buffer
     Buffer(Buffer &&) = delete;
     Buffer &operator=(Buffer &&) = delete;
 
+    void mapMemory(void **ppData);
+
     void copyDataToMemory(const void *srcData);
 
     void transferBufferToBuffer(VkBuffer src);
@@ -36,11 +40,6 @@ class Buffer
     [[nodiscard]] inline const VkBuffer &getHandle() const
     {
         return m_handle;
-    }
-
-    [[nodiscard]] inline const VkDeviceMemory &getMemory() const
-    {
-        return m_memory;
     }
 
     [[nodiscrad]] inline const size_t getSize() const
