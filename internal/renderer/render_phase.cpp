@@ -314,6 +314,8 @@ void ComputePhase::recordBackBuffer() const
             pipeline->recordBind(commandBuffer, 0, {});
         }
 
+        computeState->updateDescriptorSetsPerFrame(nullptr, -1, m_backBufferIndex);
+
         computeState->updateUniformBuffers(0);
         computeState->recordBackBufferComputeCommands(commandBuffer, m_backBufferIndex);
     }

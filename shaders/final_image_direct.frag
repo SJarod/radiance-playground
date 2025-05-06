@@ -11,8 +11,5 @@ void main()
 	vec3 col = texture(baseImage, fragUV).rgb;
 	col.g = 0.0;
 
-	//col = step(0.5, fragUV.y) * col;
-	//col = step(-0.5, fragUV.x) * vec3(fragUV.xy, 1.0);
-
 	oColor = vec4(col, 1.0);
 }

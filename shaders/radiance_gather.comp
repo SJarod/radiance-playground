@@ -14,17 +14,17 @@ struct cascade_desc
 };
 
 // cascade desc buffer
-layout (binding = 1) uniform CascadeDescUBO {
+layout (binding = 1) readonly buffer CascadeDescUBO {
     cascade_desc[] descs;
 } cdubo;
 
 // cascade probes position buffer
-layout (binding = 2) uniform CascadeUBO {
+layout (binding = 2) readonly buffer CascadeUBO {
     vec2[] positions;
 } cubo;
 
 // radiance interval storage buffer
-layout (binding = 3) uniform RadianceIntervalUBO {
+layout (binding = 3) buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
@@ -32,5 +32,5 @@ layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 void main() 
 {
-
+    riubo.intervals[0] = vec4(1.0, 0.0, 0.0, 1.0);
 }

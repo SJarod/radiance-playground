@@ -18,28 +18,22 @@ struct cascade_desc
 };
 
 // cascade desc buffer
-layout (binding = 1) uniform CascadeDescUBO {
+layout (binding = 1) readonly buffer CascadeDescUBO {
     cascade_desc[] descs;
 } cdubo;
 
 // cascade probes position buffer
-layout (binding = 2) uniform CascadeUBO {
+layout (binding = 2) readonly buffer CascadeUBO {
     vec2[] positions;
 } cubo;
 
 // radiance interval storage buffer
-layout (binding = 3) uniform RadianceIntervalUBO {
+layout (binding = 3) readonly buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
 void main()
 {
 	vec3 col = texture(baseImage, fragUV).rgb;
-	col.g = 0.0;
-
-	//col = step(0.5, fragUV.y) * col;
-	//col = step(-0.5, fragUV.x) * vec3(fragUV.xy, 1.0);
-
-	oColor = vec4(col, 1.0);
-	//oColor = vec4(vec3(1.0), 1.0);
+	oColor = vec4(riubo.intervals[0].rgb, 1.0);
 }
