@@ -495,7 +495,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = std::make_unique<SampleScene2D>(m_discreteDevice);
+    m_scene = std::make_unique<SampleScene2D>(m_discreteDevice, bufferingType);
 
     UniformDescriptorBuilder irradianceConvolutionUdb;
 

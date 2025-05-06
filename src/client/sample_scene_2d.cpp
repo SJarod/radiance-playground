@@ -11,7 +11,7 @@
 
 #include "sample_scene_2d.hpp"
 
-SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
+SampleScene2D::SampleScene2D(std::weak_ptr<Device> device, uint32_t framesInFlightCount)
 {
     m_cameras.emplace_back(std::make_unique<OrthographicCamera>());
     m_mainCamera = m_cameras[m_cameras.size() - 1].get();
@@ -23,7 +23,11 @@ SampleScene2D::SampleScene2D(std::weak_ptr<Device> device)
     m_mainCamera->setNear(-1000.f);
 
     auto radianceCascadesScript = std::make_unique<RadianceCascades>();
-    radianceCascadesScript->init(&device);
+    RadianceCascades::init_data init{
+        .device = device,
+        .frameInFlightCount = framesInFlightCount,
+    };
+    radianceCascadesScript->init(&init);
     m_scripts.push_back(std::move(radianceCascadesScript));
 
     std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
