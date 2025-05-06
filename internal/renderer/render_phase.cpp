@@ -319,20 +319,18 @@ void ComputePhase::recordBackBuffer() const
     }
     std::vector<VkDescriptorSet> descriptorSets;
 
-    vkCmdEndRenderPass(commandBuffer);
-
     res = vkEndCommandBuffer(commandBuffer);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to record command buffer : " << res << std::endl;
 }
 
-void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
+void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) const
 {
-    const BackBufferT &currentBackBuffer = getCurrentBackBuffer(pooledFramebufferIndex);
+    const BackBufferT &currentBackBuffer = getCurrentBackBuffer();
     VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
                                                           : currentBackBuffer.acquireSemaphore};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore(pooledFramebufferIndex)};
+    VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore()};
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
@@ -344,8 +342,7 @@ void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, ui
         .pSignalSemaphores = signalSemaphores,
     };
 
-    VkResult res =
-        vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence(pooledFramebufferIndex));
+    VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence());
     if (res != VK_SUCCESS)
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
 }

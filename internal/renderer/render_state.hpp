@@ -25,6 +25,23 @@ class ProbeGridRenderStateBuilder;
 class Texture;
 class RenderPhase;
 
+/**
+ * @brief use this macro to easily convert a freshly created render state
+ * it is necessary due to the obsolete usage of RenderStateABC in all the architecture
+ * the RenderPhases use this class, the interface should be later updated
+ * TODO : update the interface
+ *
+ */
+#define RENDER_STATE_PTR(gpuStatePtr)                                                                                  \
+    std::dynamic_pointer_cast<RenderStateABC>(static_cast<std::shared_ptr<GPUStateI>>(gpuStatePtr))
+
+/**
+ * @brief use this macro to easily convert a freshly created compute state
+ *
+ */
+#define COMPUTE_STATE_PTR(gpuStatePtr)                                                                                 \
+    std::dynamic_pointer_cast<ComputeState>(static_cast<std::shared_ptr<GPUStateI>>(gpuStatePtr))
+
 using DescriptorSetUpdatePred =
     std::function<void(const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet &set)>;
 using DescriptorSetUpdatePredPerFrame = std::function<void(const RenderPhase *parentPhase, uint32_t imageIndex,
@@ -204,7 +221,7 @@ class RenderStateBuilderI
     virtual void setInstanceDescriptorEnable(bool enable) = 0;
     virtual void setMaterialDescriptorEnable(bool enable) = 0;
 
-    virtual std::unique_ptr<RenderStateABC> build() = 0;
+    virtual std::unique_ptr<GPUStateI> build() = 0;
 };
 
 class ModelRenderState : public RenderStateABC
@@ -331,7 +348,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_product->m_pushViewPosition = a;
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };
 
 class ImGuiRenderState : public RenderStateABC
@@ -410,7 +427,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
         m_product->m_materialDescriptorSetEnable = enable;
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };
 
 class SkyboxRenderState : public RenderStateABC
@@ -508,7 +525,7 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
         m_textureDescriptorEnable = a;
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };
 
 class EnvironmentCaptureRenderState : public RenderStateABC
@@ -606,7 +623,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
         m_textureDescriptorEnable = a;
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };
 
 class ProbeGridRenderState : public RenderStateABC
@@ -706,7 +723,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
         m_product->m_materialDescriptorSetEnable = enable;
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };
 
 class ComputeStateBuilder;
@@ -726,6 +743,8 @@ class ComputeState : public GPUStateI
 
     VkDescriptorPool m_descriptorPool;
     std::vector<VkDescriptorSet> m_descriptorSets;
+
+    ComputeState() = default;
 
   public:
     void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) override;
@@ -797,5 +816,5 @@ class ComputeStateBuilder : public RenderStateBuilderI
     {
     }
 
-    std::unique_ptr<RenderStateABC> build() override;
+    std::unique_ptr<GPUStateI> build() override;
 };

@@ -47,6 +47,13 @@ void RenderGraph::processRenderPhaseChain(const std::vector<std::unique_ptr<Base
                 }
             }
         }
+        else if (const ComputePhase *phase = dynamic_cast<ComputePhase *>(toProcess[i].get()))
+        {
+            phase->recordBackBuffer();
+
+            phase->submitBackBuffer(lastAcquireSemaphore);
+            lastAcquireSemaphore = &phase->getCurrentRenderSemaphore();
+        }
     }
 
     if (outAcquireSemaphore)
@@ -90,6 +97,10 @@ void RenderGraph::swapAllRenderPhasesBackBuffers()
             {
                 currentPhase->swapBackBuffers(poolIndex);
             }
+        }
+        else if (ComputePhase *currentPhase = dynamic_cast<ComputePhase *>(phase.get()))
+        {
+            currentPhase->swapBackBuffers();
         }
     }
 }

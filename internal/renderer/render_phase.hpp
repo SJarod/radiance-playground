@@ -204,8 +204,10 @@ class ComputePhase : public BasePhaseABC
     ComputePhase(ComputePhase &&) = delete;
     ComputePhase &operator=(ComputePhase &&) = delete;
 
+    void registerComputeState(std::shared_ptr<ComputeState> state);
+
     void recordBackBuffer() const;
-    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
 
     void swapBackBuffers();
 

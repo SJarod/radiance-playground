@@ -241,7 +241,7 @@ void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     });
 }
 
-std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
+std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -380,7 +380,8 @@ std::unique_ptr<RenderStateABC> ModelRenderStateBuilder::build()
             bb.setDevice(m_device);
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
-            m_product->m_directionalLightStorageBuffers[i]->mapMemory(&m_product->m_directionalLightStorageBuffersMapped[i]);
+            m_product->m_directionalLightStorageBuffers[i]->mapMemory(
+                &m_product->m_directionalLightStorageBuffersMapped[i]);
         }
     }
 
@@ -592,7 +593,7 @@ uint32_t ModelRenderState::getSubObjectCount() const
     return m_model.lock()->getMeshes().size();
 }
 
-std::unique_ptr<RenderStateABC> ImGuiRenderStateBuilder::build()
+std::unique_ptr<GPUStateI> ImGuiRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -650,7 +651,7 @@ void SkyboxRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     });
 }
 
-std::unique_ptr<RenderStateABC> SkyboxRenderStateBuilder::build()
+std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -837,7 +838,7 @@ void EnvironmentCaptureRenderStateBuilder::addPoolSize(VkDescriptorType poolSize
     });
 }
 
-std::unique_ptr<RenderStateABC> EnvironmentCaptureRenderStateBuilder::build()
+std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -1027,7 +1028,7 @@ void ProbeGridRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     });
 }
 
-std::unique_ptr<RenderStateABC> ProbeGridRenderStateBuilder::build()
+std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
 {
     assert(m_device.lock());
 
@@ -1254,4 +1255,51 @@ void ComputeState::recordBackBufferComputeCommands(const VkCommandBuffer &comman
 
 void ComputeState::updateUniformBuffers(uint32_t imageIndex)
 {
+}
+
+std::unique_ptr<GPUStateI> ComputeStateBuilder::build()
+{
+    assert(m_device.lock());
+
+    auto deviceHandle = m_device.lock()->getHandle();
+
+    // descriptor pool
+    VkDescriptorPoolCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = m_frameInFlightCount,
+        .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
+        .pPoolSizes = m_poolSizes.data(),
+    };
+    VkResult res = vkCreateDescriptorPool(deviceHandle, &createInfo, nullptr, &m_product->m_descriptorPool);
+    if (res != VK_SUCCESS)
+    {
+        std::cerr << "Failed to create descriptor pool : " << res << std::endl;
+        return nullptr;
+    }
+
+    // descriptor set
+    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+
+    if (instanceDescriptorSetLayout.has_value())
+    {
+        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                              instanceDescriptorSetLayout.value());
+        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = m_product->m_descriptorPool,
+            .descriptorSetCount = m_frameInFlightCount,
+            .pSetLayouts = instanceSetLayouts.data(),
+        };
+        m_product->m_descriptorSets.resize(m_frameInFlightCount);
+        res =
+            vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, m_product->m_descriptorSets.data());
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
+            return nullptr;
+        }
+    }
+
+    return std::move(m_product);
 }
