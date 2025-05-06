@@ -81,6 +81,7 @@ class BasePipelineBuilder
 
     std::vector<std::shared_ptr<UniformDescriptor>> m_uniformDescriptorPacks;
 
+    // TODO : move to PipelineBuilder<PipelineType::GRAPHICS>
     const RenderPass *m_renderPass;
 
     virtual void restart();
@@ -100,6 +101,7 @@ class BasePipelineBuilder
     {
         m_uniformDescriptorPacks.push_back(desc);
     }
+    // TODO : move to PipelineBuilder<PipelineType::GRAPHICS>
     void setRenderPass(const RenderPass *a)
     {
         m_renderPass = a;

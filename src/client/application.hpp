@@ -33,9 +33,22 @@ class Application
     RenderPhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
 
-    RenderPhase *m_postProcessPhase;
+    /**
+     * @brief final image with direct lighting
+     * post process can be applied in this phase using the right shader
+     *
+     */
+    RenderPhase *m_finalImageDirect;
+    /**
+     * @brief compute shader for the radiance gathering
+     *
+     */
     ComputePhase *m_computePhase;
-    RenderPhase *m_postProcess2Phase;
+    /**
+     * @brief final image combining direct and indirect lighting
+     *
+     */
+    RenderPhase *m_finalImageDirectIndirect;
 
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;

@@ -315,7 +315,7 @@ void ComputePhase::recordBackBuffer() const
         }
 
         computeState->updateUniformBuffers(0);
-        computeState->recordBackBufferComputeCommands(commandBuffer);
+        computeState->recordBackBufferComputeCommands(commandBuffer, m_backBufferIndex);
     }
     std::vector<VkDescriptorSet> descriptorSets;
 
@@ -416,4 +416,11 @@ std::unique_ptr<ComputePhase> ComputePhaseBuilder::build()
     }
 
     return std::move(m_product);
+}
+
+void ComputePhase::registerComputeState(std::shared_ptr<ComputeState> state)
+{
+    state->updateDescriptorSets(nullptr, -1u);
+
+    m_computeStates.push_back(state);
 }

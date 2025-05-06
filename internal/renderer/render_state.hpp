@@ -54,8 +54,34 @@ using DescriptorSetUpdatePredPerFrame = std::function<void(const RenderPhase *pa
 class GPUStateI
 {
   public:
-    virtual void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) = 0;
+    /**
+     * @brief this function is specific for the compute state but it is needed in the highest class of polymorphisme due
+     * to the renderer using GPUStateIs
+     *
+     * @param commandBuffer
+     * @param backBufferIndex
+     */
+    virtual void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex) = 0;
     virtual void updateUniformBuffers(uint32_t imageIndex) = 0;
+
+    /**
+     * @brief used to take the user defined descriptor sets at each frames
+     * it is used by the graphics states, hence the RenderPhase parameter
+     *
+     * @param parentPhase not used in the compute state because compute phases uses ComputePhase objects
+     * @param imageIndex not used in the compute state because compute phases uses ComputePhase objects
+     * @param backBufferIndex
+     */
+    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
+                                              uint32_t backBufferIndex) = 0;
+
+    /**
+     * @brief same function as above but it is executed on the states registering
+     *
+     * @param parentPhase not used in the compute state because compute phases uses ComputePhase objects
+     * @param imageIndex not used in the compute state because compute phases uses ComputePhase objects
+     */
+    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex) = 0;
 
     virtual [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const = 0;
     virtual [[nodiscard]] VkDescriptorPool getDescriptorPool() const = 0;
@@ -166,8 +192,8 @@ class RenderStateABC : public GPUStateI
                                       const std::vector<std::shared_ptr<Light>> &lights,
                                       const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
-                                              uint32_t backBufferIndex);
-    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex);
+                                              uint32_t backBufferIndex) override;
+    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex) override;
 
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
                                                         uint32_t imageIndex);
@@ -178,16 +204,18 @@ class RenderStateABC : public GPUStateI
      *
      * @param commandBuffer
      */
-    [[deprecated]] void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) override
+    void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex) override
     {
+        assert(false);
     }
     /**
      * @brief no implementation yet
      *
      * @param imageIndex
      */
-    [[deprecated]] void updateUniformBuffers(uint32_t imageIndex) override
+    void updateUniformBuffers(uint32_t imageIndex) override
     {
+        assert(false);
     }
 
     virtual uint32_t getSubObjectCount() const = 0;
@@ -214,10 +242,16 @@ class RenderStateBuilderI
     virtual void addPoolSize(VkDescriptorType poolSizeType) = 0;
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
+
+    virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
+    virtual void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+
     virtual void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
     virtual void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+
     virtual void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
     virtual void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
+
     virtual void setInstanceDescriptorEnable(bool enable) = 0;
     virtual void setMaterialDescriptorEnable(bool enable) = 0;
 
@@ -296,6 +330,14 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_environmentMaps.reserve(textures.size());
         for (const std::shared_ptr<Texture> &texture : textures)
             m_environmentMaps.push_back(texture);
+    }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        assert(false);
     }
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
@@ -401,7 +443,17 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
 
     void setTexture(std::weak_ptr<Texture> texture) override
     {
+        assert(false);
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        assert(false);
+    }
+
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
@@ -490,6 +542,15 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        assert(false);
+    }
+
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
@@ -588,6 +649,15 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        assert(false);
+    }
+
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
@@ -698,6 +768,15 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
         for (const std::shared_ptr<Texture> &texture : textures)
             m_environmentMaps.push_back(texture);
     }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        assert(false);
+    }
+
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
@@ -744,12 +823,20 @@ class ComputeState : public GPUStateI
     VkDescriptorPool m_descriptorPool;
     std::vector<VkDescriptorSet> m_descriptorSets;
 
+    DescriptorSetUpdatePredPerFrame m_descriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_descriptorSetUpdatePred = nullptr;
+
     ComputeState() = default;
 
   public:
-    void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) override;
+    void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex) override;
 
     void updateUniformBuffers(uint32_t imageIndex) override;
+
+    void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
+                                      uint32_t backBufferIndex) override;
+
+    void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex) override;
 
   public:
     [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const override
@@ -796,24 +883,39 @@ class ComputeStateBuilder : public RenderStateBuilderI
     }
     void setTexture(std::weak_ptr<Texture> texture) override
     {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+        m_product->m_descriptorSetUpdatePredPerFrame = pred;
     }
     void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
+        assert(false);
+    }
+    void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+        m_product->m_descriptorSetUpdatePred = pred;
     }
     void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
+        assert(false);
     }
     void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
     {
+        assert(false);
     }
     void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
     {
+        assert(false);
     }
     void setInstanceDescriptorEnable(bool enable) override
     {
+        assert(false);
     }
     void setMaterialDescriptorEnable(bool enable) override
     {
+        assert(false);
     }
 
     std::unique_ptr<GPUStateI> build() override;

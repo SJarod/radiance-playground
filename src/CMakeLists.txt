@@ -24,8 +24,9 @@ set(SHADER_SOURCES
 	shaders/skybox.frag
 	shaders/irradiance_convolution.frag
 	shaders/screen.vert
-	shaders/postprocess.frag
-	shaders/radiance_cascades.frag
+	shaders/final_image_direct.frag
+	shaders/final_image_direct_indirect.frag
+	shaders/radiance_gather.comp
 	shaders/probe_grid_debug.frag
 	shaders/probe_grid_debug.vert
 )

@@ -88,7 +88,7 @@ void RadianceCascades::init(void *userData)
 
         BufferDirector bd;
         BufferBuilder bb;
-        bd.configureUniformBufferBuilder(bb);
+        bd.configureStorageBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(sizeof(cascade_desc) * cascades.size());
 
@@ -114,7 +114,7 @@ void RadianceCascades::init(void *userData)
 
         BufferDirector bd;
         BufferBuilder bb;
-        bd.configureUniformBufferBuilder(bb);
+        bd.configureStorageBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(sizeof(glm::vec2) * probeCount);
 
@@ -140,7 +140,7 @@ void RadianceCascades::init(void *userData)
                 intervalCount += cascades[i].m;
             }
 
-            bb.setSize(sizeof(float) * intervalCount);
+            bb.setSize(sizeof(glm::vec4) * intervalCount);
 
             m_radianceIntervalsStorageBufferRW.push_back(bb.build());
         }

@@ -177,9 +177,31 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
         {
             for (const auto &materialSet : materialSetsPerMesh)
             {
-
                 m_materialDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, materialSet, backBufferIndex);
             }
+        }
+    }
+}
+
+void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex)
+{
+    if (m_descriptorSetUpdatePred)
+    {
+        for (const auto &set : m_descriptorSets)
+        {
+            m_descriptorSetUpdatePred(parentPhase, imageIndex, set);
+        }
+    }
+}
+
+void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
+                                                uint32_t backBufferIndex)
+{
+    if (m_descriptorSetUpdatePredPerFrame)
+    {
+        for (const auto &set : m_descriptorSets)
+        {
+            m_descriptorSetUpdatePredPerFrame(parentPhase, imageIndex, set, backBufferIndex);
         }
     }
 }
@@ -1245,10 +1267,11 @@ void ComputeStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
     });
 }
 
-void ComputeState::recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer)
+void ComputeState::recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex)
 {
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline->getPipelineLayout(), 0,
-                            m_descriptorSets.size(), m_descriptorSets.data(), 0, nullptr);
+    // TODO : amount of descriptor sets ?
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline->getPipelineLayout(), 0, 1,
+                            &m_descriptorSets[backBufferIndex], 0, nullptr);
 
     vkCmdDispatch(commandBuffer, 128, 1, 1);
 }
@@ -1278,27 +1301,20 @@ std::unique_ptr<GPUStateI> ComputeStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
-        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
-
-    if (instanceDescriptorSetLayout.has_value())
+    std::vector<VkDescriptorSetLayout> setLayouts(m_frameInFlightCount,
+                                                  m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u).value());
+    VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = m_product->m_descriptorPool,
+        .descriptorSetCount = m_frameInFlightCount,
+        .pSetLayouts = setLayouts.data(),
+    };
+    m_product->m_descriptorSets.resize(m_frameInFlightCount);
+    res = vkAllocateDescriptorSets(deviceHandle, &descriptorSetAllocInfo, m_product->m_descriptorSets.data());
+    if (res != VK_SUCCESS)
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
-                                                              instanceDescriptorSetLayout.value());
-        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_product->m_descriptorPool,
-            .descriptorSetCount = m_frameInFlightCount,
-            .pSetLayouts = instanceSetLayouts.data(),
-        };
-        m_product->m_descriptorSets.resize(m_frameInFlightCount);
-        res =
-            vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, m_product->m_descriptorSets.data());
-        if (res != VK_SUCCESS)
-        {
-            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
-            return nullptr;
-        }
+        std::cerr << "Failed to allocate descriptor sets : " << res << std::endl;
+        return nullptr;
     }
 
     return std::move(m_product);

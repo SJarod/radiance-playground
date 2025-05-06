@@ -1,0 +1,36 @@
+#version 450
+
+layout(binding = 0) uniform sampler2D baseImage;
+
+struct cascade_desc
+{
+    // number of probes p
+    int p;
+    // number of discrete values per probes q
+    int q;
+
+    // interval length
+    float dw;
+};
+
+// cascade desc buffer
+layout (binding = 1) uniform CascadeDescUBO {
+    cascade_desc[] descs;
+} cdubo;
+
+// cascade probes position buffer
+layout (binding = 2) uniform CascadeUBO {
+    vec2[] positions;
+} cubo;
+
+// radiance interval storage buffer
+layout (binding = 3) uniform RadianceIntervalUBO {
+    vec4[] intervals;
+} riubo;
+
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+void main() 
+{
+
+}
