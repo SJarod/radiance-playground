@@ -41,4 +41,5 @@ void main()
 	//col = step(-0.5, fragUV.x) * vec3(fragUV.xy, 1.0);
 
 	oColor = vec4(col, 1.0);
+	//oColor = vec4(vec3(1.0), 1.0);
 }

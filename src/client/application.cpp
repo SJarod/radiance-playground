@@ -974,7 +974,7 @@ void Application::runLoop()
         quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         quadRsb.setModel(postProcessQuadModel);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        quadRsb.setMaterialDescriptorSetUpdatePred(
+        quadRsb.setInstanceDescriptorSetUpdatePred(
             [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
                 auto deviceHandle = m_discreteDevice->getHandle();
                 const auto &sampler = m_window->getSwapChain()->getSampler();
@@ -996,6 +996,8 @@ void Application::runLoop()
                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     .pImageInfo = &imageInfo,
                 });
+
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
         PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
         PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
@@ -1062,6 +1064,10 @@ void Application::runLoop()
         csb.setDevice(m_discreteDevice);
         csb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         csb.setPipeline(pb.build());
+        csb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         csb.setDescriptorSetUpdatePred(
             [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
                 auto deviceHandle = m_discreteDevice->getHandle();
@@ -1102,7 +1108,7 @@ void Application::runLoop()
                             .dstBinding = 1,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
-                            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                             .pBufferInfo = &bufferInfo,
                         });
                     }
@@ -1118,7 +1124,7 @@ void Application::runLoop()
                             .dstBinding = 2,
                             .dstArrayElement = 0,
                             .descriptorCount = 1,
-                            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                             .pBufferInfo = &bufferInfo,
                         });
                     }
@@ -1147,7 +1153,7 @@ void Application::runLoop()
                         .dstBinding = 3,
                         .dstArrayElement = 0,
                         .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                         .pBufferInfo = &bufferInfo,
                     });
                 }
@@ -1168,7 +1174,11 @@ void Application::runLoop()
         quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
         quadRsb.setModel(postProcessQuadModel);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        quadRsb.setMaterialDescriptorSetUpdatePred(
+        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        quadRsb.setInstanceDescriptorSetUpdatePred(
             [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
                 auto deviceHandle = m_discreteDevice->getHandle();
                 const auto &sampler = m_window->getSwapChain()->getSampler();
@@ -1231,7 +1241,7 @@ void Application::runLoop()
                 }
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-        quadRsb.setMaterialDescriptorSetUpdatePredPerFrame([&](const RenderPhase *parentPhase, uint32_t imageIndex,
+        quadRsb.setInstanceDescriptorSetUpdatePredPerFrame([&](const RenderPhase *parentPhase, uint32_t imageIndex,
                                                                const VkDescriptorSet set, uint32_t backBufferIndex) {
             auto deviceHandle = m_discreteDevice->getHandle();
             std::vector<VkWriteDescriptorSet> writes;
@@ -1264,7 +1274,7 @@ void Application::runLoop()
         PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
         postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
         postProcessPb.setDevice(m_discreteDevice);
-        postProcessPb.setRenderPass(m_finalImageDirect->getRenderPass());
+        postProcessPb.setRenderPass(m_finalImageDirectIndirect->getRenderPass());
         postProcessPb.addVertexShaderStage("screen");
         postProcessPb.addFragmentShaderStage("final_image_direct_indirect");
         postProcessPb.setExtent(m_window->getSwapChain()->getExtent());

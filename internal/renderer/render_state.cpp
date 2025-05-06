@@ -218,9 +218,12 @@ void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32
 
     if (m_materialDescriptorSetUpdatePred)
     {
-        for (const auto &set : m_instanceDescriptorSets)
+        for (const auto &materialSetsPerMesh : m_materialDescriptorSetsPerSubObject)
         {
-            m_materialDescriptorSetUpdatePred(parentPhase, imageIndex, set);
+            for (const auto &materialSet : materialSetsPerMesh)
+            {
+                m_materialDescriptorSetUpdatePred(parentPhase, imageIndex, materialSet);
+            }
         }
     }
 }
