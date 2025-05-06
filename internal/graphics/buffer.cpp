@@ -68,11 +68,17 @@ std::unique_ptr<Buffer> BufferBuilder::build()
                                      .usage = m_usage,
                                      .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    VmaAllocationCreateInfo allocInfo = {
+        .requiredFlags = m_properties,
+    };
 
-    vmaCreateBuffer(devicePtr->getAllocator(), &createInfo, &allocInfo, &m_product->m_handle, &m_product->m_allocation,
-                    nullptr);
+    VkResult res = vmaCreateBuffer(devicePtr->getAllocator(), &createInfo, &allocInfo, &m_product->m_handle,
+                                   &m_product->m_allocation, nullptr);
+    if (res != VK_SUCCESS)
+    {
+        std::cerr << "Failed to create buffer and allocate memory: " << res << std::endl;
+        return nullptr;
+    }
 
     static int bufferCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{

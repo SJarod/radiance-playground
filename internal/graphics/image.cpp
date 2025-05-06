@@ -11,9 +11,10 @@ Image::~Image()
     if (m_device.expired())
         return;
 
-    auto deviceHandle = m_device.lock()->getHandle();
-    vkFreeMemory(deviceHandle, m_memory, nullptr);
-    vkDestroyImage(deviceHandle, m_handle, nullptr);
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
+    vmaDestroyImage(devicePtr->getAllocator(), m_handle, m_allocation);
 }
 
 void Image::transitionImageLayout(ImageLayoutTransition transition)
@@ -192,12 +193,18 @@ std::unique_ptr<Image> ImageBuilder::build()
         .initialLayout = m_initialLayout,
     };
 
-    VkResult res = vkCreateImage(deviceHandle, &createInfo, nullptr, &m_product->m_handle);
+    VmaAllocationCreateInfo allocInfo = {
+        .requiredFlags = m_properties,
+    };
+
+    VkResult res = vmaCreateImage(devicePtr->getAllocator(), &createInfo, &allocInfo, &m_product->m_handle,
+                                  &m_product->m_allocation, nullptr);
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to create image : " << res << std::endl;
         return nullptr;
     }
+
     static int imageCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
@@ -206,31 +213,16 @@ std::unique_ptr<Image> ImageBuilder::build()
         .pObjectName = std::string("Image " + std::to_string(imageCount++)).c_str(),
     });
 
-    VkMemoryRequirements memReq;
-    vkGetImageMemoryRequirements(deviceHandle, m_product->m_handle, &memReq);
-    std::optional<uint32_t> memoryTypeIndex = devicePtr->findMemoryTypeIndex(memReq, m_properties);
+    VmaAllocationInfo info;
+    vmaGetAllocationInfo(devicePtr->getAllocator(), m_product->m_allocation, &info);
 
-    VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memReq.size,
-        .memoryTypeIndex = memoryTypeIndex.value(),
-    };
-
-    res = vkAllocateMemory(deviceHandle, &allocInfo, nullptr, &m_product->m_memory);
-    if (res != VK_SUCCESS)
-    {
-        std::cerr << "Failed to allocate memory : " << res << std::endl;
-        return nullptr;
-    }
     static int imageMemoryCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_DEVICE_MEMORY,
-        .objectHandle = (uint64_t)m_product->m_memory,
+        .objectHandle = (uint64_t)info.deviceMemory,
         .pObjectName = std::string("Image Memory " + std::to_string(imageMemoryCount++)).c_str(),
     });
-
-    vkBindImageMemory(deviceHandle, m_product->m_handle, m_product->m_memory, 0);
 
     return std::move(m_product);
 }

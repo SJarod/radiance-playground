@@ -2,6 +2,9 @@
 #include <set>
 #include <vector>
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 #include "context.hpp"
 #include "surface.hpp"
 

@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <vk_mem_alloc.h>
+
 class Device;
 class Buffer;
 class ImageLayoutTransitionBuilder;
@@ -36,8 +38,9 @@ class Image
     uint32_t m_depth;
 
     VkImageAspectFlags m_aspectFlags;
+
     VkImage m_handle;
-    VkDeviceMemory m_memory;
+    VmaAllocation m_allocation;
 
     Image() = default;
 
@@ -178,10 +181,10 @@ class ImageDirector
   public:
     void configureImage2DBuilder(ImageBuilder &builder);
     void configureImageCubeBuilder(ImageBuilder &builder);
-    void configureDepthImage2DBuilder(ImageBuilder& builder);
+    void configureDepthImage2DBuilder(ImageBuilder &builder);
     void configureDepthImageCubeBuilder(ImageBuilder &builder);
     void configureSampledImage2DBuilder(ImageBuilder &builder);
-    void configureSampledImageCubeBuilder(ImageBuilder& builder);
+    void configureSampledImageCubeBuilder(ImageBuilder &builder);
     void configureNonSampledImageCubeBuilder(ImageBuilder &builder);
     void configureSampledResolveImageCubeBuilder(ImageBuilder &builder);
 };
@@ -306,7 +309,7 @@ class ImageLayoutTransitionDirector
 
     template <>
     void configureBuilder<VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL>(
-        ImageLayoutTransitionBuilder& builder) const
+        ImageLayoutTransitionBuilder &builder) const
     {
         builder.setOldLayout(VK_IMAGE_LAYOUT_UNDEFINED);
         builder.setNewLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
