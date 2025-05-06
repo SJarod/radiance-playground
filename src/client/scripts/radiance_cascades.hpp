@@ -46,20 +46,22 @@ class RadianceCascades : public ScriptableABC
         float minRadianceintervalLength;
         float lightIntensity;
         int maxRayIterationCount;
+        int pad[2];
     };
     std::unique_ptr<Buffer> m_radianceCascadesParametersBuffer;
 
     struct probe
     {
         glm::vec2 position;
+        glm::vec2 pad;
     };
 
     struct cascade_desc
     {
         // number of probes p
-        int p;
+        uint32_t p;
         // number of discrete values per probes q
-        int q;
+        uint32_t q;
 
         // interval length
         float dw;

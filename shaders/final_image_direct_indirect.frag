@@ -48,7 +48,7 @@ float draw_sphere(in vec2 uv, in vec2 center, in float radius, float resy)
     return c;
 }
 
-layout (binding = 1) uniform parameters {
+layout (std140, binding = 1) uniform parameters {
     int maxCascadeCount;
     int maxProbeCount;
     int minDiscreteValueCount;
@@ -58,17 +58,17 @@ layout (binding = 1) uniform parameters {
 } paramsubo;
 
 // cascade desc buffer
-layout (binding = 2) readonly buffer CascadeDescUBO {
+layout (std430, binding = 2) readonly buffer CascadeDescUBO {
     cascade_desc[] descs;
 } cdubo;
 
 // cascade probes position buffer
-layout (binding = 3) readonly buffer CascadeUBO {
+layout (std140, binding = 3) readonly buffer CascadeUBO {
     vec2[] positions;
 } cubo;
 
 // radiance interval storage buffer
-layout (binding = 4) readonly buffer RadianceIntervalUBO {
+layout (std140, binding = 4) readonly buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
@@ -86,11 +86,17 @@ vec2 retrieve_probe_position(int cascadeIndex, int probeIndex)
 int get_computed_probe_index(int cascadeIndex, int probeIndex)
 {
     cascade_desc desc = cdubo.descs[cascadeIndex];
+    cascade_desc previous_desc = cdubo.descs[max(0, cascadeIndex - 1)];
 
 	int probeCount = desc.p;
-    int stride = probeCount;
+    int intervalCount = desc.q;
 
-    return cascadeIndex * stride + probeIndex;
+    int cascadeStride = probeCount / int(pow(2, cascadeIndex));
+
+    int cascadeOffset = previous_desc.p * min(cascadeIndex, 1);
+
+    return cascadeOffset + probeIndex * intervalCount;
+
 }
 int get_computed_interval_index(int cascadeIndex, int probeIndex, int intervalIndex, int intervalCount)
 {
@@ -212,21 +218,23 @@ void render_probes(inout vec4 col, in vec2 uv)
 
 void main()
 {
-    vec4 col = texture(baseImage, fragUV);
+    vec4 direct = texture(baseImage, fragUV);
+
+    vec4 indirect = vec4(0.0);
     vec2 uv = fragUV;
     
 #ifdef DEBUG_DISPLAY_PROBES
     // probes visualization
     vec4 probeSceneColor = vec4(0.0);
     render_probes(probeSceneColor, uv);
-    col += vec4(probeSceneColor.xyz, 1.0);
+    indirect += vec4(probeSceneColor.xyz, 1.0);
 #else
-    col += vec4(0.0);
+    indirect += vec4(0.0);
 #endif
     
     // apply radiance to pixel
     vec4 indirectLight = radiance_apply(uv);
-    col += vec4(indirectLight.rgb, 1.0);
+    indirect += vec4(indirectLight.rgb, 1.0);
 
-    oColor = col;
+    oColor = vec4(direct.rgb + mix(indirect.rgb, direct.rgb, step(0.5, direct.w)), 1.0);
 }

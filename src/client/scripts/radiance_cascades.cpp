@@ -121,14 +121,14 @@ void RadianceCascades::init(void *userData)
     {
         // total number of probes combining all the cascades
         int probeCount = 0;
-        std::vector<glm::vec2> positions;
+        std::vector<probe> positions;
         for (int i = 0; i < cascades.size(); ++i)
         {
             probeCount += cascades[i].desc.p;
 
             for (const probe &p : cascades[i].probes)
             {
-                positions.push_back(p.position);
+                positions.push_back(p);
             }
         }
 
@@ -136,7 +136,7 @@ void RadianceCascades::init(void *userData)
         BufferBuilder bb;
         bd.configureStorageBufferBuilder(bb);
         bb.setDevice(m_device);
-        bb.setSize(sizeof(glm::vec2) * probeCount);
+        bb.setSize(sizeof(probe) * probeCount);
 
         m_probePositionBuffer = bb.build();
         m_probePositionBuffer->copyDataToMemory(positions.data());
