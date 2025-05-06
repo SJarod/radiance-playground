@@ -7,6 +7,8 @@
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/render_pass.hpp"
+#include "graphics/buffer.hpp"
+#include "graphics/image.hpp"
 
 #include "wsi/window.hpp"
 
@@ -367,12 +369,9 @@ Application::~Application()
 
     m_window.reset();
 
-    for (int i = 0; i < m_devices.size(); ++i)
-    {
-        // TODO : context is cleared before devices ?
-        m_devices[i].reset();
-    }
+    m_discreteDevice.reset();
     m_devices.clear();
+
     m_context.reset();
 
     WindowGLFW::terminate();

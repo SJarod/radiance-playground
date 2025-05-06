@@ -56,7 +56,9 @@ Buffer::~Buffer()
     vmaGetAllocationInfo(devicePtr->getAllocator(), m_allocation, &info);
     if (info.pMappedData)
         vmaUnmapMemory(devicePtr->getAllocator(), m_allocation);
+
     vmaDestroyBuffer(devicePtr->getAllocator(), m_handle, m_allocation);
+    devicePtr->addBufferCount(-1);
 }
 
 std::unique_ptr<Buffer> BufferBuilder::build()
@@ -84,13 +86,13 @@ std::unique_ptr<Buffer> BufferBuilder::build()
         return nullptr;
     }
 
-    static int bufferCount = 0;
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_BUFFER,
         .objectHandle = (uint64_t)m_product->m_handle,
-        .pObjectName = std::string("Buffer " + std::to_string(bufferCount++)).c_str(),
+        .pObjectName = std::string("Buffer " + std::to_string(devicePtr->getBufferCount())).c_str(),
     });
+    devicePtr->addBufferCount(1);
 
     VmaAllocationInfo info;
     vmaGetAllocationInfo(devicePtr->getAllocator(), m_product->m_allocation, &info);

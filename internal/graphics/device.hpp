@@ -50,6 +50,16 @@ class Device
     VkCommandPool m_commandPool;
     VkCommandPool m_commandPoolTransient;
 
+    /**
+     * @brief total number of allocated buffer
+     *
+     */
+    int m_bufferCount = 0;
+    /**
+     * @brief total number of allocated image
+     *
+     */
+    int m_imageCount = 0;
     VmaAllocator m_allocator;
 
     Device() = default;
@@ -149,6 +159,25 @@ class Device
     [[nodiscard]] inline const VmaAllocator &getAllocator() const
     {
         return m_allocator;
+    }
+
+    [[nodiscard]] const int getBufferCount() const
+    {
+        return m_bufferCount;
+    }
+    [[nodiscard]] const int getImageCount() const
+    {
+        return m_imageCount;
+    }
+
+  public:
+    void addBufferCount(int n)
+    {
+        m_bufferCount += n;
+    }
+    void addImageCount(int n)
+    {
+        m_imageCount += n;
     }
 };
 

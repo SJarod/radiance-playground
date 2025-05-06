@@ -14,6 +14,9 @@ Device::~Device()
 {
     std::cout << "Destroying device : " << getDeviceName() << std::endl;
 
+    // TODO : fix leaks
+    assert(m_bufferCount == 0);
+    assert(m_imageCount == 0);
     vmaDestroyAllocator(m_allocator);
 
     vkDestroyCommandPool(m_handle, m_commandPool, nullptr);
@@ -232,7 +235,7 @@ std::unique_ptr<Device> DeviceBuilder::build()
 
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
     allocatorCreateInfo.physicalDevice = m_product->m_physicalHandle;
     allocatorCreateInfo.device = m_product->m_handle;
     allocatorCreateInfo.instance = m_cx.lock()->getInstanceHandle();
