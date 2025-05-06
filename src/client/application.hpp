@@ -12,6 +12,7 @@ class Device;
 class Renderer;
 class SceneABC;
 class RenderPhase;
+class ComputePhase;
 class Texture;
 
 class Application
@@ -33,7 +34,7 @@ class Application
     RenderPhase *m_skyboxPhase;
 
     RenderPhase *m_postProcessPhase;
-    RenderPhase *m_computePhase;
+    ComputePhase *m_computePhase;
     RenderPhase *m_postProcess2Phase;
 
     RenderPhase *m_imguiPhase;

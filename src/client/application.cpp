@@ -285,13 +285,12 @@ Application::Application()
         m_postProcessPhase = postProcessPhase.get();
     }
 
-    std::unique_ptr<RenderPhase> computePhase;
+    std::unique_ptr<ComputePhase> computePhase;
     {
-        RenderPhaseBuilder computePhaseRb;
-        computePhaseRb.setDevice(m_discreteDevice);
-        computePhaseRb.setParentPhase(m_postProcessPhase);
-        computePhaseRb.setBufferingType(bufferingType);
-        computePhase = computePhaseRb.build();
+        ComputePhaseBuilder cpb;
+        cpb.setDevice(m_discreteDevice);
+        cpb.setBufferingType(bufferingType);
+        computePhase = cpb.build();
         m_computePhase = computePhase.get();
     }
 
@@ -309,7 +308,6 @@ Application::Application()
         RenderPhaseBuilder postProcessRb;
         postProcessRb.setDevice(m_discreteDevice);
         postProcessRb.setRenderPass(postProcessRpb.build());
-        postProcessRb.setParentPhase(m_computePhase);
         postProcessRb.setBufferingType(bufferingType);
         postProcess2Phase = postProcessRb.build();
         m_postProcess2Phase = postProcess2Phase.get();
@@ -345,7 +343,7 @@ Application::Application()
     renderGraph->addRenderPhase(std::move(probesDebugPhase));
     renderGraph->addRenderPhase(std::move(skyboxPhase));
     renderGraph->addRenderPhase(std::move(postProcessPhase));
-    renderGraph->addRenderPhase(std::move(computePhase));
+    renderGraph->addPhase(std::move(computePhase));
     renderGraph->addRenderPhase(std::move(postProcess2Phase));
     renderGraph->addRenderPhase(std::move(imguiPhase));
     rb.setRenderGraph(std::move(renderGraph));

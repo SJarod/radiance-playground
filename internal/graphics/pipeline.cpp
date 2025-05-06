@@ -202,6 +202,8 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
     assert(m_device.lock());
     assert(m_renderPass);
 
+    m_product->m_type = PipelineType::GRAPHICS;
+
     const VkDevice &deviceHandle = m_device.lock()->getHandle();
 
     VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
@@ -421,6 +423,8 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
 {
     assert(!m_device.expired());
 
+    m_product->m_type = PipelineType::COMPUTE;
+
     auto deviceHandle = m_device.lock()->getHandle();
 
     if (!createPipelineLayout())
@@ -438,14 +442,30 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
 
 void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent)
 {
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_handle);
+    switch (m_type)
+    {
+    case PipelineType::GRAPHICS: {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_handle);
 
-    VkViewport viewport = {.x = 0.f,
-                           .y = 0.f,
-                           .width = static_cast<float>(extent.extent.width),
-                           .height = static_cast<float>(extent.extent.height),
-                           .minDepth = 0.f,
-                           .maxDepth = 1.f};
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(commandBuffer, 0, 1, &extent);
+        VkViewport viewport = {.x = 0.f,
+                               .y = 0.f,
+                               .width = static_cast<float>(extent.extent.width),
+                               .height = static_cast<float>(extent.extent.height),
+                               .minDepth = 0.f,
+                               .maxDepth = 1.f};
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffer, 0, 1, &extent);
+    }
+    break;
+
+    case PipelineType::COMPUTE: {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_handle);
+    }
+    break;
+
+    default: {
+        assert(false);
+    }
+    break;
+    }
 }

@@ -30,7 +30,25 @@ using DescriptorSetUpdatePred =
 using DescriptorSetUpdatePredPerFrame = std::function<void(const RenderPhase *parentPhase, uint32_t imageIndex,
                                                            const VkDescriptorSet &set, uint32_t backBufferIndex)>;
 
-class RenderStateABC
+/**
+ * @brief state that can be taken into account by any phase to utilize the GPU.
+ *
+ */
+class GPUStateI
+{
+  public:
+    virtual void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) = 0;
+    virtual void updateUniformBuffers(uint32_t imageIndex) = 0;
+
+    virtual [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const = 0;
+    virtual [[nodiscard]] VkDescriptorPool getDescriptorPool() const = 0;
+};
+
+/**
+ * @brief state used by graphics pipelines
+ *
+ */
+class RenderStateABC : public GPUStateI
 {
   protected:
     struct ProbeContainer
@@ -137,14 +155,32 @@ class RenderStateABC
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
                                                         uint32_t imageIndex);
     virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) = 0;
+
+    /**
+     * @brief no implementation yet
+     *
+     * @param commandBuffer
+     */
+    [[deprecated]] void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) override
+    {
+    }
+    /**
+     * @brief no implementation yet
+     *
+     * @param imageIndex
+     */
+    [[deprecated]] void updateUniformBuffers(uint32_t imageIndex) override
+    {
+    }
+
     virtual uint32_t getSubObjectCount() const = 0;
 
   public:
-    [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const
+    [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const override
     {
         return m_pipeline;
     }
-    [[nodiscard]] VkDescriptorPool getDescriptorPool() const
+    [[nodiscard]] VkDescriptorPool getDescriptorPool() const override
     {
         return m_descriptorPool;
     }
@@ -212,15 +248,15 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     bool m_textureDescriptorEnable = true;
     bool m_mvpDescriptorEnable = true;
 
+    void restart() override
+    {
+        m_product = std::unique_ptr<ModelRenderState>(new ModelRenderState);
+    }
+
   public:
     ModelRenderStateBuilder()
     {
         restart();
-    }
-
-    void restart() override
-    {
-        m_product = std::unique_ptr<ModelRenderState>(new ModelRenderState);
     }
 
     void setDevice(std::weak_ptr<Device> device) override
@@ -673,4 +709,93 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
     std::unique_ptr<RenderStateABC> build() override;
 };
 
-class ComputeState:
+class ComputeStateBuilder;
+
+/**
+ * @brief state used by compute pipelines
+ *
+ */
+class ComputeState : public GPUStateI
+{
+    friend ComputeStateBuilder;
+
+  private:
+    std::weak_ptr<Device> m_device;
+
+    std::shared_ptr<Pipeline> m_pipeline;
+
+    VkDescriptorPool m_descriptorPool;
+    std::vector<VkDescriptorSet> m_descriptorSets;
+
+  public:
+    void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer) override;
+
+    void updateUniformBuffers(uint32_t imageIndex) override;
+
+  public:
+    [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const override
+    {
+        return m_pipeline;
+    }
+    [[nodiscard]] VkDescriptorPool getDescriptorPool() const override
+    {
+        return m_descriptorPool;
+    }
+};
+
+class ComputeStateBuilder : public RenderStateBuilderI
+{
+  private:
+    std::unique_ptr<ComputeState> m_product;
+
+    std::weak_ptr<Device> m_device;
+
+    std::vector<VkDescriptorPoolSize> m_poolSizes;
+    uint32_t m_frameInFlightCount;
+
+    void restart() override
+    {
+        m_product = std::unique_ptr<ComputeState>(new ComputeState);
+    }
+
+  public:
+    ComputeStateBuilder()
+    {
+        restart();
+    }
+
+    void setDevice(std::weak_ptr<Device> device) override
+    {
+        m_device = device;
+        m_product->m_device = device;
+    }
+    void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
+    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void setFrameInFlightCount(uint32_t a) override
+    {
+        m_frameInFlightCount = a;
+    }
+    void setTexture(std::weak_ptr<Texture> texture) override
+    {
+    }
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+    }
+    void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+    }
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) override
+    {
+    }
+    void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) override
+    {
+    }
+    void setInstanceDescriptorEnable(bool enable) override
+    {
+    }
+    void setMaterialDescriptorEnable(bool enable) override
+    {
+    }
+
+    std::unique_ptr<RenderStateABC> build() override;
+};

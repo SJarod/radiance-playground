@@ -305,42 +305,19 @@ void ComputePhase::recordBackBuffer() const
         return;
     }
 
-    VkClearValue clearColor = {
-        .color = {0.2f, 0.2f, 0.2f, 1.f},
-    };
-    VkClearValue clearDepth = {
-        .depthStencil = {1.f, 0},
-    };
-    std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
-
-    if (const auto &pipeline = renderState->getPipeline())
+    for (int i = 0; i < m_computeStates.size(); ++i)
     {
-        pipeline->recordBind(commandBuffer, imageIndex, renderArea);
-    }
+        ComputeState *computeState = m_computeStates[i].get();
 
-    std::vector<VkDescriptorSet> descriptorSets;
-
-    if (m_instanceDescriptorSetEnable && backBufferIndex < m_instanceDescriptorSets.size())
-    {
-        descriptorSets.push_back(m_instanceDescriptorSets[backBufferIndex]);
-    }
-
-    if (subObjectIndex < m_materialDescriptorSetsPerSubObject.size())
-    {
-        if (m_materialDescriptorSetEnable &&
-            backBufferIndex < m_materialDescriptorSetsPerSubObject[subObjectIndex].size())
+        if (const auto &pipeline = computeState->getPipeline())
         {
-            descriptorSets.push_back(m_materialDescriptorSetsPerSubObject[subObjectIndex][backBufferIndex]);
+            pipeline->recordBind(commandBuffer, 0, {});
         }
+
+        computeState->updateUniformBuffers(0);
+        computeState->recordBackBufferComputeCommands(commandBuffer);
     }
-
-    if (descriptorSets.size() == 0u)
-        return;
-
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0,
-                            descriptorSets.size(), descriptorSets.data(), 0, nullptr);
-
-    vkCmdDispatch(commandBuffer, 128, 1, 1);
+    std::vector<VkDescriptorSet> descriptorSets;
 
     vkCmdEndRenderPass(commandBuffer);
 

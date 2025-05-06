@@ -15,6 +15,7 @@ class Texture;
 class Buffer;
 class CameraABC;
 class RenderStateABC;
+class ComputeState;
 
 // TODO : structure of array instead of array of structure
 struct BackBufferT
@@ -29,18 +30,18 @@ struct BackBufferT
 
 class RenderPhaseBuilder;
 
-class BaseRenderPhase
+class BasePhaseABC
 {
   protected:
     std::weak_ptr<Device> m_device;
 
-    BaseRenderPhase() = default;
+    BasePhaseABC() = default;
 
   private:
     virtual [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
 
   public:
-    virtual ~BaseRenderPhase() = default;
+    virtual ~BasePhaseABC() = default;
 
     virtual [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
     virtual [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
@@ -51,7 +52,7 @@ class BaseRenderPhase
  * @brief manages the command buffers and the render states and render passes
  *
  */
-class RenderPhase : public BaseRenderPhase
+class RenderPhase : public BasePhaseABC
 {
     friend RenderPhaseBuilder;
 
@@ -178,13 +179,15 @@ class ComputePhaseBuilder;
  * @brief manages the command buffers for the compute shader
  *
  */
-class ComputePhase : public BaseRenderPhase
+class ComputePhase : public BasePhaseABC
 {
     friend ComputePhaseBuilder;
 
   private:
     int m_backBufferIndex = 0;
     std::vector<BackBufferT> m_backBuffers;
+
+    std::vector<std::shared_ptr<ComputeState>> m_computeStates;
 
     ComputePhase() = default;
 

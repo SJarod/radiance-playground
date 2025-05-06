@@ -30,11 +30,20 @@ class Pipeline
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_handle;
 
+    PipelineType m_type;
+
     Pipeline() = default;
 
   public:
     ~Pipeline();
 
+    /**
+     * @brief bind the pipeline whether it is a graphics or a compute pipeline
+     *
+     * @param commandBuffer
+     * @param imageIndex not used if it is a graphics pipeline
+     * @param extent not used if it is a graphics pipeline
+     */
     void recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent);
 
   public:
