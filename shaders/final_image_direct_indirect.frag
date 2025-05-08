@@ -233,8 +233,8 @@ void main()
 #endif
     
     // apply radiance to pixel
-    vec4 indirectLight = radiance_apply(uv);
-    indirect += vec4(indirectLight.rgb, 1.0);
+    //vec4 indirectLight = radiance_apply(uv);
+    //indirect += vec4(indirectLight.rgb, 1.0);
 
     oColor = vec4(direct.rgb + mix(indirect.rgb, direct.rgb, step(0.5, direct.w)), 1.0);
 }
