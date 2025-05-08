@@ -5,6 +5,14 @@
 
 #include <tracy/Tracy.hpp>
 
+// not included in LegitProfiler ?
+// needed in LegitProfiler ?
+#include <chrono>
+#include <glm/glm.hpp>
+#include <sstream>
+
+#include "ImGuiProfilerRenderer.h"
+
 #include "graphics/buffer.hpp"
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -44,13 +52,16 @@
 
 #include "application.hpp"
 
+#define PROFILER_BEGINSCOPE(name)
+#define PROFILER_ENDSCOPE()
+
 constexpr uint32_t bufferingType = 3;
 constexpr uint32_t maxProbeCount = 64u;
 
 Application::Application()
 {
     WindowGLFW::init();
-
+    m_profiler = std::make_unique<ImGuiUtils::ProfilersWindow>();
     m_window = std::make_unique<WindowGLFW>();
 
     glfwSetKeyCallback(m_window->getHandle(), InputManager::KeyCallback);
@@ -172,6 +183,8 @@ void Application::displayImgui()
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    m_profiler->Render();
 
     ImGui::Begin("Radiance playground");
 

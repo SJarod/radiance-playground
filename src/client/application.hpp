@@ -15,6 +15,11 @@ class RenderPhase;
 class ComputePhase;
 class Texture;
 
+namespace ImGuiUtils
+{
+    class ProfilersWindow;
+}
+
 class Application
 {
   private:
@@ -27,6 +32,8 @@ class Application
     std::shared_ptr<Renderer> m_renderer;
 
     std::unique_ptr<SceneABC> m_scene;
+
+    std::shared_ptr<ImGuiUtils::ProfilersWindow> m_profiler;
 
     Time::TimeManager m_timeManager;
     InputManager m_inputManager;
