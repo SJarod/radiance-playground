@@ -73,8 +73,7 @@ class GPUStateI
      * @param parentPhase not used in the compute state because compute phases uses ComputePhase objects
      * @param backBufferIndex
      */
-    [[deprecated]] virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase,
-                                                             uint32_t backBufferIndex) = 0;
+    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex) = 0;
 
     /**
      * @brief same function as above but it is executed on the states registering
@@ -169,9 +168,9 @@ class RenderStateABC : public GPUStateI
     std::vector<std::unique_ptr<Buffer>> m_directionalLightStorageBuffers;
     std::vector<void *> m_directionalLightStorageBuffersMapped;
 
-    [[deprecated]] DescriptorSetUpdatePred m_instanceDescriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_instanceDescriptorSetUpdatePredPerFrame = nullptr;
     DescriptorSetUpdatePred m_instanceDescriptorSetUpdatePred = nullptr;
-    [[deprecated]] DescriptorSetUpdatePred m_materialDescriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_materialDescriptorSetUpdatePredPerFrame = nullptr;
     DescriptorSetUpdatePred m_materialDescriptorSetUpdatePred = nullptr;
 
     bool m_instanceDescriptorSetEnable = true;
@@ -191,8 +190,7 @@ class RenderStateABC : public GPUStateI
                                       uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                       const std::vector<std::shared_ptr<Light>> &lights,
                                       const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
-    [[deprecated]] virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase,
-                                                             uint32_t backBufferIndex) override;
+    virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
 
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
@@ -243,13 +241,13 @@ class RenderStateBuilderI
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
 
-    [[deprecated]] virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
+    virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
     virtual void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
-    [[deprecated]] virtual void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
+    virtual void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
     virtual void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
-    [[deprecated]] virtual void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
+    virtual void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) = 0;
     virtual void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
     virtual void setInstanceDescriptorEnable(bool enable) = 0;
@@ -332,7 +330,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         for (const std::shared_ptr<Texture> &texture : textures)
             m_environmentMaps.push_back(texture);
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -340,7 +338,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     {
         assert(false);
     }
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -348,7 +346,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -446,7 +444,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     {
         assert(false);
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -455,7 +453,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
         assert(false);
     }
 
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -463,7 +461,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -544,7 +542,7 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -553,7 +551,7 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
         assert(false);
     }
 
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -561,7 +559,7 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -652,7 +650,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
     {
         m_texture = texture;
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -661,7 +659,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
         assert(false);
     }
 
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -669,7 +667,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -772,7 +770,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
         for (const std::shared_ptr<Texture> &texture : textures)
             m_environmentMaps.push_back(texture);
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -781,7 +779,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
         assert(false);
     }
 
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_instanceDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -789,7 +787,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_instanceDescriptorSetUpdatePred = pred;
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_materialDescriptorSetUpdatePredPerFrame = pred;
     }
@@ -827,7 +825,7 @@ class ComputeState : public GPUStateI
     VkDescriptorPool m_descriptorPool;
     std::vector<VkDescriptorSet> m_descriptorSets;
 
-    [[deprecated]] DescriptorSetUpdatePred m_descriptorSetUpdatePredPerFrame = nullptr;
+    DescriptorSetUpdatePred m_descriptorSetUpdatePredPerFrame = nullptr;
     DescriptorSetUpdatePred m_descriptorSetUpdatePred = nullptr;
 
     glm::ivec3 m_workGroup = glm::ivec3(0, 0, 0);
@@ -839,7 +837,7 @@ class ComputeState : public GPUStateI
 
     void updateUniformBuffers(uint32_t backBufferIndex) override;
 
-    [[deprecated]] void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
+    void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
 
     void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
 
@@ -890,11 +888,11 @@ class ComputeStateBuilder : public RenderStateBuilderI
     {
         assert(false);
     }
-    [[deprecated]] void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         m_product->m_descriptorSetUpdatePredPerFrame = pred;
     }
-    [[deprecated]] void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
@@ -906,7 +904,7 @@ class ComputeStateBuilder : public RenderStateBuilderI
     {
         assert(false);
     }
-    [[deprecated]] void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
+    void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePred pred) override
     {
         assert(false);
     }
