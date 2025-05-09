@@ -64,9 +64,9 @@ class Application
     /**
      * @brief exit the main loop after a certain amount of frame
      * -1 to deactivate breakage
-     * 
+     *
      */
-    int m_breakAfterFrameCount = -1;
+    int m_breakAfterFrameCount = 2;
 
     void initImgui();
     void displayImgui();

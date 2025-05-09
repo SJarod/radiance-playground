@@ -846,7 +846,7 @@ void Application::runLoop()
     std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
 
     ProbeGridRenderStateBuilder prsb;
-    prsb.setFrameInFlightCount(3);
+    prsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
     prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     prsb.setDevice(m_discreteDevice);

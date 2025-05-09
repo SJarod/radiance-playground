@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include <vulkan/vulkan.h>
 
@@ -31,6 +32,8 @@ class Image
 
   private:
     std::weak_ptr<Device> m_device;
+
+    std::string m_name = "Unnamed";
 
     VkFormat m_format;
     uint32_t m_width;
@@ -172,6 +175,10 @@ class ImageBuilder
     void setAspectFlags(VkImageAspectFlags a)
     {
         m_product->m_aspectFlags = a;
+    }
+    void setName(std::string name)
+    {
+        m_product->m_name = name;
     }
 
     std::unique_ptr<Image> build();

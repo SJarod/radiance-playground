@@ -53,6 +53,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_device);
     bb.setSize(imageSize);
+    bb.setName("Texture Staging Buffer");
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
 
     stagingBuffer->copyDataToMemory(m_product->m_imageData.data());
@@ -65,6 +66,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     ib.setWidth(m_product->m_width);
     ib.setHeight(m_product->m_height);
     ib.setTiling(m_tiling);
+    ib.setName("Texture");
 
     if (m_initialLayout.has_value())
         ib.setInitialLayout(m_initialLayout.value());
@@ -107,11 +109,13 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
         depthIb.setDevice(m_product->m_device);
         depthIb.setWidth(m_product->m_width);
         depthIb.setHeight(m_product->m_height);
+        depthIb.setName("Depth Texture");
         m_product->m_depthImage = depthIb.build();
 
         ImageLayoutTransitionBuilder depthIltb;
         ImageLayoutTransitionDirector depthIltd;
-        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(depthIltb);
+        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(
+            depthIltb);
         depthIltb.setImage(*m_product->m_depthImage.value());
         m_product->m_depthImage.value()->transitionImageLayout(*depthIltb.buildAndRestart());
 
@@ -147,9 +151,9 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
             size_t cursor = 0u;
             for (int i = 0; i < filepath.size(); i++)
             {
-                const char* currentFilepath = filepath[i].c_str();
+                const char *currentFilepath = filepath[i].c_str();
                 int texWidth, texHeight, texChannels;
-                stbi_uc* textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+                stbi_uc *textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
                 if (!textureData)
                 {
                     std::cerr << "Failed to load texture : " << m_rightTextureFilename << std::endl;
@@ -181,6 +185,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
         bd.configureStagingBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(totalSize);
+        bb.setName("Cubemap Staging Buffer");
         std::unique_ptr<Buffer> stagingBuffer = bb.build();
 
         stagingBuffer->copyDataToMemory(m_product->m_imageData.data());
@@ -202,6 +207,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
         ib.setWidth(m_product->m_width);
         ib.setHeight(m_product->m_height);
         ib.setTiling(m_tiling);
+        ib.setName("Cubemap Texture");
 
         if (m_initialLayout.has_value())
             ib.setInitialLayout(m_initialLayout.value());
@@ -261,6 +267,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
         ib.setWidth(m_product->m_width);
         ib.setHeight(m_product->m_height);
         ib.setTiling(m_tiling);
+        ib.setName("Cubemap");
 
         if (m_initialLayout.has_value())
             ib.setInitialLayout(m_initialLayout.value());
@@ -280,11 +287,13 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
         depthIb.setDevice(m_product->m_device);
         depthIb.setWidth(m_product->m_width);
         depthIb.setHeight(m_product->m_height);
+        depthIb.setName("Cubmap Depth");
         m_product->m_depthImage = depthIb.build();
 
         ImageLayoutTransitionBuilder depthIltb;
         ImageLayoutTransitionDirector depthIltd;
-        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(depthIltb);
+        depthIltd.configureBuilder<VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL>(
+            depthIltb);
         depthIltb.setImage(*m_product->m_depthImage.value());
         depthIltb.setLayerCount(6U);
         m_product->m_depthImage.value()->transitionImageLayout(*depthIltb.buildAndRestart());
@@ -319,14 +328,14 @@ void TextureDirector::configureSRGBTextureBuilder(CubemapBuilder &builder)
     builder.setSamplerFilter(VK_FILTER_NEAREST);
 }
 
-void TextureDirector::configureUNORMTextureBuilder(TextureBuilder& builder)
+void TextureDirector::configureUNORMTextureBuilder(TextureBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
     builder.setSamplerFilter(VK_FILTER_NEAREST);
 }
 
-void TextureDirector::configureUNORMTextureBuilder(CubemapBuilder& builder)
+void TextureDirector::configureUNORMTextureBuilder(CubemapBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_UNORM);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);

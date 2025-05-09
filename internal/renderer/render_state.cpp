@@ -352,6 +352,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureUniformBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::MVP));
             bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Model MVP Uniform Buffer");
             m_product->m_mvpUniformBuffers[i] = bb.build();
 
             m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
@@ -370,6 +371,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::ProbeContainer));
             bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Model Probe Container Uniform Buffer");
             m_product->m_probeStorageBuffers[i] = bb.build();
 
             m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
@@ -387,6 +389,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::PointLightContainer));
             bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Model Point Light Container Uniform Buffer");
             m_product->m_pointLightStorageBuffers[i] = bb.build();
 
             m_product->m_pointLightStorageBuffers[i]->mapMemory(&m_product->m_pointLightStorageBuffersMapped[i]);
@@ -401,6 +404,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
             bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Model Directional Light Container Uniform Buffer");
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
             m_product->m_directionalLightStorageBuffers[i]->mapMemory(
@@ -759,6 +763,7 @@ std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
         bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
+        bb.setName(std::to_string((uintptr_t)this) + " Skybox MVP Uniform Buffer");
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
         m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
@@ -946,6 +951,7 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
         bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
+        bb.setName(std::to_string((uintptr_t)this) + " Environment Capture MVP Uniform Buffer");
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
         m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
@@ -1107,6 +1113,7 @@ std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
         bd.configureUniformBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::MVP));
         bb.setDevice(m_device);
+        bb.setName(std::to_string((uintptr_t)this) + " Probe Grid MVP Uniform Buffer");
         m_product->m_mvpUniformBuffers[i] = bb.build();
 
         m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
@@ -1122,6 +1129,7 @@ std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
         bd.configureStorageBufferBuilder(bb);
         bb.setSize(sizeof(RenderStateABC::ProbeContainer));
         bb.setDevice(m_device);
+        bb.setName(std::to_string((uintptr_t)this) + " Probe Grid Probe Container Uniform Buffer");
         m_product->m_probeStorageBuffers[i] = bb.build();
 
         m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);

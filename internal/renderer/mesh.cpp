@@ -29,6 +29,7 @@ void MeshBuilder::createVertexBuffer()
     bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(vertexBufferSize);
+    bb.setName(m_modelFilename + " Mesh Staging Vertex Buffer");
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
 
     stagingBuffer->copyDataToMemory(m_product->m_vertices.data());
@@ -37,6 +38,7 @@ void MeshBuilder::createVertexBuffer()
     bd.configureVertexBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(vertexBufferSize);
+    bb.setName(m_modelFilename + " Mesh Vertex Buffer");
     m_product->m_vertexBuffer = bb.build();
 
     // transfer from staging buffer to vertex buffer
@@ -58,6 +60,7 @@ void MeshBuilder::createIndexBuffer()
     bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
+    bb.setName(m_modelFilename + " Mesh Staging Index Buffer");
 
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
 
@@ -67,6 +70,7 @@ void MeshBuilder::createIndexBuffer()
     bd.configureIndexBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
+    bb.setName(m_modelFilename + " Mesh Index Buffer");
     m_product->m_indexBuffer = bb.build();
 
     m_product->m_indexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
@@ -129,7 +133,8 @@ void MeshDirector::createAssimpMeshBuilder(MeshBuilder &builder)
                                   aiProcess_JoinIdenticalVertices | aiProcess_ForceGenNormals);
 }
 
-void createSphereMesh(std::vector<Vertex> &vertices, std::vector<uint16_t> &indices, float radius, float latitude, float longitude)
+void createSphereMesh(std::vector<Vertex> &vertices, std::vector<uint16_t> &indices, float radius, float latitude,
+                      float longitude)
 {
     unsigned int uint_lon = static_cast<unsigned int>(longitude);
     unsigned int uint_lat = static_cast<unsigned int>(latitude);
@@ -151,7 +156,7 @@ void createSphereMesh(std::vector<Vertex> &vertices, std::vector<uint16_t> &indi
             vertex.uv.x = s * S;
             vertex.uv.y = r * R;
 
-            vertex.position = { x, y, z };
+            vertex.position = {x, y, z};
             vertex.position = glm::normalize(vertex.position) * radius;
             vertex.normal = glm::vec3(x, y, z);
 
@@ -180,14 +185,14 @@ void MeshDirector::createSphereMeshBuilder(MeshBuilder &builder, float radius, f
 {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
-        
+
     createSphereMesh(vertices, indices, radius, latitude, longitude);
 
     builder.setVertices(vertices);
     builder.setIndices(indices);
 }
 
-void createCubeMesh(std::vector<Vertex>& vertices, std::vector<uint16_t>& indices, const glm::vec3& halfExtent)
+void createCubeMesh(std::vector<Vertex> &vertices, std::vector<uint16_t> &indices, const glm::vec3 &halfExtent)
 {
     vertices.reserve(8u);
 
@@ -210,32 +215,56 @@ void createCubeMesh(std::vector<Vertex>& vertices, std::vector<uint16_t>& indice
 
     indices.reserve(36u);
 
-    //Above ABC, BCD
-    indices.push_back(0u); indices.push_back(2u); indices.push_back(1u);
-    indices.push_back(3u); indices.push_back(1u); indices.push_back(2u);
-                       
-    //Following EFG, FGH
-    indices.push_back(6u); indices.push_back(4u); indices.push_back(5u);
-    indices.push_back(5u); indices.push_back(7u); indices.push_back(6u);
-                       
-    //Left ABF, AEF     
-    indices.push_back(5u); indices.push_back(0u); indices.push_back(1u);
-    indices.push_back(0u); indices.push_back(5u); indices.push_back(4u);
-                        
-    //Right side CDH, CGH
-    indices.push_back(2u); indices.push_back(7u); indices.push_back(3u);
-    indices.push_back(7u); indices.push_back(2u); indices.push_back(6u);
-                      
-    //Bottom ACG, AEG         
-    indices.push_back(0u); indices.push_back(6u); indices.push_back(2u);
-    indices.push_back(6u); indices.push_back(0u); indices.push_back(4u);
-                      
-    //Behind BFH, BDH  
-    indices.push_back(1u); indices.push_back(7u); indices.push_back(5u);
-    indices.push_back(7u); indices.push_back(1u); indices.push_back(3u);
+    // Above ABC, BCD
+    indices.push_back(0u);
+    indices.push_back(2u);
+    indices.push_back(1u);
+    indices.push_back(3u);
+    indices.push_back(1u);
+    indices.push_back(2u);
+
+    // Following EFG, FGH
+    indices.push_back(6u);
+    indices.push_back(4u);
+    indices.push_back(5u);
+    indices.push_back(5u);
+    indices.push_back(7u);
+    indices.push_back(6u);
+
+    // Left ABF, AEF
+    indices.push_back(5u);
+    indices.push_back(0u);
+    indices.push_back(1u);
+    indices.push_back(0u);
+    indices.push_back(5u);
+    indices.push_back(4u);
+
+    // Right side CDH, CGH
+    indices.push_back(2u);
+    indices.push_back(7u);
+    indices.push_back(3u);
+    indices.push_back(7u);
+    indices.push_back(2u);
+    indices.push_back(6u);
+
+    // Bottom ACG, AEG
+    indices.push_back(0u);
+    indices.push_back(6u);
+    indices.push_back(2u);
+    indices.push_back(6u);
+    indices.push_back(0u);
+    indices.push_back(4u);
+
+    // Behind BFH, BDH
+    indices.push_back(1u);
+    indices.push_back(7u);
+    indices.push_back(5u);
+    indices.push_back(7u);
+    indices.push_back(1u);
+    indices.push_back(3u);
 }
 
-void MeshDirector::createCubeMeshBuilder(MeshBuilder& builder, const glm::vec3& halfExtent)
+void MeshDirector::createCubeMeshBuilder(MeshBuilder &builder, const glm::vec3 &halfExtent)
 {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;

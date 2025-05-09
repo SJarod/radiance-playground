@@ -16,6 +16,8 @@ class Buffer
   private:
     std::weak_ptr<Device> m_device;
 
+    std::string m_name = "Unnamed";
+
     VkBuffer m_handle;
     VmaAllocation m_allocation;
     size_t m_size;
@@ -88,6 +90,10 @@ class BufferBuilder
     void setProperties(VkMemoryPropertyFlags a)
     {
         m_properties = a;
+    }
+    void setName(std::string name)
+    {
+        m_product->m_name = name;
     }
 
     std::unique_ptr<Buffer> build();

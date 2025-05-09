@@ -14,9 +14,16 @@ Device::~Device()
 {
     std::cout << "Destroying device : " << getDeviceName() << std::endl;
 
-    // TODO : fix leaks
+    // ensure all the resources have been freed
+    if (m_bufferCount != 0)
+        std::for_each(std::next(m_bufferNames.begin()), m_bufferNames.end(),
+                      [&](const std::string &element) { std::cout << element << std::endl; });
+    if (m_imageCount != 0)
+        std::for_each(std::next(m_imageNames.begin()), m_imageNames.end(),
+                      [&](const std::string &element) { std::cout << element << std::endl; });
     assert(m_bufferCount == 0);
     assert(m_imageCount == 0);
+
     vmaDestroyAllocator(m_allocator);
 
     vkDestroyCommandPool(m_handle, m_commandPool, nullptr);

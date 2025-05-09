@@ -164,6 +164,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
     ib.setDevice(m_product->m_device);
     ib.setWidth(m_product->m_extent.width);
     ib.setHeight(m_product->m_extent.height);
+    ib.setName("Swapchain Depth Image");
     m_product->m_depthImage = ib.build();
 
     ImageLayoutTransitionBuilder iltb;

@@ -59,6 +59,7 @@ Buffer::~Buffer()
 
     vmaDestroyBuffer(devicePtr->getAllocator(), m_handle, m_allocation);
     devicePtr->addBufferCount(-1);
+    devicePtr->untrackBufferName(m_name);
 }
 
 std::unique_ptr<Buffer> BufferBuilder::build()
@@ -86,13 +87,15 @@ std::unique_ptr<Buffer> BufferBuilder::build()
         return nullptr;
     }
 
+    m_product->m_name += std::string(" Buffer " + std::to_string(devicePtr->getBufferCount()));
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_BUFFER,
         .objectHandle = (uint64_t)m_product->m_handle,
-        .pObjectName = std::string("Buffer " + std::to_string(devicePtr->getBufferCount())).c_str(),
+        .pObjectName = m_product->m_name.c_str(),
     });
     devicePtr->addBufferCount(1);
+    devicePtr->trackBufferName(m_product->m_name);
 
     VmaAllocationInfo info;
     vmaGetAllocationInfo(devicePtr->getAllocator(), m_product->m_allocation, &info);

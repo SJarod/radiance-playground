@@ -3,6 +3,8 @@
 #include <cassert>
 #include <memory>
 #include <optional>
+#include <set>
+#include <string>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -55,11 +57,13 @@ class Device
      *
      */
     int m_bufferCount = 0;
+    std::set<std::string> m_bufferNames;
     /**
      * @brief total number of allocated image
      *
      */
     int m_imageCount = 0;
+    std::set<std::string> m_imageNames;
     VmaAllocator m_allocator;
 
     Device() = default;
@@ -175,9 +179,28 @@ class Device
     {
         m_bufferCount += n;
     }
+    void trackBufferName(std::string name)
+    {
+        m_bufferNames.insert(name);
+    }
+    void untrackBufferName(std::string name)
+    {
+        assert(std::find(m_bufferNames.begin(), m_bufferNames.end(), name) != m_bufferNames.end());
+        m_bufferNames.erase(name);
+    }
+
     void addImageCount(int n)
     {
         m_imageCount += n;
+    }
+    void trackImageName(std::string name)
+    {
+        m_imageNames.insert(name);
+    }
+    void untrackImageName(std::string name)
+    {
+        assert(std::find(m_imageNames.begin(), m_imageNames.end(), name) != m_imageNames.end());
+        m_imageNames.erase(name);
     }
 };
 

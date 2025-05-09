@@ -16,6 +16,7 @@ Image::~Image()
 
     vmaDestroyImage(devicePtr->getAllocator(), m_handle, m_allocation);
     devicePtr->addImageCount(-1);
+    devicePtr->untrackImageName(m_name);
 }
 
 void Image::transitionImageLayout(ImageLayoutTransition transition)
@@ -206,13 +207,15 @@ std::unique_ptr<Image> ImageBuilder::build()
         return nullptr;
     }
 
+    m_product->m_name += std::string(" Image " + std::to_string(devicePtr->getImageCount()));
     devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
         .objectType = VK_OBJECT_TYPE_IMAGE,
         .objectHandle = (uint64_t)m_product->m_handle,
-        .pObjectName = std::string("Image " + std::to_string(devicePtr->getImageCount())).c_str(),
+        .pObjectName = m_product->m_name.c_str(),
     });
     devicePtr->addImageCount(1);
+    devicePtr->trackImageName(m_product->m_name);
 
     VmaAllocationInfo info;
     vmaGetAllocationInfo(devicePtr->getAllocator(), m_product->m_allocation, &info);

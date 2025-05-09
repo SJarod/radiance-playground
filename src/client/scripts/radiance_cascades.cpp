@@ -76,6 +76,7 @@ void RadianceCascades::init(void *userData)
         bd.configureUniformBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(sizeof(parameters));
+        bb.setName("Radiance Cascades Parameters Buffer");
 
         m_radianceCascadesParametersBuffer = bb.build();
         parameters params = {
@@ -111,6 +112,7 @@ void RadianceCascades::init(void *userData)
         bd.configureStorageBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(sizeof(cascade_desc) * cascades.size());
+        bb.setName("Radiance Cascades Descriptors Buffer");
 
         m_cascadesDescBuffer = bb.build();
         m_cascadesDescBuffer->copyDataToMemory(descs.data());
@@ -137,6 +139,7 @@ void RadianceCascades::init(void *userData)
         bd.configureStorageBufferBuilder(bb);
         bb.setDevice(m_device);
         bb.setSize(sizeof(probe) * probeCount);
+        bb.setName("Radiance Cascades Positions Buffer");
 
         m_probePositionBuffer = bb.build();
         m_probePositionBuffer->copyDataToMemory(positions.data());
@@ -152,6 +155,7 @@ void RadianceCascades::init(void *userData)
             BufferBuilder bb;
             bd.configureStorageBufferBuilder(bb);
             bb.setDevice(m_device);
+            bb.setName("Radiance Cascades Radiance Intervals Buffer");
 
             // total number of interval combining all the cascades
             int intervalCount = 0;
