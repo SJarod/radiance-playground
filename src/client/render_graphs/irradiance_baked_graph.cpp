@@ -169,7 +169,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(window->getSwapChain()->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -194,8 +194,8 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
         rpd.configureSwapChainRenderPassBuilder(passb, *window->getSwapChain(), false);
         rpad.configureAttachmentLoadBuilder(rpab);
         rpab.setFormat(window->getSwapChain()->getImageFormat());
-        rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
         RenderPhaseBuilder phaseb;

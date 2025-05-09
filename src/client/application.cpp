@@ -104,7 +104,7 @@ Application::Application()
     rb.setSwapChain(m_window->getSwapChain());
     rb.setFrameInFlightCount(bufferingType);
     rb.setRenderGraph(
-        RenderGraphLoader::load<RC3DGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        RenderGraphLoader::load<BakedGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
     m_renderer = rb.build();
 }
 
@@ -217,7 +217,7 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = SceneABC::load<SampleSceneRC3D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+    m_scene = SceneABC::load<SampleScene>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
                                               bufferingType, maxProbeCount);
 
     auto &lights = m_scene->getLights();

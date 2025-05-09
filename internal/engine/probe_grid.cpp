@@ -4,12 +4,12 @@ std::unique_ptr<ProbeGrid> ProbeGridBuilder::build()
 {
 	const glm::vec3 probeSpacing = m_product->m_extent / static_cast<glm::vec3>(m_product->m_dimensions - glm::uvec3(1u));
 
-	for (uint32_t i = 0u; i < m_product->m_dimensions.y; i++)
+	for (uint32_t i = 0u; i < m_product->m_dimensions.x; i++)
 	{
-		const float y = m_product->m_cornerPosition.y + i * probeSpacing.y;
-		for (uint32_t j = 0u; j < m_product->m_dimensions.x; j++)
+		const float x = m_product->m_cornerPosition.x + i * probeSpacing.x;
+		for (uint32_t j = 0u; j < m_product->m_dimensions.y; j++)
 		{
-			const float x = m_product->m_cornerPosition.x + j * probeSpacing.x;
+			const float y = m_product->m_cornerPosition.y + j * probeSpacing.y;
 			for (uint32_t k = 0u; k < m_product->m_dimensions.z; k++)
 			{
 				const float z = m_product->m_cornerPosition.z + k * probeSpacing.z;

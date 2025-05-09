@@ -507,6 +507,11 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         sphereMb.setDevice(device);
         std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
 
+        MeshBuilder cubeMb;
+        md.createCubeMeshBuilder(cubeMb, glm::vec3(0.5));
+        cubeMb.setDevice(device);
+        std::shared_ptr<Mesh> cubeMesh = cubeMb.buildAndRestart();
+
         ProbeGridRenderStateBuilder prsb;
         prsb.setFrameInFlightCount(frameInFlightCount);
         prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -514,8 +519,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         prsb.setDevice(device);
         prsb.setPipeline(probeGridDebugPipeline);
         prsb.setProbeGrid(m_grid);
-        prsb.setEnvironmentMaps(rg->m_irradianceMaps);
-        prsb.setMesh(sphereMesh);
+        prsb.setEnvironmentMaps(rg->m_capturedEnvMaps);
+        prsb.setMesh(cubeMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb.build()));
 
         // skybox
@@ -635,31 +640,30 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             rsb.setFrameInFlightCount(frameInFlightCount);
             rsb.setModel(m_screen);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            rsb.setInstanceDescriptorSetUpdatePredPerFrame(
-                [this, window, rg, deviceHandle](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                 const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    const auto &sampler = window->getSwapChain()->getSampler();
-                    if (!sampler.has_value())
-                        return;
+            rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                const auto &sampler = window->getSwapChain()->getSampler();
+                if (!sampler.has_value())
+                    return;
 
-                    VkDescriptorImageInfo imageInfo = {
-                        .sampler = *sampler.value(),
-                        .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage().second,
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    };
-                    std::vector<VkWriteDescriptorSet> writes;
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo,
-                    });
-
-                    vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                VkDescriptorImageInfo imageInfo = {
+                    .sampler = *sampler.value(),
+                    .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage().second,
+                    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = set,
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
                 });
+
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
             PipelineBuilder<PipelineType::GRAPHICS> pb;
             PipelineDirector<PipelineType::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);

@@ -29,11 +29,17 @@ layout(std430, set = 0, binding = 5) readonly buffer ProbesData
 
 void main()
 {
-	const vec3 fragPosLocalToGrid = max(fragPos - cornerPosition, 0.0);
-	const ivec3 probe3DIndex = ivec3(fragPosLocalToGrid / extent * dimensions);
+	const ivec3 lastIndex = dimensions - ivec3(1u);
 
-	const ivec3 weights = ivec3(dimensions.z, dimensions.z * dimensions.x, 1);
-	const int probe1DIndex = int(dot(probe3DIndex, weights));
+	const vec3 spacing = extent / vec3(lastIndex);
+
+	const vec3 debugCenter = probes[instanceIndex].position;
+
+	const vec3 fragPosLocalToGrid = (debugCenter - cornerPosition) / spacing;
+	const vec3 gridPos = clamp(fragPosLocalToGrid, vec3(0.0), vec3(lastIndex));
+
+	const vec3 weights = vec3(dimensions.x * dimensions.y, dimensions.x, 1);
+	const int probe1DIndex = int(dot(gridPos, weights));
 
 	vec3 normal = normalize(fragNormal);
 
