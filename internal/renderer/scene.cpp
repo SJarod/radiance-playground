@@ -1,3 +1,5 @@
+#include <tracy/Tracy.hpp>
+
 #include "engine/scriptable.hpp"
 
 #include "scene.hpp"
@@ -12,6 +14,8 @@ void SceneABC::beginSimulation()
 
 void SceneABC::updateSimulation(float deltaTime)
 {
+    ZoneScoped;
+
     for (auto &script : m_scripts)
     {
         script->update(deltaTime);

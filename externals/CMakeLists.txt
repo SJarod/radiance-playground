@@ -52,3 +52,6 @@ ${Vulkan_LIBRARY}
 )
 
 add_subdirectory(VulkanMemoryAllocator)
+
+add_subdirectory(tracy)
+target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE)

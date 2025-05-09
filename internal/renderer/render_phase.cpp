@@ -1,5 +1,7 @@
-#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <tracy/Tracy.hpp>
 
 #include "graphics/buffer.hpp"
 #include "graphics/device.hpp"
@@ -80,6 +82,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
                                    const std::vector<std::shared_ptr<Light>> &lights,
                                    const std::shared_ptr<ProbeGrid> &probeGrid)
 {
+    ZoneScoped;
+
     if (singleFrameRenderIndex > 0)
     {
         VkFence currentFence = getCurrentFence(pooledFramebufferIndex);
@@ -162,6 +166,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
 void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
 {
+    ZoneScoped;
+
     const BackBufferT &currentBackBuffer = getCurrentBackBuffer(pooledFramebufferIndex);
     VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
                                                           : currentBackBuffer.acquireSemaphore};
@@ -298,6 +304,8 @@ ComputePhase::~ComputePhase()
 
 void ComputePhase::recordBackBuffer() const
 {
+    ZoneScoped;
+
     VkFence currentFence = getCurrentFence();
     vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
     vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
@@ -341,10 +349,12 @@ void ComputePhase::recordBackBuffer() const
 
 void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) const
 {
+    ZoneScoped;
+
     const BackBufferT &currentBackBuffer = getCurrentBackBuffer();
     VkSemaphore waitSemaphores[] = {waitSemaphoreOverride ? *waitSemaphoreOverride
                                                           : currentBackBuffer.acquireSemaphore};
-    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT};
     VkSemaphore signalSemaphores[] = {getCurrentRenderSemaphore()};
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,

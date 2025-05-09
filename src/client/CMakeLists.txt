@@ -30,6 +30,7 @@ target_link_libraries(${component}
     PUBLIC graphics
     PUBLIC renderer
     PUBLIC imgui
+	PRIVATE Tracy::TracyClient
 )
 
 target_include_directories(${component} PRIVATE "${CMAKE_CURRENT_LIST_DIR}")

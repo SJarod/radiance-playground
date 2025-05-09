@@ -38,6 +38,7 @@ target_link_libraries(${component}
     PUBLIC stb
     PUBLIC imgui
     PUBLIC engine
+    PRIVATE Tracy::TracyClient
 )
 
 

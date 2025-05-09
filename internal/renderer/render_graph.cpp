@@ -1,5 +1,7 @@
 #include <cassert>
 
+#include <tracy/Tracy.hpp>
+
 #include "engine/camera.hpp"
 #include "engine/probe_grid.hpp"
 #include "render_phase.hpp"
@@ -28,6 +30,8 @@ void RenderGraph::processRenderPhaseChain(std::vector<std::unique_ptr<BasePhaseA
                                           const std::shared_ptr<ProbeGrid> &probeGrid,
                                           const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
 {
+    ZoneScoped;
+
     const VkSemaphore *lastAcquireSemaphore = inWaitSemaphore;
     for (int i = 0; i < toProcess.size(); ++i)
     {
@@ -64,6 +68,8 @@ void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, con
                                    const std::vector<std::shared_ptr<Light>> &lights,
                                    const std::shared_ptr<ProbeGrid> &probeGrid)
 {
+    ZoneScoped;
+
     const VkSemaphore *lastAcquireSemaphore = nullptr;
     if (m_shouldRenderOneTimePhases)
     {
@@ -88,6 +94,8 @@ void RenderGraph::updateSwapchainOnRenderPhases(const SwapChain *swapchain)
 
 void RenderGraph::swapAllRenderPhasesBackBuffers()
 {
+    ZoneScoped;
+
     for (auto &phase : m_renderPhases)
     {
         if (RenderPhase *currentPhase = dynamic_cast<RenderPhase *>(phase.get()))

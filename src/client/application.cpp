@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+#include <tracy/Tracy.hpp>
+
 #include "graphics/buffer.hpp"
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
@@ -417,6 +419,8 @@ void Application::initImgui()
 
 void Application::displayImgui()
 {
+    ZoneScoped;
+    
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -1362,6 +1366,8 @@ void Application::runLoop()
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
     {
+        ZoneScoped;
+
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
@@ -1385,6 +1391,8 @@ void Application::runLoop()
         }
 
         m_window->swapBuffers();
+
+        FrameMark;
 
         static int frameCounter = 0;
         if (++frameCounter == m_breakAfterFrameCount)

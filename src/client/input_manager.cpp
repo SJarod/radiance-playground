@@ -1,3 +1,4 @@
+#include <tracy/Tracy.hpp>
 
 #include "input_manager.hpp"
 
@@ -33,6 +34,8 @@ void InputManager::KeyCallback(GLFWwindow* window, int key, int scancode, int ac
 
 void InputManager::UpdateInputStates()
 {
+    ZoneScoped;
+
 	for (auto& key : m_framePressedKeys)
 	{
 		InputState& input = m_keys[key];

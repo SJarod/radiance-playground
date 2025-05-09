@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <tracy/Tracy.hpp>
+
 #include <window.hpp>
 
 #include "graphics/device.hpp"
@@ -47,6 +49,8 @@ void WindowGLFW::swapBuffers()
 
 void WindowGLFW::pollEvents()
 {
+    ZoneScoped;
+
     glfwPollEvents();
 }
 
@@ -69,6 +73,8 @@ VkResult WindowGLFW::createSurfacePredicate(VkInstance instance, void *windowHan
 
 void WindowGLFW::recreateSwapChain()
 {
+    ZoneScoped;
+
     vkDeviceWaitIdle(m_swapchain->getDevice().lock()->getHandle());
 
     SwapChainBuilder scb;

@@ -9,7 +9,7 @@ layout(binding = 0) uniform sampler2D baseImage;
 void main()
 {
 	vec3 col = texture(baseImage, fragUV).rgb;
-	col.g = 0.0;
+	//col.g = 0.0;
 
 	oColor = vec4(col, 1.0);
 }

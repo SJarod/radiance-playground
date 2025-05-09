@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <vulkan/vulkan.h>
+#include <tracy/Tracy.hpp>
 
 #include "engine/probe_grid.hpp"
 
@@ -14,6 +15,8 @@
 
 VkResult Renderer::acquireNextSwapChainImage(uint32_t &nextImageIndex)
 {
+    ZoneScoped;
+
     auto deviceHandle = m_device.lock()->getHandle();
 
     auto fences = m_renderGraph->getAllCurrentFences();
@@ -31,6 +34,8 @@ VkResult Renderer::acquireNextSwapChainImage(uint32_t &nextImageIndex)
 
 VkResult Renderer::presentBackBuffer(uint32_t imageIndex)
 {
+    ZoneScoped;
+
     VkSwapchainKHR swapchains[] = {m_swapchain->getHandle()};
     auto renderSemaphore = m_renderGraph->getLastPhaseCurrentRenderSemaphore();
     VkSemaphore waitSemaphores[] = {renderSemaphore};
@@ -54,6 +59,8 @@ VkResult Renderer::presentBackBuffer(uint32_t imageIndex)
 VkResult Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
                                const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid)
 {
+    ZoneScoped;
+
     uint32_t imageIndex;
     VkResult res = acquireNextSwapChainImage(imageIndex);
     if (res != VK_SUCCESS)

@@ -9,6 +9,7 @@ target_sources(${component}
 
 target_link_libraries(${component}
     PRIVATE client
+	PRIVATE Tracy::TracyClient
 )
 
 add_subdirectory(client)
