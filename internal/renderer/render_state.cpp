@@ -160,14 +160,13 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
-                                                  uint32_t backBufferIndex)
+void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePredPerFrame)
     {
         for (const auto &instanceSet : m_instanceDescriptorSets)
         {
-            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, instanceSet, backBufferIndex);
+            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, instanceSet, backBufferIndex);
         }
     }
 
@@ -177,42 +176,41 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
         {
             for (const auto &materialSet : materialSetsPerMesh)
             {
-                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, imageIndex, materialSet, backBufferIndex);
+                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, materialSet, backBufferIndex);
             }
         }
     }
 }
 
-void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex)
+void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex)
 {
     if (m_descriptorSetUpdatePred)
     {
         for (const auto &set : m_descriptorSets)
         {
-            m_descriptorSetUpdatePred(parentPhase, imageIndex, set);
+            m_descriptorSetUpdatePred(parentPhase, set, backBufferIndex);
         }
     }
 }
 
-void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t imageIndex,
-                                                uint32_t backBufferIndex)
+void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex)
 {
     if (m_descriptorSetUpdatePredPerFrame)
     {
         for (const auto &set : m_descriptorSets)
         {
-            m_descriptorSetUpdatePredPerFrame(parentPhase, imageIndex, set, backBufferIndex);
+            m_descriptorSetUpdatePredPerFrame(parentPhase, set, backBufferIndex);
         }
     }
 }
 
-void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t imageIndex)
+void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePred)
     {
         for (const auto &set : m_instanceDescriptorSets)
         {
-            m_instanceDescriptorSetUpdatePred(parentPhase, imageIndex, set);
+            m_instanceDescriptorSetUpdatePred(parentPhase, set, backBufferIndex);
         }
     }
 
@@ -222,7 +220,7 @@ void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32
         {
             for (const auto &materialSet : materialSetsPerMesh)
             {
-                m_materialDescriptorSetUpdatePred(parentPhase, imageIndex, materialSet);
+                m_materialDescriptorSetUpdatePred(parentPhase, materialSet, backBufferIndex);
             }
         }
     }
@@ -567,9 +565,8 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void ModelRenderState::updatePushConstants(const VkCommandBuffer &commandBuffer, uint32_t imageIndex,
-                                           uint32_t singleFrameRenderCount, const CameraABC &camera,
-                                           const std::vector<std::shared_ptr<Light>> &lights)
+void ModelRenderState::updatePushConstants(const VkCommandBuffer &commandBuffer, uint32_t singleFrameRenderCount,
+                                           const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
 {
     if (m_pushViewPosition)
     {
@@ -596,17 +593,17 @@ void ModelRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer 
     vkCmdDrawIndexed(commandBuffer, meshPtr->getIndexCount(), 1, 0, 0, 0);
 }
 
-void ModelRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
+void ModelRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex,
                                             uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                             const std::vector<std::shared_ptr<Light>> &lights,
                                             const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    RenderStateABC::updateUniformBuffers(imageIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera, lights,
-                                         probeGrid, captureModeEnabled);
+    RenderStateABC::updateUniformBuffers(backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
+                                         lights, probeGrid, captureModeEnabled);
 
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
-        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
+        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
         auto modelPtr = m_model.lock();
 
         mvpData->model = modelPtr->getTransform().getTransformMatrix();
@@ -815,12 +812,12 @@ std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void SkyboxRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
+void SkyboxRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex,
                                              uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                              const std::vector<std::shared_ptr<Light>> &lights,
                                              const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
@@ -1002,13 +999,13 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
+void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex,
                                                          uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                                          const std::vector<std::shared_ptr<Light>> &lights,
                                                          const std::shared_ptr<ProbeGrid> &probeGrid,
                                                          bool captureModeEnabled)
 {
-    uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)imageIndex);
+    uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)backBufferIndex);
 
     MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[bufferIndex]);
     mvpData->model = glm::identity<glm::mat4>();
@@ -1204,14 +1201,14 @@ std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
     return std::move(m_product);
 }
 
-void ProbeGridRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
+void ProbeGridRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t singleFrameRenderIndex,
                                                 uint32_t pooledFramebufferIndex, const CameraABC &camera,
                                                 const std::vector<std::shared_ptr<Light>> &lights,
                                                 const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
     if (m_mvpUniformBuffersMapped.size() > 0)
     {
-        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[imageIndex]);
+        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
         mvpData->model = glm::identity<glm::mat4>();
 
         if (!captureModeEnabled)
@@ -1222,7 +1219,7 @@ void ProbeGridRenderState::updateUniformBuffers(uint32_t imageIndex, uint32_t si
     }
 
     const std::vector<std::unique_ptr<Probe>> &probes = m_grid.lock()->getProbes();
-    ProbeContainer *probeContainer = static_cast<ProbeContainer *>(m_probeStorageBuffersMapped[imageIndex]);
+    ProbeContainer *probeContainer = static_cast<ProbeContainer *>(m_probeStorageBuffersMapped[backBufferIndex]);
 
     for (int i = 0; i < probes.size(); i++)
     {
@@ -1280,7 +1277,7 @@ void ComputeState::recordBackBufferComputeCommands(const VkCommandBuffer &comman
     vkCmdDispatch(commandBuffer, m_workGroup.x, m_workGroup.y, m_workGroup.z);
 }
 
-void ComputeState::updateUniformBuffers(uint32_t imageIndex)
+void ComputeState::updateUniformBuffers(uint32_t backBufferIndex)
 {
 }
 

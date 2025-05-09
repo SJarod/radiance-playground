@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 #include "device.hpp"
 #include "image.hpp"
@@ -141,6 +142,20 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
         VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &m_product->m_imageViews[i]);
         if (res != VK_SUCCESS)
             std::cerr << "Failed to create an image view : " << res << std::endl;
+
+        devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = VK_OBJECT_TYPE_IMAGE,
+            .objectHandle = (uint64_t)m_product->m_images[i],
+            .pObjectName = std::string("Swapchain Image Resource " + std::to_string(i)).c_str(),
+        });
+
+        devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = VK_OBJECT_TYPE_IMAGE_VIEW,
+            .objectHandle = (uint64_t)m_product->m_imageViews[i],
+            .pObjectName = std::string("Swapchain Image View " + std::to_string(i)).c_str(),
+        });
     }
 
     ImageBuilder ib;

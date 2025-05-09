@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <optional>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
@@ -13,7 +13,7 @@ class Texture;
 
 class RenderPassFramebufferBuilder
 {
-private:
+  private:
     std::unique_ptr<VkFramebuffer> m_product;
 
     VkImageView m_colorAttachment;
@@ -28,13 +28,13 @@ private:
 
     void restart()
     {
-        m_extent = { 0, 0 };
+        m_extent = {0, 0};
         m_layers = 0u;
         m_product = std::unique_ptr<VkFramebuffer>(new VkFramebuffer);
     }
     std::unique_ptr<VkFramebuffer> build();
 
-public:
+  public:
     RenderPassFramebufferBuilder()
     {
         restart();
@@ -45,12 +45,12 @@ public:
         m_device = device;
     }
 
-    void setColorAttachment(const VkImageView& colorAttachment)
+    void setColorAttachment(const VkImageView &colorAttachment)
     {
         m_colorAttachment = colorAttachment;
     }
 
-    void setDepthAttachment(const VkImageView& depthAttachment)
+    void setDepthAttachment(const VkImageView &depthAttachment)
     {
         m_depthAttachment = depthAttachment;
     }
@@ -65,7 +65,7 @@ public:
         m_hasDepthAttachment = value;
     }
 
-    void setExtent(const VkExtent2D& extents)
+    void setExtent(const VkExtent2D &extents)
     {
         m_extent = extents;
     }
@@ -75,7 +75,7 @@ public:
         m_layers = count;
     }
 
-    void addAttachment(const VkImageView& attachment)
+    void addAttachment(const VkImageView &attachment)
     {
         m_attachments.push_back(attachment);
     }
@@ -87,7 +87,6 @@ public:
         return result;
     }
 };
-
 
 class RenderPass
 {
@@ -113,22 +112,25 @@ class RenderPass
     RenderPass &operator=(const RenderPass &) = delete;
     RenderPass(RenderPass &&) = delete;
     RenderPass &operator=(RenderPass &&) = delete;
-    
-    void buildFramebuffers(const std::vector<std::vector<VkImageView>> &pooledImageViews, const std::optional<std::vector<VkImageView>> &pooledDepthAttachments, VkExtent2D extent, uint32_t layerCount, bool clearOldFramebuffers = false);
+
+    void buildFramebuffers(const std::vector<std::vector<VkImageView>> &pooledImageViews,
+                           const std::optional<std::vector<VkImageView>> &pooledDepthAttachments, VkExtent2D extent,
+                           uint32_t layerCount, bool clearOldFramebuffers = false);
+
   public:
     [[nodiscard]] const VkRenderPass &getHandle() const
     {
         return m_handle;
     }
 
-    [[nodiscard]] const VkFramebuffer &getFramebuffer(uint32_t poolIndex, uint32_t imageIndex) const
+    [[nodiscard]] VkFramebuffer getFramebuffer(uint32_t poolIndex, uint32_t imageIndex) const
     {
-        return m_pooledFramebuffers[poolIndex][imageIndex % m_pooledFramebuffers[poolIndex].size()];
+        return m_pooledFramebuffers[poolIndex][imageIndex];
     }
 
-    [[nodiscard]] const VkImageView &getImageView(uint32_t poolIndex, uint32_t imageIndex) const
+    [[nodiscard]] VkImageView getImageView(uint32_t poolIndex, uint32_t imageIndex) const
     {
-        return m_pooledViews[poolIndex][imageIndex % m_pooledFramebuffers[poolIndex].size()];
+        return m_pooledViews[poolIndex][imageIndex];
     }
     [[nodiscard]] const uint32_t getImageCount(uint32_t poolIndex) const
     {
@@ -191,45 +193,45 @@ class RenderPassBuilder
         m_device = device;
         m_product->m_device = device;
     }
-    void setImageViews(const std::vector<VkImageView>& imageViews)
+    void setImageViews(const std::vector<VkImageView> &imageViews)
     {
         m_poolSize = 1u;
         m_pooledImageViews.clear();
         m_pooledImageViews.push_back(imageViews);
     }
-    void addPooledImageViews(const std::vector<VkImageView>& imageViews)
+    void addPooledImageViews(const std::vector<VkImageView> &imageViews)
     {
         m_pooledImageViews.push_back(imageViews);
         m_poolSize++;
     }
-    void setDepthAttachment(const VkImageView& depthAttachment)
+    void setDepthAttachment(const VkImageView &depthAttachment)
     {
         m_poolSize = 1u;
 
         if (!m_pooledDepthAttachments.has_value())
         {
-            m_pooledDepthAttachments = { depthAttachment };
+            m_pooledDepthAttachments = {depthAttachment};
             return;
         }
 
         m_pooledDepthAttachments.value().clear();
         m_pooledDepthAttachments.value().push_back(depthAttachment);
     }
-    void addPooledDepthAttachment(const VkImageView& depthAttachment)
+    void addPooledDepthAttachment(const VkImageView &depthAttachment)
     {
         if (!m_pooledDepthAttachments.has_value())
         {
-            m_pooledDepthAttachments = { depthAttachment };
+            m_pooledDepthAttachments = {depthAttachment};
             return;
         }
 
         m_pooledDepthAttachments.value().push_back(depthAttachment);
     }
-    void setExtent(const VkExtent2D& extent)
+    void setExtent(const VkExtent2D &extent)
     {
         m_extent = extent;
     }
-    void setLayerCount(const uint32_t& count)
+    void setLayerCount(const uint32_t &count)
     {
         m_layers = count;
     }
@@ -237,16 +239,20 @@ class RenderPassBuilder
     {
         m_multiviewEnable = enable;
     }
-   
+
     std::unique_ptr<RenderPass> build();
 };
 
 class RenderPassDirector
 {
   public:
-      void configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain, bool hasDepthAttachment = true);
-      void configureCubemapRenderPassBuilder(RenderPassBuilder& builder, const Texture& cubemap, bool useMultiview, bool hasDepthAttachment = true);
-      void configurePooledCubemapsRenderPassBuilder(RenderPassBuilder &builder, const std::vector<std::shared_ptr<Texture>> &cubemaps, bool useMultiview, bool hasDepthAttachment = true);
+    void configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain,
+                                             bool hasDepthAttachment = true);
+    void configureCubemapRenderPassBuilder(RenderPassBuilder &builder, const Texture &cubemap, bool useMultiview,
+                                           bool hasDepthAttachment = true);
+    void configurePooledCubemapsRenderPassBuilder(RenderPassBuilder &builder,
+                                                  const std::vector<std::shared_ptr<Texture>> &cubemaps,
+                                                  bool useMultiview, bool hasDepthAttachment = true);
 };
 
 class RenderPassAttachmentBuilder

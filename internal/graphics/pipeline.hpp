@@ -41,10 +41,9 @@ class Pipeline
      * @brief bind the pipeline whether it is a graphics or a compute pipeline
      *
      * @param commandBuffer
-     * @param imageIndex not used if it is a graphics pipeline
      * @param extent not used if it is a graphics pipeline
      */
-    void recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent);
+    void recordBind(const VkCommandBuffer &commandBuffer, VkRect2D extent);
 
   public:
     [[nodiscard]] const VkPipelineLayout &getPipelineLayout() const

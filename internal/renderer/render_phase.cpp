@@ -46,9 +46,9 @@ void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> r
 {
     for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
-        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
-            renderState->updateDescriptorSets(m_parentPhase, imageIndex);
+            renderState->updateDescriptorSets(m_parentPhase, i);
         }
 
         m_pooledRenderStates[poolIndex].push_back(renderState);
@@ -66,9 +66,9 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
 
     for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
     {
-        for (int imageIndex = 0; imageIndex < m_renderPass->getImageCount(poolIndex); ++imageIndex)
+        for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
-            renderState->updateDescriptorSets(m_parentPhase, imageIndex);
+            renderState->updateDescriptorSets(m_parentPhase, i);
         }
     }
 
@@ -78,7 +78,7 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
 void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
                                    uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
                                    const std::vector<std::shared_ptr<Light>> &lights,
-                                   const std::shared_ptr<ProbeGrid> &probeGrid) const
+                                   const std::shared_ptr<ProbeGrid> &probeGrid)
 {
     if (singleFrameRenderIndex > 0)
     {
@@ -124,6 +124,12 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),
     };
+
+    // keep track of this newly rendered image
+    m_lastFramebuffer = std::optional<VkFramebuffer>(renderPassBeginInfo.framebuffer);
+    m_lastFramebufferImageView =
+        std::optional<VkImageView>(m_renderPass->getImageView(pooledFramebufferIndex, imageIndex));
+
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
@@ -133,13 +139,13 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
         if (const auto &pipeline = renderState->getPipeline())
         {
-            pipeline->recordBind(commandBuffer, imageIndex, renderArea);
+            pipeline->recordBind(commandBuffer, renderArea);
         }
 
-        renderState->updatePushConstants(commandBuffer, imageIndex, singleFrameRenderIndex, camera, lights);
+        renderState->updatePushConstants(commandBuffer, singleFrameRenderIndex, camera, lights);
         renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
                                           lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, imageIndex, m_backBufferIndex);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, m_backBufferIndex);
         for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
         {
             renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
@@ -217,6 +223,13 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
                 std::cerr << "Failed to allocate command buffers : " << res << std::endl;
                 return nullptr;
             }
+
+            devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = VK_OBJECT_TYPE_COMMAND_BUFFER,
+                .objectHandle = (uint64_t)(backBuffers[i].commandBuffer),
+                .pObjectName = std::string(m_phaseName + " RenderPhase : " + std::to_string(i)).c_str(),
+            });
         }
 
         // synchronization
@@ -311,10 +324,10 @@ void ComputePhase::recordBackBuffer() const
 
         if (const auto &pipeline = computeState->getPipeline())
         {
-            pipeline->recordBind(commandBuffer, 0, {});
+            pipeline->recordBind(commandBuffer, {});
         }
 
-        computeState->updateDescriptorSetsPerFrame(nullptr, -1, m_backBufferIndex);
+        computeState->updateDescriptorSetsPerFrame(nullptr, m_backBufferIndex);
 
         computeState->updateUniformBuffers(0);
         computeState->recordBackBufferComputeCommands(commandBuffer, m_backBufferIndex);
@@ -379,6 +392,13 @@ std::unique_ptr<ComputePhase> ComputePhaseBuilder::build()
                 std::cerr << "Failed to allocate command buffers : " << res << std::endl;
                 return nullptr;
             }
+
+            devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = VK_OBJECT_TYPE_COMMAND_BUFFER,
+                .objectHandle = (uint64_t)(m_product->m_backBuffers[i].commandBuffer),
+                .pObjectName = std::string(m_phaseName + " ComputePhase : " + std::to_string(i)).c_str(),
+            });
         }
 
         // synchronization
@@ -422,7 +442,10 @@ std::unique_ptr<ComputePhase> ComputePhaseBuilder::build()
 
 void ComputePhase::registerComputeState(std::shared_ptr<ComputeState> state)
 {
-    state->updateDescriptorSets(nullptr, -1u);
+    for (int i = 0; i < m_backBuffers.size(); ++i)
+    {
+        state->updateDescriptorSets(nullptr, i);
+    }
 
     m_computeStates.push_back(state);
 }

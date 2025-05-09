@@ -440,7 +440,7 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
     return std::move(m_product);
 }
 
-void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, uint32_t imageIndex, VkRect2D extent)
+void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, VkRect2D extent)
 {
     switch (m_type)
     {

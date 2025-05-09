@@ -269,21 +269,22 @@ Application::Application()
 
     std::unique_ptr<RenderPhase> postProcessPhase;
     {
-        RenderPassBuilder postProcessRpb;
-        postProcessRpb.setDevice(m_discreteDevice);
-        rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
+        RenderPassBuilder passb;
+        passb.setDevice(m_discreteDevice);
+        rpd.configureSwapChainRenderPassBuilder(passb, *m_window->getSwapChain(), false);
         rpad.configureAttachmentLoadBuilder(rpab);
         rpab.setFormat(m_window->getSwapChain()->getImageFormat());
         rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
-        postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder postProcessRb;
-        postProcessRb.setDevice(m_discreteDevice);
-        postProcessRb.setRenderPass(postProcessRpb.build());
-        postProcessRb.setParentPhase(m_skyboxPhase);
-        postProcessRb.setBufferingType(bufferingType);
-        postProcessPhase = postProcessRb.build();
+        passb.addColorAttachment(*finalLoadColorAttachment);
+        RenderPhaseBuilder phaseb;
+        phaseb.setDevice(m_discreteDevice);
+        phaseb.setRenderPass(passb.build());
+        phaseb.setParentPhase(m_skyboxPhase);
+        phaseb.setBufferingType(bufferingType);
+        phaseb.setPhaseName("Final direct");
+        postProcessPhase = phaseb.build();
         m_finalImageDirect = postProcessPhase.get();
     }
 
@@ -298,20 +299,20 @@ Application::Application()
 
     std::unique_ptr<RenderPhase> postProcess2Phase;
     {
-        RenderPassBuilder postProcessRpb;
-        postProcessRpb.setDevice(m_discreteDevice);
-        rpd.configureSwapChainRenderPassBuilder(postProcessRpb, *m_window->getSwapChain(), false);
+        RenderPassBuilder passb;
+        passb.setDevice(m_discreteDevice);
+        rpd.configureSwapChainRenderPassBuilder(passb, *m_window->getSwapChain(), false);
         rpad.configureAttachmentLoadBuilder(rpab);
         rpab.setFormat(m_window->getSwapChain()->getImageFormat());
         rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
-        postProcessRpb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder postProcessRb;
-        postProcessRb.setDevice(m_discreteDevice);
-        postProcessRb.setRenderPass(postProcessRpb.build());
-        postProcessRb.setBufferingType(bufferingType);
-        postProcess2Phase = postProcessRb.build();
+        passb.addColorAttachment(*finalLoadColorAttachment);
+        RenderPhaseBuilder phaseb;
+        phaseb.setDevice(m_discreteDevice);
+        phaseb.setRenderPass(passb.build());
+        phaseb.setBufferingType(bufferingType);
+        postProcess2Phase = phaseb.build();
         m_finalImageDirectIndirect = postProcess2Phase.get();
     }
 
@@ -963,18 +964,18 @@ void Application::runLoop()
         modelBuilder.setMesh(postProcessQuadMesh);
         modelBuilder.setName("post process quad");
         postProcessQuadModel = modelBuilder.build();
-        ModelRenderStateBuilder quadRsb;
-        quadRsb.setDevice(m_discreteDevice);
-        quadRsb.setProbeDescriptorEnable(false);
-        quadRsb.setLightDescriptorEnable(false);
-        quadRsb.setTextureDescriptorEnable(false);
-        quadRsb.setMVPDescriptorEnable(false);
-        quadRsb.setPushViewPositionEnable(false);
-        quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
-        quadRsb.setModel(postProcessQuadModel);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        quadRsb.setInstanceDescriptorSetUpdatePred(
-            [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
+        ModelRenderStateBuilder rsb;
+        rsb.setDevice(m_discreteDevice);
+        rsb.setProbeDescriptorEnable(false);
+        rsb.setLightDescriptorEnable(false);
+        rsb.setTextureDescriptorEnable(false);
+        rsb.setMVPDescriptorEnable(false);
+        rsb.setPushViewPositionEnable(false);
+        rsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+        rsb.setModel(postProcessQuadModel);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        rsb.setInstanceDescriptorSetUpdatePredPerFrame(
+            [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                 auto deviceHandle = m_discreteDevice->getHandle();
                 const auto &sampler = m_window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
@@ -982,7 +983,7 @@ void Application::runLoop()
 
                 VkDescriptorImageInfo imageInfo = {
                     .sampler = *sampler.value(),
-                    .imageView = parentPhase->getRenderPass()->getImageView(0u, imageIndex),
+                    .imageView = m_skyboxPhase->getMostRecentRenderedImage(),
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 };
                 std::vector<VkWriteDescriptorSet> writes;
@@ -998,29 +999,29 @@ void Application::runLoop()
 
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-        PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
-        PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
-        postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
-        postProcessPb.setDevice(m_discreteDevice);
-        postProcessPb.setRenderPass(m_finalImageDirect->getRenderPass());
-        postProcessPb.addVertexShaderStage("screen");
-        postProcessPb.addFragmentShaderStage("final_image_direct");
-        postProcessPb.setExtent(m_window->getSwapChain()->getExtent());
-        postProcessPb.setDepthTestEnable(VK_FALSE);
-        postProcessPb.setDepthWriteEnable(VK_FALSE);
-        postProcessPb.setBlendEnable(VK_FALSE);
-        postProcessPb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
-        UniformDescriptorBuilder postProcessUdb;
+        PipelineBuilder<PipelineType::GRAPHICS> pb;
+        PipelineDirector<PipelineType::GRAPHICS> pd;
+        pd.configureColorDepthRasterizerBuilder(pb);
+        pb.setDevice(m_discreteDevice);
+        pb.setRenderPass(m_finalImageDirect->getRenderPass());
+        pb.addVertexShaderStage("screen");
+        pb.addFragmentShaderStage("final_image_direct");
+        pb.setExtent(m_window->getSwapChain()->getExtent());
+        pb.setDepthTestEnable(VK_FALSE);
+        pb.setDepthWriteEnable(VK_FALSE);
+        pb.setBlendEnable(VK_FALSE);
+        pb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+        UniformDescriptorBuilder udb;
         // rendered image
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        postProcessPb.addUniformDescriptorPack(postProcessUdb.buildAndRestart());
-        quadRsb.setPipeline(postProcessPb.build());
-        m_finalImageDirect->registerRenderStateToAllPool(RENDER_STATE_PTR(quadRsb.build()));
+        pb.addUniformDescriptorPack(udb.buildAndRestart());
+        rsb.setPipeline(pb.build());
+        m_finalImageDirect->registerRenderStateToAllPool(RENDER_STATE_PTR(rsb.build()));
     }
 
     {
@@ -1080,8 +1081,8 @@ void Application::runLoop()
             auto rc = s[0];
             csb.setWorkGroup(glm::ivec3(rc->getCascadeCount(), 1, 1));
         }
-        csb.setDescriptorSetUpdatePred(
-            [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
+        csb.setDescriptorSetUpdatePredPerFrame(
+            [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                 auto deviceHandle = m_discreteDevice->getHandle();
                 const auto &sampler = m_window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
@@ -1089,7 +1090,7 @@ void Application::runLoop()
 
                 VkDescriptorImageInfo imageInfo = {
                     .sampler = *sampler.value(),
-                    .imageView = m_finalImageDirect->getRenderPass()->getImageView(0u, imageIndex),
+                    .imageView = m_finalImageDirect->getMostRecentRenderedImage(),
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 };
                 std::vector<VkWriteDescriptorSet> writes;
@@ -1102,8 +1103,14 @@ void Application::runLoop()
                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     .pImageInfo = &imageInfo,
                 });
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
+        csb.setDescriptorSetUpdatePred(
+            [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
+                auto deviceHandle = m_discreteDevice->getHandle();
 
                 auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
+                std::vector<VkWriteDescriptorSet> writes;
                 if (!s.empty())
                 {
                     auto rc = s[0];
@@ -1156,58 +1163,45 @@ void Application::runLoop()
                             .pBufferInfo = &bufferInfo,
                         });
                     }
+                    {
+                        VkDescriptorBufferInfo bufferInfo = {
+                            .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
+                            .offset = 0,
+                            .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
+                        };
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .dstSet = set,
+                            .dstBinding = 4,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                            .pBufferInfo = &bufferInfo,
+                        });
+                    }
                 }
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-        csb.setDescriptorSetUpdatePredPerFrame([&](const RenderPhase *parentPhase, uint32_t imageIndex,
-                                                   const VkDescriptorSet set, uint32_t backBufferIndex) {
-            auto deviceHandle = m_discreteDevice->getHandle();
-            std::vector<VkWriteDescriptorSet> writes;
-
-            auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
-            if (!s.empty())
-            {
-                auto rc = s[0];
-
-                {
-                    VkDescriptorBufferInfo bufferInfo = {
-                        .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
-                        .offset = 0,
-                        .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
-                    };
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 4,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                        .pBufferInfo = &bufferInfo,
-                    });
-                }
-            }
-            vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
-        });
         m_computePhase->registerComputeState(COMPUTE_STATE_PTR(csb.build()));
     }
 
     {
-        ModelRenderStateBuilder quadRsb;
-        quadRsb.setDevice(m_discreteDevice);
-        quadRsb.setProbeDescriptorEnable(false);
-        quadRsb.setLightDescriptorEnable(false);
-        quadRsb.setTextureDescriptorEnable(false);
-        quadRsb.setMVPDescriptorEnable(false);
-        quadRsb.setPushViewPositionEnable(false);
-        quadRsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
-        quadRsb.setModel(postProcessQuadModel);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        quadRsb.setInstanceDescriptorSetUpdatePred(
-            [&](const RenderPhase *parentPhase, uint32_t imageIndex, const VkDescriptorSet set) {
+        ModelRenderStateBuilder rsb;
+        rsb.setDevice(m_discreteDevice);
+        rsb.setProbeDescriptorEnable(false);
+        rsb.setLightDescriptorEnable(false);
+        rsb.setTextureDescriptorEnable(false);
+        rsb.setMVPDescriptorEnable(false);
+        rsb.setPushViewPositionEnable(false);
+        rsb.setFrameInFlightCount(m_renderer->getFrameInFlightCount());
+        rsb.setModel(postProcessQuadModel);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        rsb.setInstanceDescriptorSetUpdatePredPerFrame(
+            [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                 auto deviceHandle = m_discreteDevice->getHandle();
                 const auto &sampler = m_window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
@@ -1215,7 +1209,7 @@ void Application::runLoop()
 
                 VkDescriptorImageInfo imageInfo = {
                     .sampler = *sampler.value(),
-                    .imageView = m_finalImageDirect->getRenderPass()->getImageView(0u, imageIndex),
+                    .imageView = m_finalImageDirect->getMostRecentRenderedImage(),
                     .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 };
                 std::vector<VkWriteDescriptorSet> writes;
@@ -1228,7 +1222,13 @@ void Application::runLoop()
                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     .pImageInfo = &imageInfo,
                 });
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
+        rsb.setInstanceDescriptorSetUpdatePred(
+            [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
+                auto deviceHandle = m_discreteDevice->getHandle();
 
+                std::vector<VkWriteDescriptorSet> writes;
                 auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
                 if (!s.empty())
                 {
@@ -1282,88 +1282,75 @@ void Application::runLoop()
                             .pBufferInfo = &bufferInfo,
                         });
                     }
+                    {
+                        VkDescriptorBufferInfo bufferInfo = {
+                            .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
+                            .offset = 0,
+                            .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
+                        };
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .dstSet = set,
+                            .dstBinding = 4,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                            .pBufferInfo = &bufferInfo,
+                        });
+                    }
                 }
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-        quadRsb.setInstanceDescriptorSetUpdatePredPerFrame([&](const RenderPhase *parentPhase, uint32_t imageIndex,
-                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
-            auto deviceHandle = m_discreteDevice->getHandle();
-            std::vector<VkWriteDescriptorSet> writes;
-
-            auto s = m_scene->getReadOnlyInstancedComponents<RadianceCascades>();
-            if (!s.empty())
-            {
-                auto rc = s[0];
-
-                {
-                    VkDescriptorBufferInfo bufferInfo = {
-                        .buffer = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getHandle(),
-                        .offset = 0,
-                        .range = rc->getRadianceIntervalsStorageBufferHandle(backBufferIndex)->getSize(),
-                    };
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 4,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                        .pBufferInfo = &bufferInfo,
-                    });
-                }
-            }
-            vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
-        });
-        PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
-        PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
-        postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
-        postProcessPb.setDevice(m_discreteDevice);
-        postProcessPb.setRenderPass(m_finalImageDirectIndirect->getRenderPass());
-        postProcessPb.addVertexShaderStage("screen");
-        postProcessPb.addFragmentShaderStage("final_image_direct_indirect");
-        postProcessPb.setExtent(m_window->getSwapChain()->getExtent());
-        postProcessPb.setDepthTestEnable(VK_FALSE);
-        postProcessPb.setDepthWriteEnable(VK_FALSE);
-        postProcessPb.setBlendEnable(VK_FALSE);
-        postProcessPb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
-        UniformDescriptorBuilder postProcessUdb;
+        PipelineBuilder<PipelineType::GRAPHICS> pb;
+        PipelineDirector<PipelineType::GRAPHICS> pd;
+        pd.configureColorDepthRasterizerBuilder(pb);
+        pb.setDevice(m_discreteDevice);
+        pb.setRenderPass(m_finalImageDirectIndirect->getRenderPass());
+        pb.addVertexShaderStage("screen");
+        pb.addFragmentShaderStage("final_image_direct_indirect");
+        pb.setExtent(m_window->getSwapChain()->getExtent());
+        pb.setDepthTestEnable(VK_FALSE);
+        pb.setDepthWriteEnable(VK_FALSE);
+        pb.setBlendEnable(VK_FALSE);
+        pb.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+        UniformDescriptorBuilder udb;
         // rendered image
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
         // cascade desc buffer
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 2,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
         // cascade probes position buffer
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 3,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
         // radiance interval storage buffer
-        postProcessUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+        udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 4,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        postProcessPb.addUniformDescriptorPack(postProcessUdb.buildAndRestart());
-        quadRsb.setPipeline(postProcessPb.build());
-        m_finalImageDirectIndirect->registerRenderStateToAllPool(RENDER_STATE_PTR(quadRsb.build()));
+        pb.addUniformDescriptorPack(udb.buildAndRestart());
+        rsb.setPipeline(pb.build());
+        m_finalImageDirectIndirect->registerRenderStateToAllPool(RENDER_STATE_PTR(rsb.build()));
     }
 
     initImgui();
@@ -1398,6 +1385,10 @@ void Application::runLoop()
         }
 
         m_window->swapBuffers();
+
+        static int frameCounter = 0;
+        if (++frameCounter == m_breakAfterFrameCount)
+            break;
     }
 
     // ensure all commands have finished before destroying objects in this scope

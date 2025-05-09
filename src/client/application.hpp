@@ -61,6 +61,13 @@ class Application
     Time::TimeManager m_timeManager;
     InputManager m_inputManager;
 
+    /**
+     * @brief exit the main loop after a certain amount of frame
+     * -1 to deactivate breakage
+     * 
+     */
+    int m_breakAfterFrameCount = -1;
+
     void initImgui();
     void displayImgui();
 

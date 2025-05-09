@@ -30,7 +30,7 @@ class RenderGraph
     [[deprecated]] void addRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
     void addPhase(std::unique_ptr<BasePhaseABC> phase);
 
-    void processRenderPhaseChain(const std::vector<std::unique_ptr<BasePhaseABC>> &toProcess, uint32_t imageIndex,
+    void processRenderPhaseChain(std::vector<std::unique_ptr<BasePhaseABC>> &toProcess, uint32_t imageIndex,
                                  VkRect2D renderArea, const CameraABC &mainCamera,
                                  const std::vector<std::shared_ptr<Light>> &lights,
                                  const std::shared_ptr<ProbeGrid> &probeGrid, const VkSemaphore *inWaitSemaphore,

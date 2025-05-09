@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "graphics/render_pass.hpp"
 
@@ -57,6 +58,7 @@ class RenderPhase : public BasePhaseABC
     friend RenderPhaseBuilder;
 
   private:
+    [[deprecated]]
     const RenderPhase *m_parentPhase = nullptr;
 
     std::unique_ptr<RenderPass> m_renderPass;
@@ -69,6 +71,17 @@ class RenderPhase : public BasePhaseABC
     std::vector<std::vector<BackBufferT>> m_pooledBackBuffers;
 
     bool m_isCapturePhase = false;
+
+    /**
+     * @brief the most recent frame buffer in which a render was made
+     *
+     */
+    std::optional<VkFramebuffer> m_lastFramebuffer = nullptr;
+    /**
+     * @brief same as last frame buffer but with an image view resource
+     *
+     */
+    std::optional<VkImageView> m_lastFramebufferImageView = nullptr;
 
     RenderPhase() = default;
 
@@ -93,7 +106,7 @@ class RenderPhase : public BasePhaseABC
     void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex,
                           VkRect2D renderArea, const CameraABC &camera,
                           const std::vector<std::shared_ptr<Light>> &lights,
-                          const std::shared_ptr<ProbeGrid> &probeGrid) const;
+                          const std::shared_ptr<ProbeGrid> &probeGrid);
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
     void swapBackBuffers(uint32_t pooledFramebufferIndex);
@@ -122,9 +135,26 @@ class RenderPhase : public BasePhaseABC
     {
         return m_renderPass.get();
     }
+    [[nodiscard]] VkImageView getMostRecentRenderedImage() const
+    {
+        assert(m_lastFramebufferImageView.has_value());
+        return m_lastFramebufferImageView.value();
+    }
 };
 
-class RenderPhaseBuilder
+class PhaseBuilderABC
+{
+  protected:
+    std::string m_phaseName = "Unnamed";
+
+  public:
+    inline void setPhaseName(std::string name)
+    {
+        m_phaseName = name;
+    }
+};
+
+class RenderPhaseBuilder : public PhaseBuilderABC
 {
   private:
     std::unique_ptr<RenderPhase> m_product;
@@ -149,6 +179,7 @@ class RenderPhaseBuilder
         m_device = device;
         m_product->m_device = device;
     }
+    [[deprecated]]
     void setParentPhase(const RenderPhase *parentPhase)
     {
         m_product->m_parentPhase = parentPhase;
@@ -226,7 +257,7 @@ class ComputePhase : public BasePhaseABC
     }
 };
 
-class ComputePhaseBuilder
+class ComputePhaseBuilder : public PhaseBuilderABC
 {
   private:
     std::unique_ptr<ComputePhase> m_product;
