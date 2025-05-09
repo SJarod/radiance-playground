@@ -150,6 +150,10 @@ class Device
         return m_computeQueue;
     }
 
+    [[nodiscard]] inline bool isIntegrated() const
+    {
+        return m_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    }
     [[nodiscard]] inline bool isDiscrete() const
     {
         return m_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
