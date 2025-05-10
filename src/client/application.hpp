@@ -26,36 +26,6 @@ class Application
 
     std::shared_ptr<Renderer> m_renderer;
 
-    RenderPhase *m_opaqueCapturePhase;
-    RenderPhase *m_skyboxCapturePhase;
-
-    RenderPhase *m_irradianceConvolutionPhase;
-    RenderPhase *m_opaquePhase;
-    RenderPhase *m_skyboxPhase;
-
-    /**
-     * @brief final image with direct lighting
-     * post process can be applied in this phase using the right shader
-     *
-     */
-    RenderPhase *m_finalImageDirect;
-    /**
-     * @brief compute shader for the radiance gathering
-     *
-     */
-    ComputePhase *m_computePhase;
-    /**
-     * @brief final image combining direct and indirect lighting
-     *
-     */
-    RenderPhase *m_finalImageDirectIndirect;
-
-    RenderPhase *m_imguiPhase;
-    RenderPhase *m_probesDebugPhase;
-
-    std::vector<std::shared_ptr<Texture>> capturedEnvMaps;
-    std::vector<std::shared_ptr<Texture>> irradianceMaps;
-
     std::unique_ptr<SceneABC> m_scene;
 
     Time::TimeManager m_timeManager;
@@ -68,7 +38,6 @@ class Application
      */
     int m_breakAfterFrameCount = -1;
 
-    void initImgui();
     void displayImgui();
 
   public:

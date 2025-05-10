@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -11,6 +13,10 @@ class Light;
 class ProbeGrid;
 class SwapChain;
 class BasePhaseABC;
+class Device;
+class WindowGLFW;
+
+class RenderGraphLoader;
 
 /**
  * @brief manages the relation ship between each phase (submit semaphores)
@@ -18,12 +24,38 @@ class BasePhaseABC;
  */
 class RenderGraph
 {
-  private:
-    // TODO : better way to retrieve each phase to register new render states
+    friend RenderGraphLoader;
+
+  protected:
     bool m_shouldRenderOneTimePhases = true;
+    /**
+     * @brief phases that are called once at the begining of the processing
+     *
+     */
     std::vector<std::unique_ptr<BasePhaseABC>> m_oneTimeRenderPhases;
+
     // TODO : rename m_phases
+    /**
+     * @brief actual phases (RenderPhase, ComputePhase)
+     *
+     */
     std::vector<std::unique_ptr<BasePhaseABC>> m_renderPhases;
+
+    /**
+     * @brief a map of raw pointers, pointing towards the render phase resources
+     * not yet implemented
+     *
+     */
+    [[deprecated]] std::unordered_map<std::string, BasePhaseABC *> m_phasePtrs;
+
+    /**
+     * @brief RenderGraphs can be created using a unique_ptr or whatever data structure
+     * It can also be loaded by a function from a derived class
+     *
+     */
+    virtual void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+    {
+    }
 
   public:
     [[deprecated]] void addOneTimeRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
@@ -48,4 +80,18 @@ class RenderGraph
     [[nodiscard]] VkSemaphore getFirstPhaseCurrentAcquireSemaphore() const;
     [[nodiscard]] VkSemaphore getLastPhaseCurrentRenderSemaphore() const;
     [[nodiscard]] std::vector<VkFence> getAllCurrentFences() const;
+};
+
+static class RenderGraphLoader
+{
+  public:
+    template <typename TGraph>
+    static std::unique_ptr<RenderGraph> load(std::weak_ptr<Device> device, WindowGLFW *window,
+                                             uint32_t frameInFlightCount, uint32_t maxProbeCount)
+    {
+        static_assert(std::is_base_of_v<RenderGraph, TGraph> == true);
+        std::unique_ptr<RenderGraph> out = std::make_unique<TGraph>();
+        out->load(device, window, frameInFlightCount, maxProbeCount);
+        return std::move(out);
+    }
 };

@@ -363,9 +363,9 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_product->m_materialDescriptorSetEnable = enable;
     }
 
-    void setModel(std::shared_ptr<Model> mesh)
+    void setModel(std::shared_ptr<Model> model)
     {
-        m_product->m_model = mesh;
+        m_product->m_model = model;
     }
 
     void setProbeDescriptorEnable(bool a)

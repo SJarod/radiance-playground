@@ -12,6 +12,11 @@ class Skybox;
 
 #include "engine/scriptable.hpp"
 
+class Device;
+class WindowGLFW;
+class RenderGraph;
+class Context;
+
 class SceneABC
 {
   protected:
@@ -23,8 +28,21 @@ class SceneABC
     std::vector<std::shared_ptr<Light>> m_lights;
     std::shared_ptr<Skybox> m_skybox;
 
-  public:
     SceneABC() = default;
+
+    virtual void load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+                      RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount) = 0;
+
+  public:
+    template <typename TScene>
+    static std::unique_ptr<SceneABC> load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+                                          RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+    {
+        static_assert(std::is_base_of_v<SceneABC, TScene> == true);
+        std::unique_ptr<SceneABC> out = std::make_unique<TScene>();
+        out->load(cx, device, window, renderGraph, frameInFlightCount, maxProbeCount);
+        return std::move(out);
+    }
     virtual ~SceneABC() = default;
 
     SceneABC(const SceneABC &) = delete;

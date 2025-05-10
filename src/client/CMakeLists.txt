@@ -4,6 +4,7 @@ add_library(${component} STATIC "")
 
 target_sources(${component}
     PRIVATE
+
     scripts/move_camera.hpp
     scripts/move_camera.cpp
     scripts/probes.hpp
@@ -14,10 +15,15 @@ target_sources(${component}
     application.cpp
     application.hpp
 
-    sample_scene.hpp
-    sample_scene.cpp
-    sample_scene_2d.hpp
-    sample_scene_2d.cpp
+    scenes/sample_scene.hpp
+    scenes/sample_scene.cpp
+    scenes/sample_scene_2d.hpp
+    scenes/sample_scene_2d.cpp
+
+    render_graphs/compute_pp_graph.hpp
+    render_graphs/compute_pp_graph.cpp
+    render_graphs/irradiance_baked_graph.hpp
+    render_graphs/irradiance_baked_graph.cpp
 
     time_manager.hpp
 	
