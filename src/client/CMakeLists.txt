@@ -19,11 +19,15 @@ target_sources(${component}
     scenes/sample_scene.cpp
     scenes/sample_scene_2d.hpp
     scenes/sample_scene_2d.cpp
+    scenes/sample_scene_rc3d.hpp
+    scenes/sample_scene_rc3d.cpp
 
     render_graphs/compute_pp_graph.hpp
     render_graphs/compute_pp_graph.cpp
     render_graphs/irradiance_baked_graph.hpp
     render_graphs/irradiance_baked_graph.cpp
+    render_graphs/rc3d_graph.hpp
+    render_graphs/rc3d_graph.cpp
 
     time_manager.hpp
 	
