@@ -2,17 +2,17 @@
 
 #include "engine/transform.hpp"
 
-#include "input_manager.hpp" 
-#include "move_camera.hpp"
 #include "imgui.h"
+#include "input_manager.hpp"
+#include "move_camera.hpp"
 
-void MoveCamera::setFocus(bool newFocus) 
+void MoveCamera::setFocus(bool newFocus)
 {
     m_isFocused = newFocus;
 
-    if (m_isFocused) 
+    if (m_isFocused)
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
-    else 
+    else
         ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 
     int inputModeValue = m_isFocused ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
@@ -57,12 +57,12 @@ void MoveCamera::update(float deltaTime)
     Transform cameraTransform = m_mainCamera->getTransform();
 
     cameraTransform.rotation =
-        glm::quat(glm::vec3(pitch, 0.f, 0.f)) * cameraTransform.rotation * glm::quat(glm::vec3(0.f, yaw, 0.f));
+        glm::quat(glm::vec3(-pitch, 0.f, 0.f)) * cameraTransform.rotation * glm::quat(glm::vec3(0.f, -yaw, 0.f));
 
     float xaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_A) == GLFW_PRESS) -
                        (glfwGetKey(m_window->getHandle(), GLFW_KEY_D) == GLFW_PRESS);
-    float zaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_S) == GLFW_PRESS) -
-                       (glfwGetKey(m_window->getHandle(), GLFW_KEY_W) == GLFW_PRESS);
+    float zaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_W) == GLFW_PRESS) -
+                       (glfwGetKey(m_window->getHandle(), GLFW_KEY_S) == GLFW_PRESS);
     float yaxisInput = (glfwGetKey(m_window->getHandle(), GLFW_KEY_Q) == GLFW_PRESS) -
                        (glfwGetKey(m_window->getHandle(), GLFW_KEY_E) == GLFW_PRESS);
     glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * cameraTransform.rotation;

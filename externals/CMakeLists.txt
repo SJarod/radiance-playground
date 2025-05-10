@@ -14,8 +14,6 @@ endforeach()
 add_subdirectory(glm)
 target_compile_definitions(glm PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(glm PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
-target_compile_definitions(glm PUBLIC GLM_FORCE_LEFT_HANDED)
-
 
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_NO_EXPORT ON)

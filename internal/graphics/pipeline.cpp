@@ -372,7 +372,7 @@ void PipelineDirector<PipelineType::GRAPHICS>::configureColorDepthRasterizerBuil
     builder.setDepthClampEnable(VK_FALSE);
     builder.setRasterizerDiscardEnable(VK_FALSE);
     builder.setPolygonMode(VK_POLYGON_MODE_FILL);
-    builder.setCullMode(VK_CULL_MODE_FRONT_BIT);
+    builder.setCullMode(VK_CULL_MODE_BACK_BIT);
     builder.setFrontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE);
     builder.setDepthBiasEnable(VK_FALSE);
     builder.setDepthBiasConstantFactor(0.f);
