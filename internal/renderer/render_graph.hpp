@@ -53,11 +53,20 @@ class RenderGraph
      * It can also be loaded by a function from a derived class
      *
      */
-    virtual void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+    virtual void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
+                      uint32_t maxProbeCount)
     {
     }
 
   public:
+    virtual ~RenderGraph() = default;
+
+    RenderGraph() = default;
+    RenderGraph(const RenderGraph &) = delete;
+    RenderGraph &operator=(const RenderGraph &) = delete;
+    RenderGraph(RenderGraph &&) = delete;
+    RenderGraph &operator=(RenderGraph &&) = delete;
+
     [[deprecated]] void addOneTimeRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
     [[deprecated]] void addRenderPhase(std::unique_ptr<RenderPhase> renderPhase);
     void addPhase(std::unique_ptr<BasePhaseABC> phase);
@@ -82,7 +91,7 @@ class RenderGraph
     [[nodiscard]] std::vector<VkFence> getAllCurrentFences() const;
 };
 
-static class RenderGraphLoader
+class RenderGraphLoader
 {
   public:
     template <typename TGraph>

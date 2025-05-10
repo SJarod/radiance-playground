@@ -37,6 +37,11 @@ class Pipeline
   public:
     ~Pipeline();
 
+    Pipeline(const Pipeline &) = delete;
+    Pipeline &operator=(const Pipeline &) = delete;
+    Pipeline(Pipeline &&) = delete;
+    Pipeline &operator=(Pipeline &&) = delete;
+
     /**
      * @brief bind the pipeline whether it is a graphics or a compute pipeline
      *
@@ -89,6 +94,12 @@ class BasePipelineBuilder
 
   public:
     virtual ~BasePipelineBuilder() = default;
+
+    BasePipelineBuilder() = default;
+    BasePipelineBuilder(const BasePipelineBuilder &) = delete;
+    BasePipelineBuilder &operator=(const BasePipelineBuilder &) = delete;
+    BasePipelineBuilder(BasePipelineBuilder &&) = delete;
+    BasePipelineBuilder &operator=(BasePipelineBuilder &&) = delete;
 
     void setDevice(std::weak_ptr<Device> device)
     {

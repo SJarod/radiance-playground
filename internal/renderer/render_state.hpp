@@ -56,10 +56,16 @@ using DescriptorSetUpdatePred =
  */
 class GPUStateI
 {
+  protected:
+    GPUStateI() = default;
+
   public:
-    virtual ~GPUStateI()
-    {
-    }
+    virtual ~GPUStateI() = default;
+
+    GPUStateI(const GPUStateI &) = delete;
+    GPUStateI &operator=(const GPUStateI &) = delete;
+    GPUStateI(GPUStateI &&) = delete;
+    GPUStateI &operator=(GPUStateI &&) = delete;
 
     /**
      * @brief this function is specific for the compute state but it is needed in the highest class of polymorphisme due
@@ -186,6 +192,11 @@ class RenderStateABC : public GPUStateI
 
   public:
     virtual ~RenderStateABC();
+
+    RenderStateABC(const RenderStateABC &) = delete;
+    RenderStateABC &operator=(const RenderStateABC &) = delete;
+    RenderStateABC(RenderStateABC &&) = delete;
+    RenderStateABC &operator=(RenderStateABC &&) = delete;
 
     virtual void updatePushConstants(const VkCommandBuffer &commandBuffer, uint32_t singleFrameRenderIndex,
                                      const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights)
@@ -839,6 +850,11 @@ class ComputeState : public GPUStateI
 
   public:
     ~ComputeState();
+
+    ComputeState(const ComputeState &) = delete;
+    ComputeState &operator=(const ComputeState &) = delete;
+    ComputeState(ComputeState &&) = delete;
+    ComputeState &operator=(ComputeState &&) = delete;
 
     void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex) override;
 

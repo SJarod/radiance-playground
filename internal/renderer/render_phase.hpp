@@ -45,6 +45,11 @@ class BasePhaseABC
   public:
     virtual ~BasePhaseABC() = default;
 
+    BasePhaseABC(const BasePhaseABC &) = delete;
+    BasePhaseABC &operator=(const BasePhaseABC &) = delete;
+    BasePhaseABC(BasePhaseABC &&) = delete;
+    BasePhaseABC &operator=(BasePhaseABC &&) = delete;
+
     virtual [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
     virtual [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
     virtual [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const = 0;
@@ -149,6 +154,14 @@ class PhaseBuilderABC
     std::string m_phaseName = "Unnamed";
 
   public:
+    virtual ~PhaseBuilderABC() = default;
+
+    PhaseBuilderABC() = default;
+    PhaseBuilderABC(const PhaseBuilderABC &) = delete;
+    PhaseBuilderABC &operator=(const PhaseBuilderABC &) = delete;
+    PhaseBuilderABC(PhaseBuilderABC &&) = delete;
+    PhaseBuilderABC &operator=(PhaseBuilderABC &&) = delete;
+
     inline void setPhaseName(std::string name)
     {
         m_phaseName = name;
