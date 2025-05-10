@@ -30,7 +30,7 @@
 #include "sample_scene_2d.hpp"
 
 void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                       RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+                         RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -121,6 +121,12 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
         phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 4,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = maxProbeCount,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 5,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .descriptorCount = 1,
@@ -166,6 +172,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.setProbeDescriptorEnable(false);
