@@ -54,14 +54,14 @@ void RenderPass::buildFramebuffers(const std::vector<std::vector<VkImageView>> &
 
         RenderPassFramebufferBuilder &framebufferBuilder = m_pooledFramebufferBuilders[i];
 
+        if (pooledDepthAttachments.has_value())
+            framebufferBuilder.setDepthAttachment(pooledDepthAttachments.value()[i]);
+
         for (size_t j = 0; j < pooledImageViews[i].size(); ++j)
         {
             framebufferBuilder.setExtent(extent);
             framebufferBuilder.setLayerCount(layerCount);
             framebufferBuilder.setColorAttachment(pooledImageViews[i][j]);
-
-            if (pooledDepthAttachments.has_value())
-                framebufferBuilder.setDepthAttachment(pooledDepthAttachments.value()[i]);
 
             framebuffers[j] = *framebufferBuilder.buildAndRestart();
             views.push_back(pooledImageViews[i][j]);

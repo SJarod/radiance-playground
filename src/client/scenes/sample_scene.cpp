@@ -409,28 +409,28 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.setDevice(device);
-
-            ModelRenderStateBuilder captureMrsb;
-            captureMrsb.setFrameInFlightCount(frameInFlightCount);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            captureMrsb.setDevice(device);
-
             mrsb.setModel(m_objects[i]);
-            captureMrsb.setModel(m_objects[i]);
 
             // Check if the mesh is the quad, the sphere or the cube
             if (i != 1 && i != 2 && i != 3)
             {
-                mrsb.setPipeline(phongPipeline);
-                captureMrsb.setPipeline(phongCapturePipeline);
-
                 mrsb.setEnvironmentMaps(rg->m_irradianceMaps);
+                mrsb.setPipeline(phongPipeline);
+
+                ModelRenderStateBuilder captureMrsb;
+                captureMrsb.setFrameInFlightCount(window->getSwapChain()->getSwapChainImageCount());
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                captureMrsb.setDevice(device);
+                captureMrsb.setModel(m_objects[i]);
+                captureMrsb.setPipeline(phongCapturePipeline);
                 captureMrsb.setEnvironmentMaps(rg->m_irradianceMaps);
+
+                rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
             }
             else
             {
@@ -439,17 +439,10 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 mrsb.setLightDescriptorEnable(false);
                 mrsb.setPipeline(environmentMapPipeline);
 
-                captureMrsb.setTextureDescriptorEnable(false);
-                captureMrsb.setProbeDescriptorEnable(false);
-                captureMrsb.setLightDescriptorEnable(false);
-                captureMrsb.setPipeline(environmentMapCapturePipeline);
-
                 mrsb.setEnvironmentMaps(rg->m_irradianceMaps);
-                captureMrsb.setEnvironmentMaps(rg->m_irradianceMaps);
             }
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
-            rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
         }
 
         UniformDescriptorBuilder probeGridDebugUdb;

@@ -35,15 +35,16 @@ void main()
 
 	const vec3 debugCenter = probes[instanceIndex].position;
 
-	const vec3 fragPosLocalToGrid = (debugCenter - cornerPosition) / spacing;
-	const vec3 gridPos = clamp(fragPosLocalToGrid, vec3(0.0), vec3(lastIndex));
+	const vec3 fragPosLocalToGrid = max(debugCenter - cornerPosition, 0.0);
+	const ivec3 probe3DIndex = ivec3(clamp(fragPosLocalToGrid / spacing, vec3(0.0), dimensions));
 
-	const vec3 weights = vec3(dimensions.x * dimensions.y, dimensions.x, 1);
-	const int probe1DIndex = int(dot(gridPos, weights));
+	const ivec3 weights = ivec3(dimensions.y * dimensions.z, dimensions.z, 1);
+	const int probe1DIndex = int(dot(probe3DIndex, weights));
 
 	vec3 normal = normalize(fragNormal);
 
 	vec3 sampleColor = texture(environmentMaps[probe1DIndex], normal).rgb;
 
+	//oColor = vec4((debugCenter - cornerPosition) / extent, 1.0);
 	oColor = vec4(sampleColor, 1.0);
 }

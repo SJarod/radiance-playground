@@ -159,7 +159,7 @@ void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal
 	const ivec3 probe3DIndex111 = min(probeCornerIndex + ivec3(1, 1, 1), indexBorders);
 
 	// 1DIndex = 3DIndex.x * dimensions.z + 3DIndex.y * dimensions.z * dimensions.x + 3DIndex.z
-	const ivec3 weights = ivec3(dimensions.z, dimensions.z * dimensions.x, 1);
+	const ivec3 weights = ivec3(dimensions.y * dimensions.z, dimensions.z, 1);
 	const int probe1DIndex000 = int(dot(probe3DIndex000, weights));
 	const int probe1DIndex010 = int(dot(probe3DIndex010, weights));
 	const int probe1DIndex100 = int(dot(probe3DIndex100, weights));

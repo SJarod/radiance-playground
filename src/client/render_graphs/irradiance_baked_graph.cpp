@@ -26,6 +26,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
         captureEnvMapBuilder.setHeight(256);
         captureEnvMapBuilder.setCreateFromUserData(false);
         captureEnvMapBuilder.setDepthImageEnable(true);
+        captureEnvMapBuilder.setInitialLayout(VK_IMAGE_LAYOUT_PREINITIALIZED);
         td.configureUNORMTextureBuilder(captureEnvMapBuilder);
         m_capturedEnvMaps.push_back(captureEnvMapBuilder.buildAndRestart());
     }
