@@ -91,7 +91,7 @@ class RendererBuilder
 
     void setFrameInFlightCount(uint32_t inFlightCount)
     {
-        assert(inFlightCount == 2 || inFlightCount == 3);
+        assert(inFlightCount >= 1 && inFlightCount <= 3);
         m_product->m_framesInFlight = inFlightCount;
     }
 

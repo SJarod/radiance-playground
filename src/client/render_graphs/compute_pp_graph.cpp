@@ -92,6 +92,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
         ComputePhaseBuilder cpb;
         cpb.setDevice(device);
         cpb.setBufferingType(frameInFlightCount);
+        cpb.setPhaseName("Compute");
         computePhase = cpb.build();
         m_computePhase = computePhase.get();
     }

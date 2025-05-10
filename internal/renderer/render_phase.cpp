@@ -87,7 +87,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     if (singleFrameRenderIndex > 0)
     {
         VkFence currentFence = getCurrentFence(pooledFramebufferIndex);
-        vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+        VkResult res = vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+        assert(res != VK_TIMEOUT);
         vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
     }
 
@@ -256,6 +257,12 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
                 std::cerr << "Failed to create semaphore : " << res << std::endl;
                 return nullptr;
             }
+            devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = VK_OBJECT_TYPE_SEMAPHORE,
+                .objectHandle = (uint64_t)(backBuffers[i].acquireSemaphore),
+                .pObjectName = std::string(m_phaseName + " acquire semaphore").c_str(),
+            });
 
             res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr, &backBuffers[i].renderSemaphore);
             if (res != VK_SUCCESS)
@@ -263,6 +270,12 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
                 std::cerr << "Failed to create semaphore : " << res << std::endl;
                 return nullptr;
             }
+            devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = VK_OBJECT_TYPE_SEMAPHORE,
+                .objectHandle = (uint64_t)(backBuffers[i].renderSemaphore),
+                .pObjectName = std::string(m_phaseName + " render semaphore").c_str(),
+            });
 
             res = vkCreateFence(deviceHandle, &fenceCreateInfo, nullptr, &backBuffers[i].inFlightFence);
             if (res != VK_SUCCESS)
@@ -270,6 +283,12 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
                 std::cerr << "Failed to create fence : " << res << std::endl;
                 return nullptr;
             }
+            devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                .objectType = VK_OBJECT_TYPE_FENCE,
+                .objectHandle = (uint64_t)(backBuffers[i].inFlightFence),
+                .pObjectName = std::string(m_phaseName + " fence").c_str(),
+            });
         }
     }
 
@@ -307,7 +326,8 @@ void ComputePhase::recordBackBuffer() const
     ZoneScoped;
 
     VkFence currentFence = getCurrentFence();
-    vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+    VkResult res = vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+    assert(res != VK_TIMEOUT);
     vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
 
     const VkCommandBuffer &commandBuffer = getCurrentBackBuffer().commandBuffer;
@@ -319,7 +339,7 @@ void ComputePhase::recordBackBuffer() const
         .flags = 0,
         .pInheritanceInfo = nullptr,
     };
-    VkResult res = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+    res = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
     if (res != VK_SUCCESS)
     {
         std::cerr << "Failed to begin recording command buffer : " << res << std::endl;
@@ -420,31 +440,46 @@ std::unique_ptr<ComputePhase> ComputePhaseBuilder::build()
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
-        for (int i = 0; i < m_bufferingType; ++i)
+        VkResult res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
+                                         &m_product->m_backBuffers[i].acquireSemaphore);
+        if (res != VK_SUCCESS)
         {
-            VkResult res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                                             &m_product->m_backBuffers[i].acquireSemaphore);
-            if (res != VK_SUCCESS)
-            {
-                std::cerr << "Failed to create semaphore : " << res << std::endl;
-                return nullptr;
-            }
-
-            res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
-                                    &m_product->m_backBuffers[i].renderSemaphore);
-            if (res != VK_SUCCESS)
-            {
-                std::cerr << "Failed to create semaphore : " << res << std::endl;
-                return nullptr;
-            }
-
-            res = vkCreateFence(deviceHandle, &fenceCreateInfo, nullptr, &m_product->m_backBuffers[i].inFlightFence);
-            if (res != VK_SUCCESS)
-            {
-                std::cerr << "Failed to create fence : " << res << std::endl;
-                return nullptr;
-            }
+            std::cerr << "Failed to create semaphore : " << res << std::endl;
+            return nullptr;
         }
+        devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = VK_OBJECT_TYPE_SEMAPHORE,
+            .objectHandle = (uint64_t)(m_product->m_backBuffers[i].acquireSemaphore),
+            .pObjectName = std::string(m_phaseName + " acquire semaphore").c_str(),
+        });
+
+        res = vkCreateSemaphore(deviceHandle, &semaphoreCreateInfo, nullptr,
+                                &m_product->m_backBuffers[i].renderSemaphore);
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create semaphore : " << res << std::endl;
+            return nullptr;
+        }
+        devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = VK_OBJECT_TYPE_SEMAPHORE,
+            .objectHandle = (uint64_t)(m_product->m_backBuffers[i].renderSemaphore),
+            .pObjectName = std::string(m_phaseName + " render semaphore").c_str(),
+        });
+
+        res = vkCreateFence(deviceHandle, &fenceCreateInfo, nullptr, &m_product->m_backBuffers[i].inFlightFence);
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create fence : " << res << std::endl;
+            return nullptr;
+        }
+        devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .objectType = VK_OBJECT_TYPE_FENCE,
+            .objectHandle = (uint64_t)(m_product->m_backBuffers[i].inFlightFence),
+            .pObjectName = std::string(m_phaseName + " fence").c_str(),
+        });
     }
 
     return std::move(m_product);

@@ -100,7 +100,8 @@ Application::Application()
     rb.setDevice(m_discreteDevice);
     rb.setSwapChain(m_window->getSwapChain());
     rb.setFrameInFlightCount(bufferingType);
-    rb.setRenderGraph(RenderGraphLoader::load<ComputeGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+    rb.setRenderGraph(
+        RenderGraphLoader::load<ComputeGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
     m_renderer = rb.build();
 }
 
@@ -214,7 +215,7 @@ void Application::runLoop()
     bool show_demo_window = true;
 
     m_scene = SceneABC::load<SampleScene2D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
-                                          bufferingType, maxProbeCount);
+                                            bufferingType, maxProbeCount);
 
     auto &lights = m_scene->getLights();
     std::shared_ptr<ProbeGrid> grid = nullptr;
