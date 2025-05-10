@@ -9,10 +9,12 @@
 #include "engine/camera.hpp"
 #include "engine/probe_grid.hpp"
 #include "engine/uniform.hpp"
+
 #include "graphics/buffer.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/render_pass.hpp"
+
 #include "light.hpp"
 #include "mesh.hpp"
 #include "model.hpp"
@@ -182,6 +184,16 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
     }
 }
 
+ComputeState::~ComputeState()
+{
+    if (!m_device.lock())
+        return;
+
+    vkDestroyDescriptorPool(m_device.lock()->getHandle(), m_descriptorPool, nullptr);
+
+    m_pipeline.reset();
+}
+
 void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex)
 {
     if (m_descriptorSetUpdatePred)
@@ -262,6 +274,12 @@ void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
         .type = poolSizeType,
         .descriptorCount = m_frameInFlightCount,
     });
+}
+
+void ModelRenderStateBuilder::setModel(std::shared_ptr<Model> model)
+{
+    m_modelName = model->getName();
+    m_product->m_model = model;
 }
 
 std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
@@ -352,7 +370,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureUniformBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::MVP));
             bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " Model MVP Uniform Buffer");
+            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName + " Model MVP Uniform Buffer");
             m_product->m_mvpUniformBuffers[i] = bb.build();
 
             m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
@@ -371,7 +389,7 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::ProbeContainer));
             bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " Model Probe Container Uniform Buffer");
+            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName + " Model Probe Container Uniform Buffer");
             m_product->m_probeStorageBuffers[i] = bb.build();
 
             m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
@@ -389,7 +407,8 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::PointLightContainer));
             bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " Model Point Light Container Uniform Buffer");
+            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
+                       " Model Point Light Container Uniform Buffer");
             m_product->m_pointLightStorageBuffers[i] = bb.build();
 
             m_product->m_pointLightStorageBuffers[i]->mapMemory(&m_product->m_pointLightStorageBuffersMapped[i]);
@@ -404,7 +423,8 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
             bd.configureStorageBufferBuilder(bb);
             bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
             bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " Model Directional Light Container Uniform Buffer");
+            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
+                       " Model Directional Light Container Uniform Buffer");
             m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
             m_product->m_directionalLightStorageBuffers[i]->mapMemory(

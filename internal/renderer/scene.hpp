@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
@@ -43,7 +44,7 @@ class SceneABC
         out->load(cx, device, window, renderGraph, frameInFlightCount, maxProbeCount);
         return std::move(out);
     }
-    virtual ~SceneABC() = default;
+    virtual ~SceneABC();
 
     SceneABC(const SceneABC &) = delete;
     SceneABC &operator=(const SceneABC &) = delete;

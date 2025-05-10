@@ -75,6 +75,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         mb.setDevice(device);
         mb.setVertices(vertices);
         mb.setIndices(indices);
+        mb.setName("Square mesh");
         std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
 
         const std::vector<unsigned char> imagePixels = {
@@ -90,6 +91,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         mesh->setTexture(tb.buildAndRestart());
 
         ModelBuilder modelBuilder;
+        modelBuilder.setName("Square");
         modelBuilder.setMesh(mesh);
 
         m_objects.push_back(modelBuilder.build());

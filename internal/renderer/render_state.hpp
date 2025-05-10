@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -56,6 +57,10 @@ using DescriptorSetUpdatePred =
 class GPUStateI
 {
   public:
+    virtual ~GPUStateI()
+    {
+    }
+
     /**
      * @brief this function is specific for the compute state but it is needed in the highest class of polymorphisme due
      * to the renderer using GPUStateIs
@@ -83,6 +88,7 @@ class GPUStateI
      */
     virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) = 0;
 
+  public:
     virtual [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const = 0;
     virtual [[nodiscard]] VkDescriptorPool getDescriptorPool() const = 0;
 };
@@ -287,6 +293,8 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
 
     std::weak_ptr<Device> m_device;
 
+    std::string m_modelName = "Unnamed";
+
     std::vector<VkDescriptorPoolSize> m_poolSizes;
     uint32_t m_frameInFlightCount;
 
@@ -363,10 +371,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_product->m_materialDescriptorSetEnable = enable;
     }
 
-    void setModel(std::shared_ptr<Model> model)
-    {
-        m_product->m_model = model;
-    }
+    void setModel(std::shared_ptr<Model> model);
 
     void setProbeDescriptorEnable(bool a)
     {
@@ -833,6 +838,8 @@ class ComputeState : public GPUStateI
     ComputeState() = default;
 
   public:
+    ~ComputeState();
+
     void recordBackBufferComputeCommands(const VkCommandBuffer &commandBuffer, uint32_t backBufferIndex) override;
 
     void updateUniformBuffers(uint32_t backBufferIndex) override;

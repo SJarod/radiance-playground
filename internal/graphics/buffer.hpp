@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include <vulkan/vulkan.hpp>
 
@@ -47,6 +48,11 @@ class Buffer
     [[nodiscrad]] inline const size_t getSize() const
     {
         return m_size;
+    }
+
+    [[nodiscard]] inline std::string getName() const
+    {
+        return m_name;
     }
 };
 

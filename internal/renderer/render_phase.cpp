@@ -24,10 +24,10 @@ RenderPhase::~RenderPhase()
     if (!m_device.lock())
         return;
 
-    auto deviceHandle = m_device.lock()->getHandle();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
 
-    // TODO : wait queue instead of device
-    vkDeviceWaitIdle(deviceHandle);
+    vkQueueWaitIdle(devicePtr->getGraphicsQueue());
 
     for (uint32_t i = 0u; i < m_pooledBackBuffers.size(); i++)
     {
@@ -288,10 +288,10 @@ ComputePhase::~ComputePhase()
     if (!m_device.lock())
         return;
 
-    auto deviceHandle = m_device.lock()->getHandle();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
 
-    // TODO : wait queue instead of device
-    vkDeviceWaitIdle(deviceHandle);
+    vkQueueWaitIdle(devicePtr->getComputeQueue());
 
     for (uint32_t j = 0u; j < m_backBuffers.size(); j++)
     {

@@ -12,6 +12,11 @@
 
 Mesh::~Mesh()
 {
+    std::cout << "Destroying mesh " << m_name << std::endl;
+    if (m_indexBuffer)
+        std::cout << "\t" << m_indexBuffer->getName() << std::endl;
+    if (m_vertexBuffer)
+        std::cout << "\t" << m_vertexBuffer->getName() << std::endl;
     m_indexBuffer.reset();
     m_vertexBuffer.reset();
 }
@@ -40,6 +45,7 @@ void MeshBuilder::createVertexBuffer()
     bb.setSize(vertexBufferSize);
     bb.setName(m_modelFilename + " Mesh Vertex Buffer");
     m_product->m_vertexBuffer = bb.build();
+    std::cout << "Creating mesh " << m_product->m_name << " : " << m_product->m_vertexBuffer->getName() << std::endl;
 
     // transfer from staging buffer to vertex buffer
 
@@ -72,6 +78,7 @@ void MeshBuilder::createIndexBuffer()
     bb.setSize(indexBufferSize);
     bb.setName(m_modelFilename + " Mesh Index Buffer");
     m_product->m_indexBuffer = bb.build();
+    std::cout << "Creating mesh " << m_product->m_name << " : " << m_product->m_indexBuffer->getName() << std::endl;
 
     m_product->m_indexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
     stagingBuffer.reset();

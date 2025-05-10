@@ -1,11 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
-#include "engine/vertex.hpp"
 #include "engine/transform.hpp"
+#include "engine/vertex.hpp"
 #include "graphics/buffer.hpp"
 
 class Device;
@@ -21,6 +22,8 @@ class Mesh
   private:
     std::weak_ptr<Device> m_device;
 
+    std::string m_name = "Unnamed";
+
     std::unique_ptr<Buffer> m_vertexBuffer;
     std::unique_ptr<Buffer> m_indexBuffer;
 
@@ -30,6 +33,7 @@ class Mesh
     std::shared_ptr<Texture> m_texture;
 
     Mesh() = default;
+
   public:
     ~Mesh();
 
@@ -60,7 +64,12 @@ class Mesh
         return m_texture;
     }
 
-public:
+    [[nodiscard]] inline std::string getName() const
+    {
+        return m_name;
+    }
+
+  public:
     void setTexture(const std::shared_ptr<Texture> &texture)
     {
         m_texture = texture;
@@ -113,13 +122,17 @@ class MeshBuilder
         m_modelFilename = filename;
         m_bLoadFromFile = true;
     }
+    void setName(const std::string &name)
+    {
+        m_product->m_name = name;
+    }
     void setModelImporterFlags(unsigned int flags)
     {
         m_importerFlags = flags;
     }
 
-    void setVerticesFromAiMesh(const aiMesh* pMesh);
-    void setIndicesFromAiMesh(const aiMesh* pMesh);
+    void setVerticesFromAiMesh(const aiMesh *pMesh);
+    void setIndicesFromAiMesh(const aiMesh *pMesh);
 
     std::unique_ptr<Mesh> buildAndRestart();
 };
@@ -128,6 +141,6 @@ class MeshDirector
 {
   public:
     void createAssimpMeshBuilder(MeshBuilder &builder);
-    void createSphereMeshBuilder(MeshBuilder& builder, float radius, float latitude, float longitude);
-    void createCubeMeshBuilder(MeshBuilder &builder, const glm::vec3& halfExtent);
+    void createSphereMeshBuilder(MeshBuilder &builder, float radius, float latitude, float longitude);
+    void createCubeMeshBuilder(MeshBuilder &builder, const glm::vec3 &halfExtent);
 };

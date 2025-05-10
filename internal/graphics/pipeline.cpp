@@ -353,14 +353,12 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
         return nullptr;
     }
 
-    auto result = std::move(m_product);
-
     for (int i = 0; i < m_modules.size(); ++i)
     {
         destroy_shader_module(m_device.lock()->getHandle(), m_modules[i]);
     }
 
-    return result;
+    return std::move(m_product);
 }
 
 void PipelineDirector<PipelineType::GRAPHICS>::configureColorDepthRasterizerBuilder(
@@ -436,6 +434,11 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
         .layout = m_product->m_pipelineLayout,
     };
     vkCreateComputePipelines(deviceHandle, VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_product->m_handle);
+
+    for (int i = 0; i < m_modules.size(); ++i)
+    {
+        destroy_shader_module(m_device.lock()->getHandle(), m_modules[i]);
+    }
 
     return std::move(m_product);
 }
