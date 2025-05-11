@@ -20,9 +20,9 @@ Light lights[LIGHT_COUNT] = Light[LIGHT_COUNT](
 
 #define MAX_CASCADE_COUNT 5
 // p = probe count is a square number
-const int MAX_PROBE_COUNT = 1 << 8;
+const int MAX_PROBE_COUNT = 16 * 16;
 // q = discrete value count will be doubled every cascade
-#define MIN_DISCRETE_VALUE_COUNT 32
+#define MIN_DISCRETE_VALUE_COUNT 8
 // dw = radiance interval length will be doubled every cascade
 const float MIN_RADIANCE_INTERVAL_LENGTH = 20.0 / float(MAX_PROBE_COUNT);
 

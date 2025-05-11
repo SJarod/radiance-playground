@@ -24,10 +24,10 @@ class RadianceCascades : public ScriptableABC
   private:
     const int m_maxCascadeCount = 3;
     // p = probe count is a square number
-    const int m_maxProbeCount = 1 << 8;
+    const int m_maxProbeCount = 16 * 16;
     // q = discrete value count will be doubled every cascade
     // number of radiance intervals for the probes from first cascade
-    const int m_minDiscreteValueCount = 8;
+    const int m_minDiscreteValueCount = 32;
     // dw = radiance interval length will be doubled every cascade
     // taken from https://www.shadertoy.com/view/mtlBzX
     const float m_minRadianceintervalLength =
@@ -38,7 +38,7 @@ class RadianceCascades : public ScriptableABC
 
     // iteration along the ray for the raycasting function
     // it is for now uniformly distributed (it may not be precise)
-    const int m_maxRayIterationCount = 16;
+    const int m_maxRayIterationCount = 32;
 
     struct parameters
     {

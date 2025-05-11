@@ -106,7 +106,7 @@ vec4 probe_encode_radiance(inout probe p, in int intervalIndex, in int intervalC
 }
 
 // the cascades are managed by the dispatch (work group)
-#define LOCAL_SIZE_X 1
+#define LOCAL_SIZE_X 128 // one thread per probe (more or less)
 #define LOCAL_SIZE_Y 1
 #define LOCAL_SIZE_Z 1
 layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y, local_size_z = LOCAL_SIZE_Z) in;
@@ -139,10 +139,15 @@ void main()
         intervalIndexOffset += previous_desc.p * previous_desc.q;
     }
 
-    for (int i = 0; i < probeCount; ++i)
+    int itCount = max(1, probeCount / LOCAL_SIZE_X);
+    for (int i = 0; i < itCount; ++i)
     {
+        int ii = int(gl_LocalInvocationID.x) + (LOCAL_SIZE_X * i);
+        if (ii >= probeCount)
+            break;
+
         // index of probe is offsetted by the number of probes in the previous cascade
-        int probeIndex = probeIndexOffset + i;
+        int probeIndex = probeIndexOffset + ii;
 
         float intervalOffset = 0.0;
         if (cascadeIndex > 0)
@@ -157,7 +162,7 @@ void main()
             // index of interval is offsetted by the number of intervals before hand
             // the number of intervals per probes in the previous cascades
             // the strides are intervalCount length
-            int intervalProbeIndex = intervalIndexOffset + i * intervalCount;
+            int intervalProbeIndex = intervalIndexOffset + ii * intervalCount;
         
 	        vec4 radianceInterval = probe_encode_radiance(p, j, intervalCount, intervalLength, intervalOffset);
         
