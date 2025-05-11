@@ -67,7 +67,7 @@ vec4 radiance_apply(in vec2 uv)
         {
             // computing the right interval index in function of
             // the wanted final interval and the cascade index
-            int intervalIndex = i / int(pow(2.0, float(MAX_CASCADE_COUNT - 1 - j)));
+            int intervalIndex = i / (1 << (MAX_CASCADE_COUNT - 1 - j));
 
             int[4] probeIndices = get_surrounding_probe_indices_from_uv(uv, j);
             cascade_desc desc = retrieve_cascade_desc(j);

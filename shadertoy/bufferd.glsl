@@ -78,7 +78,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     float intervalOffset = 0.0;
     if (cascadeIndex > 0)
-        intervalOffset = pow(2.0, float(cascadeIndex - 1));
+        intervalOffset = float(1 << (cascadeIndex - 1));
     intervalOffset *= float(MIN_RADIANCE_INTERVAL_LENGTH);
     
     int cascadeDataIndex = cascadeDescIndex + 1;
