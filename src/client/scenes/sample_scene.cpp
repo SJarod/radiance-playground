@@ -513,7 +513,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         prsb.setDevice(device);
         prsb.setPipeline(probeGridDebugPipeline);
         prsb.setProbeGrid(m_grid);
-        prsb.setEnvironmentMaps(rg->m_capturedEnvMaps);
+        prsb.setEnvironmentMaps(rg->m_irradianceMaps);
         prsb.setMesh(cubeMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb.build()));
 

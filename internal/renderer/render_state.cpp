@@ -1031,6 +1031,9 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
     std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
     mvpBufferInfos.resize(m_frameInFlightCount * m_captureCount);
 
+    std::vector<VkDescriptorImageInfo> envMapImageInfos;
+    envMapImageInfos.reserve(m_frameInFlightCount * m_captureCount);
+
     UniformDescriptorBuilder udb;
     for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
@@ -1053,9 +1056,9 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
 
             if (m_textureDescriptorEnable)
             {
-                VkDescriptorImageInfo imageInfo = {
-                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                };
+                VkDescriptorImageInfo& imageInfo = envMapImageInfos.emplace_back();
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
                 if (m_texture.lock())
                 {
                     auto texPtr = m_texture.lock();
@@ -1109,8 +1112,27 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t backBufferInde
     }
 }
 
-void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer,
-                                                                       uint32_t subObjectIndex)
+void EnvironmentCaptureRenderState::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex, uint32_t backBufferIndex, uint32_t pooledFramebufferIndex)
+{
+    std::vector<VkDescriptorSet> descriptorSets;
+
+    if (m_instanceDescriptorSetEnable)
+    {
+        const auto& instanceDescriptorSets = m_poolInstanceDescriptorSets.front();
+        if (backBufferIndex < instanceDescriptorSets.size())
+        {
+            descriptorSets.push_back(instanceDescriptorSets[backBufferIndex]);
+        }
+    }
+
+    if (descriptorSets.size() == 0u)
+        return;
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0,
+        descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+}
+
+void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex)
 {
     auto skyboxPtr = m_skybox.lock();
 

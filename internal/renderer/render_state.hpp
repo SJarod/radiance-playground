@@ -646,6 +646,8 @@ class EnvironmentCaptureRenderState : public RenderStateABC
                               const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
+    void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
+                                                uint32_t imageIndex, uint32_t pooledFramebufferIndex) override;
 
     uint32_t getSubObjectCount() const override
     {
