@@ -24,8 +24,8 @@ void RenderGraph::addPhase(std::unique_ptr<BasePhaseABC> phase)
     m_renderPhases.push_back(std::move(phase));
 }
 
-void RenderGraph::processRenderPhaseChain(std::vector<std::unique_ptr<BasePhaseABC>> &toProcess,
-                                          uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,
+void RenderGraph::processRenderPhaseChain(std::vector<std::unique_ptr<BasePhaseABC>> &toProcess, uint32_t imageIndex,
+                                          VkRect2D renderArea, const CameraABC &mainCamera,
                                           const std::vector<std::shared_ptr<Light>> &lights,
                                           const std::shared_ptr<ProbeGrid> &probeGrid,
                                           const VkSemaphore *inWaitSemaphore, const VkSemaphore **outAcquireSemaphore)
@@ -62,6 +62,12 @@ void RenderGraph::processRenderPhaseChain(std::vector<std::unique_ptr<BasePhaseA
 
     if (outAcquireSemaphore)
         *outAcquireSemaphore = lastAcquireSemaphore;
+
+    for (int i = 0; i < toProcess.size(); ++i)
+    {
+        if (const ComputePhase *phase = dynamic_cast<ComputePhase *>(toProcess[i].get()))
+            phase->wait();
+    }
 }
 
 void RenderGraph::processRendering(uint32_t imageIndex, VkRect2D renderArea, const CameraABC &mainCamera,

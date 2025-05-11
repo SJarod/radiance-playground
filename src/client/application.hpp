@@ -36,7 +36,7 @@ class Application
      * -1 to deactivate breakage
      *
      */
-    int m_breakAfterFrameCount = 1;
+    int m_breakAfterFrameCount = -1;
 
     void displayImgui();
 

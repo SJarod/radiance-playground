@@ -260,6 +260,12 @@ class ComputePhase : public BasePhaseABC
     void recordBackBuffer() const;
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
 
+    /**
+     * @brief wait for this compute phase to complete
+     *
+     */
+    void wait() const;
+
     void swapBackBuffers();
 
   public:

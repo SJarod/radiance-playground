@@ -398,6 +398,11 @@ void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) co
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
 }
 
+void ComputePhase::wait() const
+{
+    vkQueueWaitIdle(m_device.lock()->getComputeQueue());
+}
+
 void ComputePhase::swapBackBuffers()
 {
     m_backBufferIndex = (m_backBufferIndex + 1) % m_backBuffers.size();
