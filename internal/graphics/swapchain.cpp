@@ -181,6 +181,7 @@ std::unique_ptr<SwapChain> SwapChainBuilder::build()
         sb.setDevice(m_product->m_device);
         sb.setMagFilter(VK_FILTER_LINEAR);
         sb.setMinFilter(VK_FILTER_LINEAR);
+        sb.setAddressModeXYZ(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
         m_product->m_sampler = sb.build();
     }
 

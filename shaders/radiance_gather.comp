@@ -49,40 +49,16 @@ layout (std140, binding = 4) buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
-vec2 intersectAABB(vec2 ro, vec2 rd, vec2 a, vec2 b) {
-    // Return the two intersection t-values for the intersection between a ray
-    // and an axis-aligned bounding box
-    vec2 ta = (a - ro) / rd;
-    vec2 tb = (b - ro) / rd;
-    vec2 t1 = min(ta, tb);
-    vec2 t2 = max(ta, tb);
-    vec2 t = vec2(max(t1.x, t1.y), min(t2.x, t2.y));
-    return t.x > t.y ? vec2(-1.0) : t;
-}
-
 // raycasting to detect incoming radiance to a point p (and detect transparency)
 // R(p, w)
 vec4 raycasting_function(vec2 p, vec2 dir, float len)
 {
+    // taken from https://www.shadertoy.com/view/mtlBzX
     int n = int(gl_WorkGroupID.x);
     float t1 = cdubo.descs[0].dw;
     float tMin = n == 0 ? 0.0 : t1 * float(1 << 2 * (n - 1));
     float tMax = t1 * float(1 << 2 * n);
     tMax = tMax - tMin;
-
-    vec2 screenRes = vec2(textureSize(baseImage, 0));
-    // First clip the ray to the screen rectangle
-    // taken from https://www.shadertoy.com/view/mtlBzX
-    vec2 tAABB = intersectAABB(p, dir, vec2(0.0001), screenRes - 0.0001);
-    
-    if (tAABB.x > tMax || tAABB.y < 0.0) {
-        return vec4(0.0);
-    }
-
-    if (tAABB.x > 0.0) {
-        p += tAABB.x * dir;
-        tMax -= tAABB.x;
-    }
 
     float stepSize = len / float(paramsubo.maxRayIterationCount);
     vec2 sampledStep = p;
@@ -109,12 +85,6 @@ vec4 raycasting_function(vec2 p, vec2 dir, float len)
 
         if (hit == 1.0)
             break;
-
-        vec2 tAABB2 = intersectAABB(sampledStep, dir, vec2(0.0001), screenRes - 0.0001);
-    
-        if (tAABB2.x > tMax || tAABB2.y < 0.0) {
-            break;
-        }
 	}
     return incomingRadiance;
 }

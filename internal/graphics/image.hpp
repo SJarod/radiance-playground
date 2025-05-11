@@ -360,6 +360,10 @@ class SamplerBuilder
     VkFilter m_magFilter;
     VkFilter m_minFilter;
 
+    VkSamplerAddressMode m_addressmodeX;
+    VkSamplerAddressMode m_addressmodeY;
+    VkSamplerAddressMode m_addressmodeZ;
+
     void restart()
     {
         m_product = std::make_unique<VkSampler>();
@@ -382,6 +386,24 @@ class SamplerBuilder
     void setMinFilter(VkFilter minFilter)
     {
         m_minFilter = minFilter;
+    }
+    void setAddressModeX(VkSamplerAddressMode x)
+    {
+        m_addressmodeX = x;
+    }
+    void setAddressModeY(VkSamplerAddressMode y)
+    {
+        m_addressmodeY = y;
+    }
+    void setAddressModeZ(VkSamplerAddressMode z)
+    {
+        m_addressmodeZ = z;
+    }
+    void setAddressModeXYZ(VkSamplerAddressMode xyz)
+    {
+        m_addressmodeX = xyz;
+        m_addressmodeY = xyz;
+        m_addressmodeZ = xyz;
     }
 
     std::unique_ptr<VkSampler> build();

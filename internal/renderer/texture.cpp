@@ -128,6 +128,7 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     sb.setDevice(m_device);
     sb.setMagFilter(m_samplerFilter);
     sb.setMinFilter(m_samplerFilter);
+    sb.setAddressModeXYZ(VK_SAMPLER_ADDRESS_MODE_REPEAT);
     m_product->m_sampler = sb.build();
 
     auto result = std::move(m_product);
@@ -307,6 +308,7 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
     sb.setDevice(m_device);
     sb.setMagFilter(m_samplerFilter);
     sb.setMinFilter(m_samplerFilter);
+    sb.setAddressModeXYZ(VK_SAMPLER_ADDRESS_MODE_REPEAT);
     m_product->m_sampler = sb.build();
 
     auto result = std::move(m_product);
