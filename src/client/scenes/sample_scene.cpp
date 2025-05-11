@@ -636,14 +636,15 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             rsb.setModel(m_screen);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             rsb.setInstanceDescriptorSetUpdatePredPerFrame(
-                [this, window, rg, deviceHandle](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
+                [this, window, rg, deviceHandle](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                 const VkDescriptorSet set, uint32_t backBufferIndex) {
                     const auto &sampler = window->getSwapChain()->getSampler();
                     if (!sampler.has_value())
                         return;
 
                     VkDescriptorImageInfo imageInfo = {
                         .sampler = *sampler.value(),
-                        .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage(),
+                        .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage().second,
                         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     };
                     std::vector<VkWriteDescriptorSet> writes;

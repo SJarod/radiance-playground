@@ -33,6 +33,7 @@ class Device
     // physical device
     VkPhysicalDevice m_physicalHandle;
     VkPhysicalDeviceFeatures2 m_features;
+    VkPhysicalDeviceVulkan13Features m_features13;
     VkPhysicalDeviceMultiviewFeatures m_multiviewFeature;
     VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;

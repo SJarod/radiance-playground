@@ -84,6 +84,11 @@ class RenderPhase : public BasePhaseABC
      */
     std::optional<VkFramebuffer> m_lastFramebuffer = nullptr;
     /**
+     * @brief same as last frame buffer but with an image resource
+     *
+     */
+    std::optional<VkImage> m_lastFramebufferImageResource = nullptr;
+    /**
      * @brief same as last frame buffer but with an image view resource
      *
      */
@@ -141,10 +146,11 @@ class RenderPhase : public BasePhaseABC
     {
         return m_renderPass.get();
     }
-    [[nodiscard]] VkImageView getMostRecentRenderedImage() const
+    [[nodiscard]] std::pair<std::optional<VkImage>, VkImageView> getMostRecentRenderedImage() const
     {
-        assert(m_lastFramebufferImageView.has_value());
-        return m_lastFramebufferImageView.value();
+        assert(m_lastFramebufferImageResource.has_value());
+        return std::pair<std::optional<VkImage>, VkImageView>(m_lastFramebufferImageResource,
+                                                              m_lastFramebufferImageView.value());
     }
 };
 

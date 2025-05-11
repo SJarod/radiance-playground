@@ -154,9 +154,14 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
         .pNext = &m_product->m_multiviewFeature};
 
+    m_product->m_features13 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+                               .pNext = &m_product->m_bufferDeviceAddressFeature};
+    // enabling synchronization2 feature
+    m_product->m_features13.synchronization2 = VK_TRUE;
+
     m_product->m_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-        .pNext = &m_product->m_bufferDeviceAddressFeature,
+        .pNext = &m_product->m_features13,
     };
 
     vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);

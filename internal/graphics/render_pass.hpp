@@ -96,6 +96,14 @@ class RenderPass
   private:
     std::weak_ptr<Device> m_device;
 
+    /**
+     * @brief image resources (in which the framebuffers will draw)
+     * the render pass object is not required to possess a reference to the image resources
+     * it can be though
+     *
+     */
+    std::optional<std::vector<VkImage>> m_imageResources;
+
     VkRenderPass m_handle;
     size_t m_poolSize;
     std::vector<std::vector<VkFramebuffer>> m_pooledFramebuffers;
@@ -129,6 +137,13 @@ class RenderPass
         return m_pooledFramebuffers[poolIndex][imageIndex];
     }
 
+    [[nodiscard]] inline std::optional<VkImage> getImageResource(uint32_t imageIndex) const
+    {
+        if (m_imageResources.has_value())
+            return std::optional<VkImage>(m_imageResources.value()[imageIndex]);
+        else
+            return nullptr;
+    }
     [[nodiscard]] VkImageView getImageView(uint32_t poolIndex, uint32_t imageIndex) const
     {
         return m_pooledViews[poolIndex][imageIndex];
@@ -165,8 +180,9 @@ class RenderPassBuilder
     uint32_t m_layers;
     bool m_multiviewEnable = false;
 
+    // TODO : multiple subpasses
     VkSubpassDescription m_subpass = {};
-    VkSubpassDependency m_subpassDependency = {};
+    std::vector<VkSubpassDependency> m_subpassDependency = {};
 
     std::weak_ptr<Device> m_device;
 
@@ -175,9 +191,11 @@ class RenderPassBuilder
         m_product = std::unique_ptr<RenderPass>(new RenderPass);
 
         m_subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        m_subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        m_subpassDependency.dstSubpass = 0;
-        m_subpassDependency.srcAccessMask = 0;
+        m_subpassDependency.clear();
+        m_subpassDependency.push_back({});
+        m_subpassDependency[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        m_subpassDependency[0].dstSubpass = 0;
+        m_subpassDependency[0].srcAccessMask = 0;
     }
 
   public:
@@ -186,6 +204,18 @@ class RenderPassBuilder
         restart();
     }
 
+    void addFragmentShaderSubpassDependencyToItself()
+    {
+        m_subpassDependency.push_back(VkSubpassDependency{
+            .srcSubpass = 0,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+            .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+        });
+    }
     void addColorAttachment(VkAttachmentDescription attachment);
     void addDepthAttachment(VkAttachmentDescription attachment);
 
@@ -194,6 +224,27 @@ class RenderPassBuilder
         m_device = device;
         m_product->m_device = device;
     }
+    /**
+     * @brief Set the Image Resources object
+     * the images are the actual resource in which the render pass will draw using the framebuffers
+     * it is not used with the pooling system
+     *
+     * @param images
+     */
+    void setImageResources(const std::vector<VkImage> &images)
+    {
+        m_poolSize = 1u;
+        if (m_product->m_imageResources.has_value())
+            m_product->m_imageResources.value().clear();
+        m_product->m_imageResources = images;
+    }
+    /**
+     * @brief Set the Image Views object
+     * the image views are views towards the image resources
+     * used to create the framebuffers
+     *
+     * @param imageViews
+     */
     void setImageViews(const std::vector<VkImageView> &imageViews)
     {
         m_poolSize = 1u;

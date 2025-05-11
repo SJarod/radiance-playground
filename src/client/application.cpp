@@ -55,6 +55,7 @@ Application::Application()
     ContextBuilder cb;
     cb.addLayer("VK_LAYER_KHRONOS_validation");
     cb.addLayer("VK_LAYER_LUNARG_monitor");
+    cb.addLayer("VK_LAYER_KHRONOS_synchronization2");
     cb.addInstanceExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     cb.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     auto requireExtensions = m_window->getRequiredExtensions();

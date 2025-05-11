@@ -162,13 +162,14 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
         directionalLightContainer->directionalLightCount = directionalLightCount;
 }
 
-void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex)
+void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                  uint32_t backBufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePredPerFrame)
     {
         for (const auto &instanceSet : m_instanceDescriptorSets)
         {
-            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, instanceSet, backBufferIndex);
+            m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, cmd, instanceSet, backBufferIndex);
         }
     }
 
@@ -178,7 +179,7 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
         {
             for (const auto &materialSet : materialSetsPerMesh)
             {
-                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, materialSet, backBufferIndex);
+                m_materialDescriptorSetUpdatePredPerFrame(parentPhase, cmd, materialSet, backBufferIndex);
             }
         }
     }
@@ -205,13 +206,14 @@ void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t
     }
 }
 
-void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, uint32_t backBufferIndex)
+void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                uint32_t backBufferIndex)
 {
     if (m_descriptorSetUpdatePredPerFrame)
     {
         for (const auto &set : m_descriptorSets)
         {
-            m_descriptorSetUpdatePredPerFrame(parentPhase, set, backBufferIndex);
+            m_descriptorSetUpdatePredPerFrame(parentPhase, cmd, set, backBufferIndex);
         }
     }
 }

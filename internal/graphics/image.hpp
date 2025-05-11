@@ -240,6 +240,17 @@ class ImageLayoutTransitionBuilder
         m_product->barrier.image = a.getHandle();
         m_product->barrier.subresourceRange.aspectMask = a.getAspectFlags();
     }
+    /**
+     * @brief Set the Image Handle object
+     * bypass the usage of image wrapper
+     *
+     * @param imageHandle
+     */
+    void setImageHandle(VkImage imageHandle, VkImageAspectFlags aspect) const
+    {
+        m_product->barrier.image = imageHandle;
+        m_product->barrier.subresourceRange.aspectMask = aspect;
+    }
     void setBaseMipLevel(uint32_t a) const
     {
         m_product->barrier.subresourceRange.baseMipLevel = a;
@@ -323,6 +334,18 @@ class ImageLayoutTransitionDirector
         builder.setSrcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT);
         builder.setDstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
         builder.setSrcStageMask(VK_PIPELINE_STAGE_TRANSFER_BIT);
+        builder.setDstStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+
+    template <>
+    void configureBuilder<VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR>(
+        ImageLayoutTransitionBuilder &builder) const
+    {
+        builder.setOldLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        builder.setNewLayout(VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR);
+        builder.setSrcAccessMask(VK_ACCESS_SHADER_READ_BIT);
+        builder.setDstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+        builder.setSrcStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
         builder.setDstStageMask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     }
 };

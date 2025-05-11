@@ -130,14 +130,18 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         .pClearValues = clearValues.data(),
     };
 
-    // keep track of this newly rendered image
-    m_lastFramebuffer = std::optional<VkFramebuffer>(renderPassBeginInfo.framebuffer);
-    m_lastFramebufferImageView =
-        std::optional<VkImageView>(m_renderPass->getImageView(pooledFramebufferIndex, imageIndex));
+    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
+    for (int i = 0; i < renderStates.size(); ++i)
+    {
+        RenderStateABC *renderState = renderStates[i].get();
+        renderState->updatePushConstants(commandBuffer, singleFrameRenderIndex, camera, lights);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
+                                          lights, probeGrid, m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, commandBuffer, m_backBufferIndex);
+    }
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
     for (int i = 0; i < renderStates.size(); ++i)
     {
         RenderStateABC *renderState = renderStates[i].get();
@@ -147,10 +151,6 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
             pipeline->recordBind(commandBuffer, renderArea);
         }
 
-        renderState->updatePushConstants(commandBuffer, singleFrameRenderIndex, camera, lights);
-        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
-                                          lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, m_backBufferIndex);
         for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
         {
             renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
@@ -163,6 +163,12 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     res = vkEndCommandBuffer(commandBuffer);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to record command buffer : " << res << std::endl;
+
+    // keep track of this newly rendered image
+    m_lastFramebuffer = std::optional<VkFramebuffer>(renderPassBeginInfo.framebuffer);
+    m_lastFramebufferImageResource = m_renderPass->getImageResource(imageIndex);
+    m_lastFramebufferImageView =
+        std::optional<VkImageView>(m_renderPass->getImageView(pooledFramebufferIndex, imageIndex));
 }
 
 void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
@@ -355,7 +361,7 @@ void ComputePhase::recordBackBuffer() const
             pipeline->recordBind(commandBuffer, {});
         }
 
-        computeState->updateDescriptorSetsPerFrame(nullptr, m_backBufferIndex);
+        computeState->updateDescriptorSetsPerFrame(nullptr, commandBuffer, m_backBufferIndex);
 
         computeState->updateUniformBuffers(0);
         computeState->recordBackBufferComputeCommands(commandBuffer, m_backBufferIndex);

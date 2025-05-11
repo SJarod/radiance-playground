@@ -266,30 +266,30 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
             rsb.setFrameInFlightCount(frameInFlightCount);
             rsb.setModel(m_screen);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            rsb.setInstanceDescriptorSetUpdatePredPerFrame(
-                [this, window, rg, deviceHandle](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    const auto &sampler = window->getSwapChain()->getSampler();
-                    if (!sampler.has_value())
-                        return;
+            rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                const auto &sampler = window->getSwapChain()->getSampler();
+                if (!sampler.has_value())
+                    return;
 
-                    VkDescriptorImageInfo imageInfo = {
-                        .sampler = *sampler.value(),
-                        .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage(),
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    };
-                    std::vector<VkWriteDescriptorSet> writes;
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo,
-                    });
-
-                    vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                VkDescriptorImageInfo imageInfo = {
+                    .sampler = *sampler.value(),
+                    .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage().second,
+                    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = set,
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
                 });
+
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
             PipelineBuilder<PipelineType::GRAPHICS> pb;
             PipelineDirector<PipelineType::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);
@@ -372,29 +372,29 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
                 auto rc = s[0];
                 csb.setWorkGroup(glm::ivec3(rc->getCascadeCount(), 1, 1));
             }
-            csb.setDescriptorSetUpdatePredPerFrame(
-                [=](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    const auto &sampler = window->getSwapChain()->getSampler();
-                    if (!sampler.has_value())
-                        return;
+            csb.setDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                       const VkDescriptorSet set, uint32_t backBufferIndex) {
+                const auto &sampler = window->getSwapChain()->getSampler();
+                if (!sampler.has_value())
+                    return;
 
-                    VkDescriptorImageInfo imageInfo = {
-                        .sampler = *sampler.value(),
-                        .imageView = rg->m_finalImageDirect->getMostRecentRenderedImage(),
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    };
-                    std::vector<VkWriteDescriptorSet> writes;
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo,
-                    });
-                    vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                VkDescriptorImageInfo imageInfo = {
+                    .sampler = *sampler.value(),
+                    .imageView = rg->m_finalImageDirect->getMostRecentRenderedImage().second,
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = set,
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
                 });
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
             csb.setDescriptorSetUpdatePred(
                 [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                     auto s = getReadOnlyInstancedComponents<RadianceCascades>();
@@ -488,29 +488,43 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            rsb.setInstanceDescriptorSetUpdatePredPerFrame(
-                [=](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    const auto &sampler = window->getSwapChain()->getSampler();
-                    if (!sampler.has_value())
-                        return;
+            rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                const auto &sampler = window->getSwapChain()->getSampler();
+                if (!sampler.has_value())
+                    return;
 
-                    VkDescriptorImageInfo imageInfo = {
-                        .sampler = *sampler.value(),
-                        .imageView = rg->m_finalImageDirect->getMostRecentRenderedImage(),
-                        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    };
-                    std::vector<VkWriteDescriptorSet> writes;
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &imageInfo,
-                    });
-                    vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                auto mostRecentImage = rg->m_finalImageDirect->getMostRecentRenderedImage();
+                assert(mostRecentImage.first.has_value());
+
+                ImageLayoutTransitionBuilder iltb;
+                ImageLayoutTransitionDirector iltd;
+                iltd.configureBuilder<VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR>(
+                    iltb);
+                VkImage im = mostRecentImage.first.value();
+                iltb.setImageHandle(im, VK_IMAGE_ASPECT_COLOR_BIT);
+                auto transitionPtr = iltb.buildAndRestart();
+                ImageLayoutTransition transition = *transitionPtr;
+                vkCmdPipelineBarrier(cmd, transition.srcStageMask, transition.dstStageMask, 0, 0, nullptr, 0, nullptr,
+                                     1, &transition.barrier);
+
+                VkDescriptorImageInfo imageInfo = {
+                    .sampler = *sampler.value(),
+                    .imageView = mostRecentImage.second,
+                    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = set,
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
                 });
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
             rsb.setInstanceDescriptorSetUpdatePred(
                 [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                     std::vector<VkWriteDescriptorSet> writes;

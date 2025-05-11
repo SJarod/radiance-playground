@@ -8,7 +8,7 @@
 #include "compute_pp_graph.hpp"
 
 void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
-                      uint32_t maxProbeCount)
+                        uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
@@ -36,6 +36,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
     RenderPhaseBuilder opaqueRb;
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
+    opaqueRb.setPhaseName("Opaque");
     opaqueRb.setBufferingType(frameInFlightCount);
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
@@ -48,7 +49,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
     rpad.configureAttachmentLoadBuilder(rpab);
     rpab.setFormat(window->getSwapChain()->getImageFormat());
     rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     auto loadColorAttachment = rpab.buildAndRestart();
     skyboxRpb.addColorAttachment(*loadColorAttachment);
 
@@ -61,6 +62,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
 
     RenderPhaseBuilder skyboxRb;
     skyboxRb.setDevice(device);
+    skyboxRb.setPhaseName("Skybox");
     skyboxRb.setRenderPass(skyboxRpb.build());
     skyboxRb.setBufferingType(frameInFlightCount);
     auto skyboxPhase = skyboxRb.build();
@@ -73,7 +75,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
         rpd.configureSwapChainRenderPassBuilder(passb, *window->getSwapChain(), false);
         rpad.configureAttachmentLoadBuilder(rpab);
         rpab.setFormat(window->getSwapChain()->getImageFormat());
-        rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
@@ -104,13 +106,15 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
         rpd.configureSwapChainRenderPassBuilder(passb, *window->getSwapChain(), false);
         rpad.configureAttachmentLoadBuilder(rpab);
         rpab.setFormat(window->getSwapChain()->getImageFormat());
-        rpab.setInitialLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
+        passb.addFragmentShaderSubpassDependencyToItself();
         RenderPhaseBuilder phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
+        phaseb.setPhaseName("Final direct + indirect");
         phaseb.setBufferingType(frameInFlightCount);
         postProcess2Phase = phaseb.build();
         m_finalImageDirectIndirect = postProcess2Phase.get();
@@ -129,6 +133,7 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
 
     RenderPhaseBuilder imguiRb;
     imguiRb.setDevice(device);
+    imguiRb.setPhaseName("Dear ImGui");
     imguiRb.setRenderPass(imguiRpb.build());
     imguiRb.setBufferingType(frameInFlightCount);
     auto imguiPhase = imguiRb.build();

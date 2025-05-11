@@ -50,6 +50,10 @@ class SwapChain
         return m_handle;
     }
 
+    [[nodiscard]] inline const std::vector<VkImage> &getImages() const
+    {
+        return m_images;
+    }
     [[nodiscard]] inline const std::vector<VkImageView> &getImageViews() const
     {
         return m_imageViews;
