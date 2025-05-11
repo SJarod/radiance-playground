@@ -100,7 +100,7 @@ vec4 retrieve_radiance_interval(int cascadeIndex, int probeIndex, int intervalIn
 
     float intervalOffset = 0.0;
     if (cascadeIndex > 0)
-        intervalOffset = pow(2.0, float(cascadeIndex - 1));
+        intervalOffset = float(1 << (cascadeIndex - 1));
     intervalOffset *= float(paramsubo.minRadianceintervalLength);
 
     // index of interval is offsetted by the number of intervals before hand
@@ -159,7 +159,7 @@ vec4 radiance_apply(in vec2 uv)
         {
             // computing the right interval index in function of
             // the wanted final interval and the cascade index
-            int intervalIndex = i / int(pow(2.0, float(paramsubo.maxCascadeCount- 1 - j)));
+            int intervalIndex = i / (1 << (paramsubo.maxCascadeCount- 1 - j));
 
             int[4] probeIndices = get_surrounding_probe_indices_from_uv(uv, j);
             cascade_desc desc = cdubo.descs[j];

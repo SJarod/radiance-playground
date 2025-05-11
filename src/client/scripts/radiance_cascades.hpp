@@ -24,12 +24,14 @@ class RadianceCascades : public ScriptableABC
   private:
     const int m_maxCascadeCount = 3;
     // p = probe count is a square number
-    const int m_maxProbeCount = std::pow(2.f, 8.f);
+    const int m_maxProbeCount = 1 << 8;
     // q = discrete value count will be doubled every cascade
     // number of radiance intervals for the probes from first cascade
     const int m_minDiscreteValueCount = 8;
     // dw = radiance interval length will be doubled every cascade
-    const float m_minRadianceintervalLength = 20.f / float(m_maxProbeCount);
+    // taken from https://www.shadertoy.com/view/mtlBzX
+    const float m_minRadianceintervalLength =
+        glm::vec2(1366, 768).length() * 4.0 / (float(1 << 2 * m_maxCascadeCount) - 1.0);
 
     // intensity of every lights (when applying irradiance)
     const float m_lightIntensity = 1.f;
