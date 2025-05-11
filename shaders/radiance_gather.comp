@@ -67,7 +67,7 @@ vec4 raycasting_function(vec2 p, vec2 dir, float len)
 		vec4 directLighting = texture(baseImage, sampledStep);
 		// directLighting.a == 1.0 : opaque (raycast hit)
 		// directLighting.a == 0.0 : transparent (raycast miss)
-        float hit = step(0.5, directLighting.w);
+        float hit = step(0.5, directLighting.a);
         
 		incomingRadiance = directLighting * hit;
         // radiance.a == 1.0 : transparent (transparency value)
@@ -91,7 +91,7 @@ vec4 probe_encode_radiance(inout probe p, in int intervalIndex, in int intervalC
     // radiance interval
     vec4 interval = raycasting_function(p.position + dir * intervalOffset, dir, intervalLength);
     // debug : show blue value for interval index
-    interval.b = float(intervalIndex) / float(intervalCount);
+    //interval.b = float(intervalIndex) / float(intervalCount);
     return interval;
 }
 

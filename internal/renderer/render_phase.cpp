@@ -109,7 +109,7 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     }
 
     VkClearValue clearColor = {
-        .color = {0.2f, 0.2f, 0.2f, 1.f},
+        .color = {0.05f, 0.05f, 0.05f, 0.f},
     };
     VkClearValue clearDepth = {
         .depthStencil = {1.f, 0},

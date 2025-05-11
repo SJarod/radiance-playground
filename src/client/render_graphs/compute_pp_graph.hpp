@@ -13,7 +13,6 @@ class ComputeGraph final : public RenderGraph
 
   public:
     RenderPhase *m_opaquePhase;
-    RenderPhase *m_skyboxPhase;
 
     /**
      * @brief final image with direct lighting

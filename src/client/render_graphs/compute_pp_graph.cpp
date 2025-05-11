@@ -41,32 +41,6 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
 
-    // Skybox
-    RenderPassBuilder skyboxRpb;
-    skyboxRpb.setDevice(device);
-    rpd.configureSwapChainRenderPassBuilder(skyboxRpb, *window->getSwapChain());
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto loadColorAttachment = rpab.buildAndRestart();
-    skyboxRpb.addColorAttachment(*loadColorAttachment);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto loadDepthAttachment = rpab.buildAndRestart();
-    skyboxRpb.addDepthAttachment(*loadDepthAttachment);
-
-    RenderPhaseBuilder skyboxRb;
-    skyboxRb.setDevice(device);
-    skyboxRb.setPhaseName("Skybox");
-    skyboxRb.setRenderPass(skyboxRpb.build());
-    skyboxRb.setBufferingType(frameInFlightCount);
-    auto skyboxPhase = skyboxRb.build();
-    m_skyboxPhase = skyboxPhase.get();
 
     std::unique_ptr<RenderPhase> postProcessPhase;
     {
@@ -82,7 +56,6 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
         RenderPhaseBuilder phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
-        phaseb.setParentPhase(m_skyboxPhase);
         phaseb.setBufferingType(frameInFlightCount);
         phaseb.setPhaseName("Final direct");
         postProcessPhase = phaseb.build();
@@ -140,7 +113,6 @@ void ComputeGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32
     m_imguiPhase = imguiPhase.get();
 
     addRenderPhase(std::move(opaquePhase));
-    addRenderPhase(std::move(skyboxPhase));
     addRenderPhase(std::move(postProcessPhase));
     addPhase(std::move(computePhase));
     addRenderPhase(std::move(postProcess2Phase));

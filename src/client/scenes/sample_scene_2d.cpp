@@ -144,7 +144,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         PipelineBuilder<PipelineType::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong");
+        phongPb.addFragmentShaderStage("unlit");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -185,64 +185,6 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
 
-        // skybox
-        UniformDescriptorBuilder skyboxUdb;
-        skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
-        skyboxUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-
-        PipelineBuilder<PipelineType::GRAPHICS> skyboxPb;
-        PipelineDirector<PipelineType::GRAPHICS> skyboxPd;
-        skyboxPd.configureColorDepthRasterizerBuilder(skyboxPb);
-        skyboxPb.setDevice(device);
-        skyboxPb.addVertexShaderStage("skybox");
-        skyboxPb.addFragmentShaderStage("skybox");
-        skyboxPb.setRenderPass(rg->m_skyboxPhase->getRenderPass());
-        skyboxPb.setExtent(window->getSwapChain()->getExtent());
-        skyboxPb.setDepthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL);
-
-        skyboxPb.addUniformDescriptorPack(skyboxUdb.buildAndRestart());
-
-        std::shared_ptr<Pipeline> skyboxPipeline = skyboxPb.build();
-
-        // skybox
-        UniformDescriptorBuilder skyboxOpaqueUdb;
-        skyboxOpaqueUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
-        skyboxOpaqueUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-
-        if (m_skybox)
-        {
-
-            SkyboxRenderStateBuilder srsb;
-            srsb.setFrameInFlightCount(frameInFlightCount);
-            srsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-            srsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            srsb.setDevice(device);
-            srsb.setSkybox(m_skybox);
-            srsb.setTexture(m_skybox->getTexture());
-            srsb.setPipeline(skyboxPipeline);
-            rg->m_skyboxPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(srsb.build()));
-        }
-
         {
             MeshBuilder mb;
             mb.setDevice(device);
@@ -274,7 +216,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
 
                 VkDescriptorImageInfo imageInfo = {
                     .sampler = *sampler.value(),
-                    .imageView = rg->m_skyboxPhase->getMostRecentRenderedImage().second,
+                    .imageView = rg->m_opaquePhase->getMostRecentRenderedImage().second,
                     .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
                 };
                 std::vector<VkWriteDescriptorSet> writes;

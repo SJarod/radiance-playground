@@ -64,7 +64,7 @@ layout (std430, binding = 2) readonly buffer CascadeDescUBO {
 
 // cascade probes position buffer
 layout (std140, binding = 3) readonly buffer CascadeUBO {
-    vec2[] positions;
+    probe[] positions;
 } cubo;
 
 // radiance interval storage buffer
@@ -80,32 +80,36 @@ vec2 retrieve_probe_position(int cascadeIndex, int probeIndex)
         offset += cdubo.descs[i].p;
     }
 
-    return cubo.positions[offset + probeIndex];
+    return cubo.positions[offset + probeIndex].position;
 }
 
-int get_computed_probe_index(int cascadeIndex, int probeIndex)
+vec4 retrieve_radiance_interval(int cascadeIndex, int probeIndex, int intervalIndex)
 {
     cascade_desc desc = cdubo.descs[cascadeIndex];
-    cascade_desc previous_desc = cdubo.descs[max(0, cascadeIndex - 1)];
-
-	int probeCount = desc.p;
     int intervalCount = desc.q;
 
-    int cascadeStride = probeCount / int(pow(2, cascadeIndex));
+    int intervalIndexOffset = 0;
+    for (int i = 0; i < cascadeIndex; ++i)
+    {
+        // get previous cascade (min index is 0)
+        int previousCascadeIndex = max(0, i);
+        cascade_desc previous_desc = cdubo.descs[previousCascadeIndex];
 
-    int cascadeOffset = previous_desc.p * min(cascadeIndex, 1);
+        intervalIndexOffset += previous_desc.p * previous_desc.q;
+    }
 
-    return cascadeOffset + probeIndex * intervalCount;
+    float intervalOffset = 0.0;
+    if (cascadeIndex > 0)
+        intervalOffset = pow(2.0, float(cascadeIndex - 1));
+    intervalOffset *= float(paramsubo.minRadianceintervalLength);
 
-}
-int get_computed_interval_index(int cascadeIndex, int probeIndex, int intervalIndex, int intervalCount)
-{
-    return get_computed_probe_index(cascadeIndex, probeIndex) + intervalIndex;
-}
+    // index of interval is offsetted by the number of intervals before hand
+    // the number of intervals per probes in the previous cascades
+    // the strides are intervalCount length
+    int intervalProbeIndex = intervalIndexOffset + probeIndex * intervalCount;
+    int computedIntervalIndex = intervalProbeIndex + intervalIndex;
 
-vec4 retrieve_radiance_interval(int cascadeIndex, int probeIndex, int intervalIndex, int intervalCount)
-{
-    return riubo.intervals[get_computed_interval_index(cascadeIndex, probeIndex, intervalIndex, intervalCount)];
+    return riubo.intervals[computedIntervalIndex];
 }
 
 int[4] get_surrounding_probe_indices_from_uv(vec2 uv, int cascadeIndex)
@@ -174,10 +178,10 @@ vec4 radiance_apply(in vec2 uv)
             float lerpx = (uv.x - p0.position.x) / xrange;
             float lerpy = (uv.y - p0.position.y) / yrange;
 
-            vec4 interval0 = retrieve_radiance_interval(j, probeIndices[0], intervalIndex, desc.q);
-            vec4 interval1 = retrieve_radiance_interval(j, probeIndices[1], intervalIndex, desc.q);
-            vec4 interval2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex, desc.q);
-            vec4 interval3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex, desc.q);
+            vec4 interval0 = retrieve_radiance_interval(j, probeIndices[0], intervalIndex);
+            vec4 interval1 = retrieve_radiance_interval(j, probeIndices[1], intervalIndex);
+            vec4 interval2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex);
+            vec4 interval3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex);
             
             vec4 bilerped = bilerp(interval0, interval1, interval2, interval3, vec2(lerpy, lerpx));
             mergedRadiance += bilerped * transparency;
@@ -202,14 +206,33 @@ void render_probes(inout vec4 col, in vec2 uv)
         int probeCount = desc.p;
         int intervalCount = desc.q;
         
+        int probeIndexOffset = 0;
+        int intervalIndexOffset = 0;
+        for (int j = 0; j < i; ++j)
+        {
+            // get previous cascade (min index is 0)
+            int previousCascadeIndex = max(0, j);
+            cascade_desc previous_desc = cdubo.descs[previousCascadeIndex];
+
+            probeIndexOffset += previous_desc.p;
+            intervalIndexOffset += previous_desc.p * previous_desc.q;
+        }
+
         for (int j = 0; j < probeCount; ++j)
         {
-            vec2 probePos = cubo.positions[get_computed_probe_index(i, j)];
+            // index of probe is offsetted by the number of probes in the previous cascade
+            int probeIndex = probeIndexOffset + j;
+
+            vec2 probePos = cubo.positions[probeIndex].position;
+
             vec4 probeColor = vec4(0.0);
-            probeColor.r = length(probePos);
-            probeColor.g = float(j + 1) / float(paramsubo.maxProbeCount + 1);
-            probeColor.b = float(i + 1) / float(paramsubo.maxCascadeCount + 1);
-            probeColor.a = 1.0;
+            for (int k = 0; k < intervalCount; ++k)
+            {
+                int intervalProbeIndex = intervalIndexOffset + j * intervalCount;
+                int intervalIndex = intervalProbeIndex + k;
+                probeColor += riubo.intervals[intervalIndex];
+            }
+            probeColor /= intervalCount;
             
             col += probeColor * draw_sphere(uv, probePos, probeRadius, textureSize(baseImage, 0).y);
         }
@@ -233,8 +256,8 @@ void main()
 #endif
     
     // apply radiance to pixel
-    //vec4 indirectLight = radiance_apply(uv);
-    //indirect += vec4(indirectLight.rgb, 1.0);
+    vec4 indirectLight = radiance_apply(uv);
+    indirect += vec4(indirectLight.rgb, 1.0);
 
     oColor = vec4(direct.rgb + mix(indirect.rgb, direct.rgb, step(0.5, direct.w)), 1.0);
 }
