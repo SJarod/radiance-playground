@@ -90,11 +90,38 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         tb.setHeight(2);
         mesh->setTexture(tb.buildAndRestart());
 
-        ModelBuilder modelBuilder;
-        modelBuilder.setName("Square");
-        modelBuilder.setMesh(mesh);
+        {
+            ModelBuilder modelBuilder;
+            modelBuilder.setName("Square");
+            modelBuilder.setMesh(mesh);
 
-        m_objects.push_back(modelBuilder.build());
+            m_objects.push_back(modelBuilder.build());
+        }
+        {
+            ModelBuilder modelBuilder;
+            modelBuilder.setName("Square2");
+            modelBuilder.setMesh(mesh);
+
+            m_objects.push_back(modelBuilder.build());
+        }
+        {
+            mb.setDevice(device);
+            mb.setVertices(vertices);
+            mb.setIndices(indices);
+            mb.setName("Wall mesh");
+            std::shared_ptr<Mesh> wallMesh = mb.buildAndRestart();
+            td.configureSRGBTextureBuilder(tb);
+            tb.setDevice(device);
+            tb.setImageData(std::vector<unsigned char>{0, 0, 0});
+            tb.setWidth(1);
+            tb.setHeight(1);
+            wallMesh->setTexture(tb.buildAndRestart());
+            ModelBuilder modelBuilder;
+            modelBuilder.setName("Wall");
+            modelBuilder.setMesh(wallMesh);
+
+            m_objects.push_back(modelBuilder.build());
+        }
     }
 
     ComputeGraph *rg = dynamic_cast<ComputeGraph *>(renderGraph);
