@@ -9,7 +9,7 @@
 #include "rc3d_graph.hpp"
 
 void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
-                      uint32_t maxProbeCount)
+                     uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
@@ -17,178 +17,118 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
 
     TextureDirector td;
 
-    // Capture environment map
-    for (int i = 0; i < maxProbeCount; i++)
+    std::unique_ptr<RenderPhase> opaquePhase;
     {
-        CubemapBuilder captureEnvMapBuilder;
-        captureEnvMapBuilder.setDevice(device);
-        captureEnvMapBuilder.setWidth(256);
-        captureEnvMapBuilder.setHeight(256);
-        captureEnvMapBuilder.setCreateFromUserData(false);
-        captureEnvMapBuilder.setDepthImageEnable(true);
-        captureEnvMapBuilder.setInitialLayout(VK_IMAGE_LAYOUT_PREINITIALIZED);
-        td.configureUNORMTextureBuilder(captureEnvMapBuilder);
-        m_capturedEnvMaps.push_back(captureEnvMapBuilder.buildAndRestart());
+        // Opaque
+        RenderPassBuilder opaqueRpb;
+        opaqueRpb.setDevice(device);
+        rpd.configureSwapChainRenderPassBuilder(opaqueRpb, *window->getSwapChain());
+
+        rpad.configureAttachmentClearBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getImageFormat());
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        auto clearColorAttachment = rpab.buildAndRestart();
+        opaqueRpb.addColorAttachment(*clearColorAttachment);
+
+        rpad.configureAttachmentClearBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        auto clearDepthAttachment = rpab.buildAndRestart();
+        opaqueRpb.addDepthAttachment(*clearDepthAttachment);
+
+        RenderPhaseBuilder opaqueRb;
+        opaqueRb.setDevice(device);
+        opaqueRb.setRenderPass(opaqueRpb.build());
+        opaqueRb.setBufferingType(frameInFlightCount);
+        opaquePhase = opaqueRb.build();
+        m_opaquePhase = opaquePhase.get();
+    }
+    std::unique_ptr<RenderPhase> probesDebugPhase;
+    {
+        RenderPassBuilder probesDebugRpb;
+        probesDebugRpb.setDevice(device);
+        rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *window->getSwapChain());
+
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        auto probesDebugColorAttachment = rpab.buildAndRestart();
+        probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
+
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        auto probesDebugDepthAttachment = rpab.buildAndRestart();
+        probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
+
+        RenderPhaseBuilder probesDebugRb;
+        probesDebugRb.setDevice(device);
+        probesDebugRb.setRenderPass(probesDebugRpb.build());
+        probesDebugPhase = probesDebugRb.build();
+        m_probesDebugPhase = probesDebugPhase.get();
     }
 
-    // Opaque capture
-    RenderPassBuilder opaqueCaptureRpb;
-    opaqueCaptureRpb.setDevice(device);
-    rpd.configurePooledCubemapsRenderPassBuilder(opaqueCaptureRpb, m_capturedEnvMaps, true);
-
-    rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(m_capturedEnvMaps[0]->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto opaqueCaptureColorAttachment = rpab.buildAndRestart();
-    opaqueCaptureRpb.addColorAttachment(*opaqueCaptureColorAttachment);
-
-    rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(m_capturedEnvMaps[0]->getDepthImageFormat().value());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
-    opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
-
-    RenderPhaseBuilder opaqueCaptureRb;
-    opaqueCaptureRb.setDevice(device);
-    opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
-    opaqueCaptureRb.setCaptureEnable(true);
-    opaqueCaptureRb.setBufferingType(frameInFlightCount);
-    auto opaqueCapturePhase = opaqueCaptureRb.build();
-    m_opaqueCapturePhase = opaqueCapturePhase.get();
-
-    // Skybox capture
-    RenderPassBuilder skyboxCaptureRpb;
-    skyboxCaptureRpb.setDevice(device);
-    rpd.configurePooledCubemapsRenderPassBuilder(skyboxCaptureRpb, m_capturedEnvMaps, true);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_capturedEnvMaps[0]->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto skyboxCaptureColorAttachment = rpab.buildAndRestart();
-    skyboxCaptureRpb.addColorAttachment(*skyboxCaptureColorAttachment);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(m_capturedEnvMaps[0]->getDepthImageFormat().value());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
-    skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
-
-    RenderPhaseBuilder skyboxCaptureRb;
-    skyboxCaptureRb.setDevice(device);
-    skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
-    skyboxCaptureRb.setCaptureEnable(true);
-    skyboxCaptureRb.setBufferingType(frameInFlightCount);
-    auto skyboxCapturePhase = skyboxCaptureRb.build();
-    m_skyboxCapturePhase = skyboxCapturePhase.get();
-
-    // Irradiance cubemap
-    for (int i = 0; i < maxProbeCount; i++)
+    std::unique_ptr<RenderPhase> skyboxPhase;
     {
-        CubemapBuilder irradianceMapBuilder;
-        irradianceMapBuilder.setDevice(device);
-        irradianceMapBuilder.setWidth(128);
-        irradianceMapBuilder.setHeight(128);
-        irradianceMapBuilder.setCreateFromUserData(false);
-        irradianceMapBuilder.setResolveEnable(true);
-        td.configureUNORMTextureBuilder(irradianceMapBuilder);
-        m_irradianceMaps.push_back(irradianceMapBuilder.buildAndRestart());
+        // Skybox
+        RenderPassBuilder skyboxRpb;
+        skyboxRpb.setDevice(device);
+        rpd.configureSwapChainRenderPassBuilder(skyboxRpb, *window->getSwapChain());
+
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        auto loadColorAttachment = rpab.buildAndRestart();
+        skyboxRpb.addColorAttachment(*loadColorAttachment);
+
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        auto loadDepthAttachment = rpab.buildAndRestart();
+        skyboxRpb.addDepthAttachment(*loadDepthAttachment);
+
+        RenderPhaseBuilder skyboxRb;
+        skyboxRb.setDevice(device);
+        skyboxRb.setRenderPass(skyboxRpb.build());
+        skyboxRb.setBufferingType(frameInFlightCount);
+        skyboxPhase = skyboxRb.build();
+        m_skyboxPhase = skyboxPhase.get();
     }
-
-    // Irradiance convolution
-    RenderPassBuilder irradianceConvolutionRpb;
-    irradianceConvolutionRpb.setDevice(device);
-    rpd.configurePooledCubemapsRenderPassBuilder(irradianceConvolutionRpb, m_irradianceMaps, true, false);
-    rpad.configureAttachmentDontCareBuilder(rpab);
-    rpab.setFormat(m_irradianceMaps[0]->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    auto irradianceColorAttachment = rpab.buildAndRestart();
-    irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
-
-    RenderPhaseBuilder irradianceConvolutionRb;
-    irradianceConvolutionRb.setDevice(device);
-    irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
-    irradianceConvolutionRb.setCaptureEnable(true);
-    irradianceConvolutionRb.setBufferingType(frameInFlightCount);
-    auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
-    m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
-
-    // Opaque
-    RenderPassBuilder opaqueRpb;
-    opaqueRpb.setDevice(device);
-    rpd.configureSwapChainRenderPassBuilder(opaqueRpb, *window->getSwapChain());
-
-    rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto clearColorAttachment = rpab.buildAndRestart();
-    opaqueRpb.addColorAttachment(*clearColorAttachment);
-
-    rpad.configureAttachmentClearBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto clearDepthAttachment = rpab.buildAndRestart();
-    opaqueRpb.addDepthAttachment(*clearDepthAttachment);
-
-    RenderPhaseBuilder opaqueRb;
-    opaqueRb.setDevice(device);
-    opaqueRb.setRenderPass(opaqueRpb.build());
-    opaqueRb.setBufferingType(frameInFlightCount);
-    auto opaquePhase = opaqueRb.build();
-    m_opaquePhase = opaquePhase.get();
-
-    RenderPassBuilder probesDebugRpb;
-    probesDebugRpb.setDevice(device);
-    rpd.configureSwapChainRenderPassBuilder(probesDebugRpb, *window->getSwapChain());
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto probesDebugColorAttachment = rpab.buildAndRestart();
-    probesDebugRpb.addColorAttachment(*probesDebugColorAttachment);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto probesDebugDepthAttachment = rpab.buildAndRestart();
-    probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
-
-    RenderPhaseBuilder probesDebugRb;
-    probesDebugRb.setDevice(device);
-    probesDebugRb.setRenderPass(probesDebugRpb.build());
-    auto probesDebugPhase = probesDebugRb.build();
-    m_probesDebugPhase = probesDebugPhase.get();
-
-    // Skybox
-    RenderPassBuilder skyboxRpb;
-    skyboxRpb.setDevice(device);
-    rpd.configureSwapChainRenderPassBuilder(skyboxRpb, *window->getSwapChain());
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    auto loadColorAttachment = rpab.buildAndRestart();
-    skyboxRpb.addColorAttachment(*loadColorAttachment);
-
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getDepthImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    auto loadDepthAttachment = rpab.buildAndRestart();
-    skyboxRpb.addDepthAttachment(*loadDepthAttachment);
-
-    RenderPhaseBuilder skyboxRb;
-    skyboxRb.setDevice(device);
-    skyboxRb.setRenderPass(skyboxRpb.build());
-    skyboxRb.setBufferingType(frameInFlightCount);
-    auto skyboxPhase = skyboxRb.build();
-    m_skyboxPhase = skyboxPhase.get();
-
     std::unique_ptr<RenderPhase> postProcessPhase;
+    {
+        RenderPassBuilder passb;
+        passb.setDevice(device);
+        rpd.configureSwapChainRenderPassBuilder(passb, *window->getSwapChain(), false);
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        auto finalLoadColorAttachment = rpab.buildAndRestart();
+        passb.addColorAttachment(*finalLoadColorAttachment);
+        RenderPhaseBuilder phaseb;
+        phaseb.setDevice(device);
+        phaseb.setRenderPass(passb.build());
+        phaseb.setBufferingType(frameInFlightCount);
+        phaseb.setPhaseName("Final direct");
+        postProcessPhase = phaseb.build();
+        m_finalImageDirect = postProcessPhase.get();
+    }
+
+    std::unique_ptr<ComputePhase> computePhase;
+    {
+        ComputePhaseBuilder cpb;
+        cpb.setDevice(device);
+        cpb.setBufferingType(frameInFlightCount);
+        cpb.setPhaseName("Compute");
+        computePhase = cpb.build();
+        m_computePhase = computePhase.get();
+    }
+
+    std::unique_ptr<RenderPhase> postProcess2Phase;
     {
         RenderPassBuilder passb;
         passb.setDevice(device);
@@ -199,41 +139,42 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
+        passb.addFragmentShaderSubpassDependencyToItself();
         RenderPhaseBuilder phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
-        phaseb.setParentPhase(m_skyboxPhase);
+        phaseb.setPhaseName("Final direct + indirect");
         phaseb.setBufferingType(frameInFlightCount);
-        phaseb.setPhaseName("Final direct");
-        postProcessPhase = phaseb.build();
-        m_finalImageDirect = postProcessPhase.get();
+        postProcess2Phase = phaseb.build();
+        m_finalImageDirectIndirect = postProcess2Phase.get();
     }
 
-    RenderPassBuilder imguiRpb;
-    imguiRpb.setDevice(device);
-    rpd.configureSwapChainRenderPassBuilder(imguiRpb, *window->getSwapChain(), false);
+    std::unique_ptr<RenderPhase> imguiPhase;
+    {
+        RenderPassBuilder imguiRpb;
+        imguiRpb.setDevice(device);
+        rpd.configureSwapChainRenderPassBuilder(imguiRpb, *window->getSwapChain(), false);
 
-    rpad.configureAttachmentLoadBuilder(rpab);
-    rpab.setFormat(window->getSwapChain()->getImageFormat());
-    rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    auto imguiLoadColorAttachment = rpab.buildAndRestart();
-    imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
+        rpad.configureAttachmentLoadBuilder(rpab);
+        rpab.setFormat(window->getSwapChain()->getImageFormat());
+        rpab.setInitialLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        rpab.setFinalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        auto imguiLoadColorAttachment = rpab.buildAndRestart();
+        imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
-    RenderPhaseBuilder imguiRb;
-    imguiRb.setDevice(device);
-    imguiRb.setRenderPass(imguiRpb.build());
-    imguiRb.setBufferingType(frameInFlightCount);
-    auto imguiPhase = imguiRb.build();
-    m_imguiPhase = imguiPhase.get();
-
-    addOneTimeRenderPhase(std::move(opaqueCapturePhase));
-    addOneTimeRenderPhase(std::move(skyboxCapturePhase));
-    addOneTimeRenderPhase(std::move(irradianceConvolutionPhase));
+        RenderPhaseBuilder imguiRb;
+        imguiRb.setDevice(device);
+        imguiRb.setRenderPass(imguiRpb.build());
+        imguiRb.setBufferingType(frameInFlightCount);
+        imguiPhase = imguiRb.build();
+        m_imguiPhase = imguiPhase.get();
+    }
 
     addRenderPhase(std::move(opaquePhase));
     addRenderPhase(std::move(probesDebugPhase));
     addRenderPhase(std::move(skyboxPhase));
     addRenderPhase(std::move(postProcessPhase));
+    addPhase(std::move(computePhase));
+    addRenderPhase(std::move(postProcess2Phase));
     addRenderPhase(std::move(imguiPhase));
 }

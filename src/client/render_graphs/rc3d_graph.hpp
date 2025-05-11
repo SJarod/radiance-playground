@@ -3,7 +3,7 @@
 #include "renderer/render_graph.hpp"
 
 class RenderPhase;
-class Texture;
+class ComputePhase;
 
 class RC3DGraph final : public RenderGraph
 {
@@ -12,10 +12,6 @@ class RC3DGraph final : public RenderGraph
               uint32_t maxProbeCount) override;
 
   public:
-    RenderPhase *m_opaqueCapturePhase;
-    RenderPhase *m_skyboxCapturePhase;
-
-    RenderPhase *m_irradianceConvolutionPhase;
     RenderPhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
 
@@ -25,12 +21,11 @@ class RC3DGraph final : public RenderGraph
      *
      */
     RenderPhase *m_finalImageDirect;
+    ComputePhase *m_computePhase;
+    RenderPhase *m_finalImageDirectIndirect;
 
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
-
-    std::vector<std::shared_ptr<Texture>> m_capturedEnvMaps;
-    std::vector<std::shared_ptr<Texture>> m_irradianceMaps;
 
   public:
 };
