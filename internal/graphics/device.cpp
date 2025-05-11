@@ -18,14 +18,18 @@ Device::~Device()
     if (m_bufferCount != 0)
     {
         std::cout << "\tUndestroyed buffers :" << std::endl;
-        std::for_each(std::next(m_bufferNames.begin()), m_bufferNames.end(),
-                      [&](const std::string &element) { std::cout << "\t\t" << element << std::endl; });
+        for (auto &&it = m_bufferNames.begin(); it != m_bufferNames.end(); ++it)
+        {
+            std::cout << "\t\t" << *it << std::endl;
+        }
     }
     if (m_imageCount != 0)
     {
         std::cout << "\tUndestroyed images :" << std::endl;
-        std::for_each(std::next(m_imageNames.begin()), m_imageNames.end(),
-                      [&](const std::string &element) { std::cout << "\t\t" << element << std::endl; });
+        for (auto &&it = m_imageNames.begin(); it != m_imageNames.end(); ++it)
+        {
+            std::cout << "\t\t" << *it << std::endl;
+        }
     }
     assert(m_bufferCount == 0);
     assert(m_imageCount == 0);
