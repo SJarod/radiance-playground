@@ -89,17 +89,20 @@ class GPUStateI
      *
      * @param parentPhase not used in the compute state because compute phases uses ComputePhase objects
      * @param backBufferIndex
+     * @param pooledFramebufferIndexnot used in the compute state because compute phases uses ComputePhase objects
      */
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                              uint32_t backBufferIndex) = 0;
+                                              uint32_t backBufferIndex, uint32_t pooledFramebufferIndex) = 0;
 
     /**
      * @brief same function as above but it is executed on the states registering
      *
      * @param parentPhase not used in the compute state because compute phases uses ComputePhase objects
      * @param backBufferIndex
+     * @param pooledFramebufferIndexnot used in the compute state because compute phases uses ComputePhase objects
      */
-    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) = 0;
+    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex,
+                                      uint32_t pooledFramebufferIndex) = 0;
 
   public:
     virtual [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const = 0;
@@ -176,10 +179,10 @@ class RenderStateABC : public GPUStateI
     std::shared_ptr<Pipeline> m_pipeline;
 
     VkDescriptorPool m_descriptorPool;
-    std::vector<VkDescriptorSet> m_instanceDescriptorSets;
+    std::vector<std::vector<VkDescriptorSet>> m_poolInstanceDescriptorSets;
     std::vector<std::vector<VkDescriptorSet>> m_materialDescriptorSetsPerSubObject;
-    std::vector<std::unique_ptr<Buffer>> m_mvpUniformBuffers;
-    std::vector<void *> m_mvpUniformBuffersMapped;
+    std::vector<std::vector<std::unique_ptr<Buffer>>> m_poolMVPUniformBuffers;
+    std::vector<std::vector<void *>> m_poolMVPUniformBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_probeStorageBuffers;
     std::vector<void *> m_probeStorageBuffersMapped;
     std::vector<std::unique_ptr<Buffer>> m_pointLightStorageBuffers;
@@ -215,11 +218,12 @@ class RenderStateABC : public GPUStateI
                                       const std::vector<std::shared_ptr<Light>> &lights,
                                       const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled);
     virtual void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                              uint32_t backBufferIndex) override;
-    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
+                                              uint32_t backBufferIndex, uint32_t pooledFramebufferIndex) override;
+    virtual void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex,
+                                      uint32_t pooledFramebufferIndex) override;
 
     virtual void recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex,
-                                                        uint32_t backBufferIndex);
+                                                        uint32_t backBufferIndex, uint32_t pooledFramebufferIndex);
     virtual void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) = 0;
 
     /**
@@ -277,6 +281,7 @@ class RenderStateBuilderI
 
     virtual void setInstanceDescriptorEnable(bool enable) = 0;
     virtual void setMaterialDescriptorEnable(bool enable) = 0;
+    virtual void setCaptureCount(uint32_t captureCount) = 0;
 
     virtual std::unique_ptr<GPUStateI> build() = 0;
 };
@@ -324,6 +329,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     bool m_lightDescriptorEnable = true;
     bool m_textureDescriptorEnable = true;
     bool m_mvpDescriptorEnable = true;
+    uint32_t m_captureCount = 1u;
 
     void restart() override
     {
@@ -389,6 +395,10 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_materialDescriptorSetEnable = enable;
     }
+    void setCaptureCount(uint32_t captureCount) override
+    {
+        m_captureCount = captureCount;
+    }
 
     void setModel(std::shared_ptr<Model> model);
 
@@ -440,6 +450,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     uint32_t m_frameInFlightCount;
 
     std::weak_ptr<Texture> m_texture;
+    uint32_t m_captureCount = 1u;
 
     void restart() override
     {
@@ -501,6 +512,9 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_materialDescriptorSetEnable = enable;
     }
+    void setCaptureCount(uint32_t captureCount) override
+    {
+    }
 
     std::unique_ptr<GPUStateI> build() override;
 };
@@ -539,6 +553,8 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     std::weak_ptr<Texture> m_texture;
 
     bool m_textureDescriptorEnable = true;
+
+    uint32_t m_captureCount = 1u;
 
     void restart() override
     {
@@ -599,7 +615,10 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_materialDescriptorSetEnable = enable;
     }
-
+    void setCaptureCount(uint32_t captureCount) override
+    {
+        m_captureCount = captureCount;
+    }
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {
         m_product->m_skybox = skybox;
@@ -647,6 +666,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
     std::weak_ptr<Texture> m_texture;
 
     bool m_textureDescriptorEnable = true;
+    uint32_t m_captureCount = 1u;
 
     void restart() override
     {
@@ -707,7 +727,10 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_materialDescriptorSetEnable = enable;
     }
-
+    void setCaptureCount(uint32_t captureCount) override
+    {
+        m_captureCount = captureCount;
+    }
     void setSkybox(std::shared_ptr<Skybox> skybox)
     {
         m_product->m_skybox = skybox;
@@ -752,6 +775,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
 
     std::vector<VkDescriptorPoolSize> m_poolSizes;
     uint32_t m_frameInFlightCount;
+    uint32_t m_captureCount = 1u;
 
     void restart() override
     {
@@ -819,6 +843,9 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
     {
         m_product->m_materialDescriptorSetUpdatePred = pred;
     }
+    void setCaptureCount(uint32_t captureCount) override
+    {
+    }
     void setInstanceDescriptorEnable(bool enable) override
     {
         m_product->m_instanceDescriptorSetEnable = enable;
@@ -868,10 +895,11 @@ class ComputeState : public GPUStateI
 
     void updateUniformBuffers(uint32_t backBufferIndex) override;
 
-    void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                      uint32_t backBufferIndex) override;
+    void updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd, uint32_t backBufferIndex,
+                                      uint32_t pooledFramebufferIndex = -1) override;
 
-    void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex) override;
+    void updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex,
+                              uint32_t pooledFramebufferIndex = -1) override;
 
   public:
     [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const override
@@ -884,7 +912,7 @@ class ComputeState : public GPUStateI
     }
 };
 
-class ComputeStateBuilder : public RenderStateBuilderI
+class ComputeStateBuilder final : public RenderStateBuilderI
 {
   private:
     std::unique_ptr<ComputeState> m_product;
@@ -955,6 +983,9 @@ class ComputeStateBuilder : public RenderStateBuilderI
     void setWorkGroup(glm::ivec3 workGroup)
     {
         m_product->m_workGroup = workGroup;
+    }
+    void setCaptureCount(uint32_t captureCount) override
+    {
     }
 
     std::unique_ptr<GPUStateI> build() override;

@@ -50,7 +50,7 @@ void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> r
     {
         for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
-            renderState->updateDescriptorSets(m_parentPhase, i);
+            renderState->updateDescriptorSets(m_parentPhase, i, poolIndex);
         }
 
         m_pooledRenderStates[poolIndex].push_back(renderState);
@@ -70,7 +70,7 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
     {
         for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
-            renderState->updateDescriptorSets(m_parentPhase, i);
+            renderState->updateDescriptorSets(m_parentPhase, i, pooledFramebufferIndex);
         }
     }
 
@@ -137,7 +137,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
         renderState->updatePushConstants(commandBuffer, singleFrameRenderIndex, camera, lights);
         renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
                                           lights, probeGrid, m_isCapturePhase);
-        renderState->updateDescriptorSetsPerFrame(m_parentPhase, commandBuffer, m_backBufferIndex);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, commandBuffer, m_backBufferIndex,
+                                                  pooledFramebufferIndex);
     }
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -153,7 +154,8 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
         for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
         {
-            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex);
+            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex,
+                                                                pooledFramebufferIndex);
             renderState->recordBackBufferDrawObjectCommands(commandBuffer, subObjectIndex);
         }
     }

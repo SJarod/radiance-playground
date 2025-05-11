@@ -429,6 +429,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.setModel(m_objects[i]);
                 captureMrsb.setPipeline(phongCapturePipeline);
                 captureMrsb.setEnvironmentMaps(rg->m_irradianceMaps);
+                captureMrsb.setCaptureCount(maxProbeCount);
 
                 rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
             }
@@ -607,6 +608,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             captureSrsb.setSkybox(m_skybox);
             captureSrsb.setTexture(m_skybox->getTexture());
             captureSrsb.setPipeline(skyboxCapturePipeline);
+            captureSrsb.setCaptureCount(maxProbeCount);
+
             rg->m_skyboxCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureSrsb.build()));
         }
 

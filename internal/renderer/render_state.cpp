@@ -60,25 +60,29 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
                                           const std::vector<std::shared_ptr<Light>> &lights,
                                           const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    if (m_mvpUniformBuffersMapped.size() > 0)
+    if (m_poolMVPUniformBuffersMapped.size() > 0)
     {
-        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
-        mvpData->model = glm::identity<glm::mat4>();
-
-        if (!captureModeEnabled)
+        if (m_poolMVPUniformBuffersMapped[pooledFramebufferIndex].size() > 0)
         {
-            mvpData->proj = camera.getProjectionMatrix();
-            mvpData->views[0] = camera.getViewMatrix();
-        }
-        else
-        {
-            const glm::vec3 &probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
+            MVP *mvpData = static_cast<MVP *>(m_poolMVPUniformBuffersMapped[pooledFramebufferIndex][backBufferIndex]);
+            mvpData->model = glm::identity<glm::mat4>();
 
-            mvpData->proj = capturePartialProj;
-            mvpData->proj[1][1] *= -1;
+            if (!captureModeEnabled)
+            {
+                mvpData->proj = camera.getProjectionMatrix();
+                mvpData->views[0] = camera.getViewMatrix();
+            }
+            else
+            {
+                const glm::vec3 &probePosition = probeGrid->getProbeAtIndex(pooledFramebufferIndex)->position;
 
-            for (int i = 0; i < 6; i++)
-                mvpData->views[i] = glm::lookAt(probePosition, probePosition + captureViewCenter[i], captureViewUp[i]);
+                mvpData->proj = capturePartialProj;
+                mvpData->proj[1][1] *= -1;
+
+                for (int i = 0; i < 6; i++)
+                    mvpData->views[i] =
+                        glm::lookAt(probePosition, probePosition + captureViewCenter[i], captureViewUp[i]);
+            }
         }
     }
 
@@ -163,12 +167,12 @@ void RenderStateABC::updateUniformBuffers(uint32_t backBufferIndex, uint32_t sin
 }
 
 void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                  uint32_t backBufferIndex)
+                                                  uint32_t backBufferIndex, uint32_t pooledFramebufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePredPerFrame)
     {
-        m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, cmd, m_instanceDescriptorSets[backBufferIndex],
-                                                  backBufferIndex);
+        m_instanceDescriptorSetUpdatePredPerFrame(
+            parentPhase, cmd, m_poolInstanceDescriptorSets[pooledFramebufferIndex][backBufferIndex], backBufferIndex);
     }
 
     if (m_materialDescriptorSetUpdatePredPerFrame)
@@ -191,19 +195,17 @@ ComputeState::~ComputeState()
     m_pipeline.reset();
 }
 
-void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex)
+void ComputeState::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex,
+                                        uint32_t pooledFramebufferIndex)
 {
     if (m_descriptorSetUpdatePred)
     {
-        for (const auto &set : m_descriptorSets)
-        {
-            m_descriptorSetUpdatePred(parentPhase, set, backBufferIndex);
-        }
+        m_descriptorSetUpdatePred(parentPhase, m_descriptorSets[backBufferIndex], backBufferIndex);
     }
 }
 
 void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                uint32_t backBufferIndex)
+                                                uint32_t backBufferIndex, uint32_t pooledFramebufferIndex)
 {
     if (m_descriptorSetUpdatePredPerFrame)
     {
@@ -211,11 +213,12 @@ void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, 
     }
 }
 
-void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex)
+void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32_t backBufferIndex,
+                                          uint32_t pooledFramebufferIndex)
 {
     if (m_instanceDescriptorSetUpdatePred)
     {
-        for (const auto &set : m_instanceDescriptorSets)
+        for (const auto &set : m_poolInstanceDescriptorSets[pooledFramebufferIndex])
         {
             m_instanceDescriptorSetUpdatePred(parentPhase, set, backBufferIndex);
         }
@@ -223,24 +226,28 @@ void RenderStateABC::updateDescriptorSets(const RenderPhase *parentPhase, uint32
 
     if (m_materialDescriptorSetUpdatePred)
     {
-        for (const auto &materialSetsPerMesh : m_materialDescriptorSetsPerSubObject)
+        for (const auto &set : m_poolInstanceDescriptorSets[pooledFramebufferIndex])
         {
-            for (const auto &materialSet : materialSetsPerMesh)
-            {
-                m_materialDescriptorSetUpdatePred(parentPhase, materialSet, backBufferIndex);
-            }
+            m_materialDescriptorSetUpdatePred(parentPhase, set, backBufferIndex);
         }
     }
 }
 
 void RenderStateABC::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,
-                                                            uint32_t subObjectIndex, uint32_t backBufferIndex)
+                                                            uint32_t subObjectIndex, uint32_t backBufferIndex,
+                                                            uint32_t pooledFramebufferIndex)
 {
     std::vector<VkDescriptorSet> descriptorSets;
 
-    if (m_instanceDescriptorSetEnable && backBufferIndex < m_instanceDescriptorSets.size())
+    if (m_instanceDescriptorSetEnable)
     {
-        descriptorSets.push_back(m_instanceDescriptorSets[backBufferIndex]);
+        if (pooledFramebufferIndex < m_poolInstanceDescriptorSets.size())
+        {
+            if (backBufferIndex < m_poolInstanceDescriptorSets[pooledFramebufferIndex].size())
+            {
+                descriptorSets.push_back(m_poolInstanceDescriptorSets[pooledFramebufferIndex][backBufferIndex]);
+            }
+        }
     }
 
     if (subObjectIndex < m_materialDescriptorSetsPerSubObject.size())
@@ -286,7 +293,8 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = m_frameInFlightCount * (1u + 1u * m_product->getSubObjectCount()),
+        // FrameInFlight * (instanceDescriptor * captureCount +  materialDescriptor * submeshCount)
+        .maxSets = m_frameInFlightCount * (1u * m_captureCount + 1u * m_product->getSubObjectCount()),
         .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
         .pPoolSizes = m_poolSizes.data(),
     };
@@ -298,26 +306,31 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
-        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
-
-    if (instanceDescriptorSetLayout.has_value())
+    m_product->m_poolInstanceDescriptorSets.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
-                                                              instanceDescriptorSetLayout.value());
-        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_product->m_descriptorPool,
-            .descriptorSetCount = m_frameInFlightCount,
-            .pSetLayouts = instanceSetLayouts.data(),
-        };
-        m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
-                                       m_product->m_instanceDescriptorSets.data());
-        if (res != VK_SUCCESS)
+        auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+            m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+
+        if (instanceDescriptorSetLayout.has_value())
         {
-            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
-            return nullptr;
+            std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                                  instanceDescriptorSetLayout.value());
+            VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_product->m_descriptorPool,
+                .descriptorSetCount = m_frameInFlightCount,
+                .pSetLayouts = instanceSetLayouts.data(),
+            };
+            instanceDescriptorSets.resize(m_frameInFlightCount);
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, instanceDescriptorSets.data());
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
+                return nullptr;
+            }
         }
     }
 
@@ -356,231 +369,241 @@ std::unique_ptr<GPUStateI> ModelRenderStateBuilder::build()
 
     if (m_mvpDescriptorEnable)
     {
-        m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
-        m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
-        for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+        m_product->m_poolMVPUniformBuffers.resize(m_captureCount);
+        m_product->m_poolMVPUniformBuffersMapped.resize(m_captureCount);
+        for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
         {
-            BufferBuilder bb;
-            BufferDirector bd;
-            bd.configureUniformBufferBuilder(bb);
-            bb.setSize(sizeof(RenderStateABC::MVP));
-            bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName + " Model MVP Uniform Buffer");
-            m_product->m_mvpUniformBuffers[i] = bb.build();
+            auto &mvpUniformBuffers = m_product->m_poolMVPUniformBuffers[captureIdx];
+            auto &mvpUniformBuffersMapped = m_product->m_poolMVPUniformBuffersMapped[captureIdx];
+            mvpUniformBuffers.resize(m_frameInFlightCount);
+            mvpUniformBuffersMapped.resize(m_frameInFlightCount);
+            for (int backBufferIdx = 0; backBufferIdx < mvpUniformBuffers.size(); ++backBufferIdx)
+            {
+                BufferBuilder bb;
+                BufferDirector bd;
+                bd.configureUniformBufferBuilder(bb);
+                bb.setSize(sizeof(RenderStateABC::MVP));
+                bb.setDevice(m_device);
+                bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName + " Model MVP Uniform Buffer");
+                mvpUniformBuffers[backBufferIdx] = bb.build();
 
-            m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
-        }
-    }
-
-    if (m_probeDescriptorEnable)
-    {
-        m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
-        m_product->m_probeStorageBuffersMapped.resize(m_frameInFlightCount);
-
-        for (int i = 0; i < m_product->m_probeStorageBuffers.size(); ++i)
-        {
-            BufferBuilder bb;
-            BufferDirector bd;
-            bd.configureStorageBufferBuilder(bb);
-            bb.setSize(sizeof(RenderStateABC::ProbeContainer));
-            bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName + " Model Probe Container Uniform Buffer");
-            m_product->m_probeStorageBuffers[i] = bb.build();
-
-            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
-        }
-    }
-
-    if (m_lightDescriptorEnable)
-    {
-        m_product->m_pointLightStorageBuffers.resize(m_frameInFlightCount);
-        m_product->m_pointLightStorageBuffersMapped.resize(m_frameInFlightCount);
-        for (int i = 0; i < m_product->m_pointLightStorageBuffers.size(); ++i)
-        {
-            BufferBuilder bb;
-            BufferDirector bd;
-            bd.configureStorageBufferBuilder(bb);
-            bb.setSize(sizeof(RenderStateABC::PointLightContainer));
-            bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
-                       " Model Point Light Container Uniform Buffer");
-            m_product->m_pointLightStorageBuffers[i] = bb.build();
-
-            m_product->m_pointLightStorageBuffers[i]->mapMemory(&m_product->m_pointLightStorageBuffersMapped[i]);
-        }
-
-        m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
-        m_product->m_directionalLightStorageBuffersMapped.resize(m_frameInFlightCount);
-        for (int i = 0; i < m_product->m_directionalLightStorageBuffers.size(); ++i)
-        {
-            BufferBuilder bb;
-            BufferDirector bd;
-            bd.configureStorageBufferBuilder(bb);
-            bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
-            bb.setDevice(m_device);
-            bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
-                       " Model Directional Light Container Uniform Buffer");
-            m_product->m_directionalLightStorageBuffers[i] = bb.build();
-
-            m_product->m_directionalLightStorageBuffers[i]->mapMemory(
-                &m_product->m_directionalLightStorageBuffersMapped[i]);
-        }
-    }
-
-    std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
-    mvpBufferInfos.reserve(m_frameInFlightCount);
-
-    std::vector<VkDescriptorBufferInfo> probeBufferInfos;
-    probeBufferInfos.reserve(m_frameInFlightCount);
-
-    std::vector<VkDescriptorBufferInfo> pointLightBufferInfos;
-    std::vector<VkDescriptorBufferInfo> directionalLightBufferInfos;
-    pointLightBufferInfos.reserve(m_frameInFlightCount);
-    directionalLightBufferInfos.reserve(m_frameInFlightCount);
-
-    std::vector<std::vector<VkDescriptorImageInfo>> envMapImageInfos;
-    envMapImageInfos.reserve(m_frameInFlightCount);
-
-    std::vector<VkDescriptorImageInfo> diffuseImageInfos;
-    diffuseImageInfos.reserve(m_product->getSubObjectCount() * m_frameInFlightCount);
-
-    UniformDescriptorBuilder udb;
-    for (uint32_t i = 0u; i < m_product->m_instanceDescriptorSets.size(); ++i)
-    {
-        if (m_mvpDescriptorEnable)
-        {
-            VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
-            mvpBufferInfo.buffer = m_product->m_mvpUniformBuffers[i]->getHandle();
-            mvpBufferInfo.offset = 0;
-            mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .pBufferInfo = &mvpBufferInfo,
-            });
+                mvpUniformBuffers[backBufferIdx]->mapMemory(&mvpUniformBuffersMapped[backBufferIdx]);
+            }
         }
 
         if (m_probeDescriptorEnable)
         {
-            VkDescriptorBufferInfo &probeBufferInfo = probeBufferInfos.emplace_back();
-            probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
-            probeBufferInfo.offset = 0;
-            probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 5,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .pBufferInfo = &probeBufferInfo,
-            });
+            m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
+            m_product->m_probeStorageBuffersMapped.resize(m_frameInFlightCount);
+
+            for (int i = 0; i < m_product->m_probeStorageBuffers.size(); ++i)
+            {
+                BufferBuilder bb;
+                BufferDirector bd;
+                bd.configureStorageBufferBuilder(bb);
+                bb.setSize(sizeof(RenderStateABC::ProbeContainer));
+                bb.setDevice(m_device);
+                bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
+                           " Model Probe Container Uniform Buffer");
+                m_product->m_probeStorageBuffers[i] = bb.build();
+
+                m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
+            }
         }
 
         if (m_lightDescriptorEnable)
         {
-            VkDescriptorBufferInfo &pointLightBufferInfo = pointLightBufferInfos.emplace_back();
-            pointLightBufferInfo.buffer = m_product->m_pointLightStorageBuffers[i]->getHandle();
-            pointLightBufferInfo.offset = 0;
-            pointLightBufferInfo.range = sizeof(RenderStateABC::PointLightContainer);
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 2,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .pBufferInfo = &pointLightBufferInfo,
-            });
-
-            VkDescriptorBufferInfo &directionalLightBufferInfo = directionalLightBufferInfos.emplace_back();
-            directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
-            directionalLightBufferInfo.offset = 0;
-            directionalLightBufferInfo.range = sizeof(RenderStateABC::DirectionalLightContainer);
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 3,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .pBufferInfo = &directionalLightBufferInfo,
-            });
-        }
-
-        if (m_environmentMaps.size() > 0)
-        {
-            auto &envMapImageArrayInfos = envMapImageInfos.emplace_back();
-            envMapImageArrayInfos.reserve(m_environmentMaps.size());
-            // Max probe count per draw (may be higher)
-            for (uint32_t i = 0u; i < m_environmentMaps.size(); i++)
+            m_product->m_pointLightStorageBuffers.resize(m_frameInFlightCount);
+            m_product->m_pointLightStorageBuffersMapped.resize(m_frameInFlightCount);
+            for (int i = 0; i < m_product->m_pointLightStorageBuffers.size(); ++i)
             {
-                std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
+                BufferBuilder bb;
+                BufferDirector bd;
+                bd.configureStorageBufferBuilder(bb);
+                bb.setSize(sizeof(RenderStateABC::PointLightContainer));
+                bb.setDevice(m_device);
+                bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
+                           " Model Point Light Container Uniform Buffer");
+                m_product->m_pointLightStorageBuffers[i] = bb.build();
 
-                VkDescriptorImageInfo &envMapImageInfo = envMapImageArrayInfos.emplace_back();
-                envMapImageInfo.sampler = *texPtr->getSampler();
-                envMapImageInfo.imageView = texPtr->getImageView();
-                envMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                m_product->m_pointLightStorageBuffers[i]->mapMemory(&m_product->m_pointLightStorageBuffersMapped[i]);
             }
 
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 4,
-                .dstArrayElement = 0,
-                .descriptorCount = static_cast<uint32_t>(envMapImageArrayInfos.size()),
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = envMapImageArrayInfos.data(),
-            });
-        }
-    }
-
-    for (uint32_t i = 0u; i < m_product->m_materialDescriptorSetsPerSubObject.size(); ++i)
-    {
-        auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
-        for (uint32_t j = 0u; j < materialDescriptorSets.size(); j++)
-        {
-            if (m_textureDescriptorEnable)
+            m_product->m_directionalLightStorageBuffers.resize(m_frameInFlightCount);
+            m_product->m_directionalLightStorageBuffersMapped.resize(m_frameInFlightCount);
+            for (int i = 0; i < m_product->m_directionalLightStorageBuffers.size(); ++i)
             {
-                std::weak_ptr<Texture> currentTexture = m_texture;
+                BufferBuilder bb;
+                BufferDirector bd;
+                bd.configureStorageBufferBuilder(bb);
+                bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
+                bb.setDevice(m_device);
+                bb.setName(std::to_string((uintptr_t)this) + " " + m_modelName +
+                           " Model Directional Light Container Uniform Buffer");
+                m_product->m_directionalLightStorageBuffers[i] = bb.build();
 
-                if (currentTexture.expired())
-                    currentTexture = m_product->m_model.lock()->getMesh(i)->getTexture();
+                m_product->m_directionalLightStorageBuffers[i]->mapMemory(
+                    &m_product->m_directionalLightStorageBuffersMapped[i]);
+            }
+        }
 
-                if (currentTexture.expired())
-                    currentTexture = ModelRenderState::s_defaultDiffuseTexture;
+        std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
+        mvpBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
 
-                if (!currentTexture.expired())
+        std::vector<VkDescriptorBufferInfo> probeBufferInfos;
+        probeBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        std::vector<VkDescriptorBufferInfo> pointLightBufferInfos;
+        std::vector<VkDescriptorBufferInfo> directionalLightBufferInfos;
+        pointLightBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
+        directionalLightBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        std::vector<std::vector<VkDescriptorImageInfo>> envMapImageInfos;
+        envMapImageInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        std::vector<VkDescriptorImageInfo> diffuseImageInfos;
+        diffuseImageInfos.reserve(m_product->getSubObjectCount() * m_frameInFlightCount);
+
+        UniformDescriptorBuilder udb;
+        for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
+        {
+            const auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+            for (uint32_t i = 0u; i < instanceDescriptorSets.size(); ++i)
+            {
+                if (m_mvpDescriptorEnable)
                 {
-                    std::shared_ptr<Texture> texPtr = currentTexture.lock();
+                    VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
+                    mvpBufferInfo.buffer = m_product->m_poolMVPUniformBuffers[captureIdx][i]->getHandle();
+                    mvpBufferInfo.offset = 0;
+                    mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
+                    udb.addSetWrites(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 0,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .pBufferInfo = &mvpBufferInfo,
+                    });
+                }
 
-                    VkDescriptorImageInfo &diffuseImageInfo = diffuseImageInfos.emplace_back();
-                    diffuseImageInfo.sampler = *texPtr->getSampler();
-                    diffuseImageInfo.imageView = texPtr->getImageView();
-                    diffuseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                if (m_probeDescriptorEnable)
+                {
+                    VkDescriptorBufferInfo &probeBufferInfo = probeBufferInfos.emplace_back();
+                    probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
+                    probeBufferInfo.offset = 0;
+                    probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
+                    udb.addSetWrites(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 5,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        .pBufferInfo = &probeBufferInfo,
+                    });
+                }
+
+                if (m_lightDescriptorEnable)
+                {
+                    VkDescriptorBufferInfo &pointLightBufferInfo = pointLightBufferInfos.emplace_back();
+                    pointLightBufferInfo.buffer = m_product->m_pointLightStorageBuffers[i]->getHandle();
+                    pointLightBufferInfo.offset = 0;
+                    pointLightBufferInfo.range = sizeof(RenderStateABC::PointLightContainer);
+                    udb.addSetWrites(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 2,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        .pBufferInfo = &pointLightBufferInfo,
+                    });
+
+                    VkDescriptorBufferInfo &directionalLightBufferInfo = directionalLightBufferInfos.emplace_back();
+                    directionalLightBufferInfo.buffer = m_product->m_directionalLightStorageBuffers[i]->getHandle();
+                    directionalLightBufferInfo.offset = 0;
+                    directionalLightBufferInfo.range = sizeof(RenderStateABC::DirectionalLightContainer);
+                    udb.addSetWrites(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 3,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        .pBufferInfo = &directionalLightBufferInfo,
+                    });
+                }
+
+                if (m_environmentMaps.size() > 0)
+                {
+                    auto &envMapImageArrayInfos = envMapImageInfos.emplace_back();
+                    envMapImageArrayInfos.reserve(m_environmentMaps.size());
+                    // Max probe count per draw (may be higher)
+                    for (uint32_t i = 0u; i < m_environmentMaps.size(); i++)
+                    {
+                        std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
+
+                        VkDescriptorImageInfo &envMapImageInfo = envMapImageArrayInfos.emplace_back();
+                        envMapImageInfo.sampler = *texPtr->getSampler();
+                        envMapImageInfo.imageView = texPtr->getImageView();
+                        envMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
 
                     udb.addSetWrites(VkWriteDescriptorSet{
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = materialDescriptorSets[j],
-                        .dstBinding = 1,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 4,
                         .dstArrayElement = 0,
-                        .descriptorCount = 1,
+                        .descriptorCount = static_cast<uint32_t>(envMapImageArrayInfos.size()),
                         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        .pImageInfo = &diffuseImageInfo,
+                        .pImageInfo = envMapImageArrayInfos.data(),
                     });
                 }
             }
         }
+
+        for (uint32_t i = 0u; i < m_product->m_materialDescriptorSetsPerSubObject.size(); ++i)
+        {
+            auto &materialDescriptorSets = m_product->m_materialDescriptorSetsPerSubObject[i];
+            for (uint32_t j = 0u; j < materialDescriptorSets.size(); j++)
+            {
+                if (m_textureDescriptorEnable)
+                {
+                    std::weak_ptr<Texture> currentTexture = m_texture;
+
+                    if (currentTexture.expired())
+                        currentTexture = m_product->m_model.lock()->getMesh(i)->getTexture();
+
+                    if (currentTexture.expired())
+                        currentTexture = ModelRenderState::s_defaultDiffuseTexture;
+
+                    if (!currentTexture.expired())
+                    {
+                        std::shared_ptr<Texture> texPtr = currentTexture.lock();
+
+                        VkDescriptorImageInfo &diffuseImageInfo = diffuseImageInfos.emplace_back();
+                        diffuseImageInfo.sampler = *texPtr->getSampler();
+                        diffuseImageInfo.imageView = texPtr->getImageView();
+                        diffuseImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                        udb.addSetWrites(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .dstSet = materialDescriptorSets[j],
+                            .dstBinding = 1,
+                            .dstArrayElement = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                            .pImageInfo = &diffuseImageInfo,
+                        });
+                    }
+                }
+            }
+        }
+        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
+        if (!writes.empty())
+            vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
-
-    std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-    if (!writes.empty())
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-
     return std::move(m_product);
 }
 
@@ -620,12 +643,16 @@ void ModelRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t s
     RenderStateABC::updateUniformBuffers(backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
                                          lights, probeGrid, captureModeEnabled);
 
-    if (m_mvpUniformBuffersMapped.size() > 0)
+    if (m_poolMVPUniformBuffersMapped.size() > 0)
     {
-        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
-        auto modelPtr = m_model.lock();
+        const auto &mvpUniformBuffersMapped = m_poolMVPUniformBuffersMapped[pooledFramebufferIndex];
+        if (mvpUniformBuffersMapped.size() > 0)
+        {
+            MVP *mvpData = static_cast<MVP *>(mvpUniformBuffersMapped[backBufferIndex]);
+            auto modelPtr = m_model.lock();
 
-        mvpData->model = modelPtr->getTransform().getTransformMatrix();
+            mvpData->model = modelPtr->getTransform().getTransformMatrix();
+        }
     }
 }
 
@@ -701,7 +728,7 @@ std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = m_frameInFlightCount,
+        .maxSets = m_frameInFlightCount * m_captureCount,
         .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
         .pPoolSizes = m_poolSizes.data(),
     };
@@ -713,26 +740,31 @@ std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
-        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
-
-    if (instanceDescriptorSetLayout.has_value())
+    m_product->m_poolInstanceDescriptorSets.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
-                                                              instanceDescriptorSetLayout.value());
-        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_product->m_descriptorPool,
-            .descriptorSetCount = m_frameInFlightCount,
-            .pSetLayouts = instanceSetLayouts.data(),
-        };
-        m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
-                                       m_product->m_instanceDescriptorSets.data());
-        if (res != VK_SUCCESS)
+        auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+            m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+
+        if (instanceDescriptorSetLayout.has_value())
         {
-            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
-            return nullptr;
+            std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                                  instanceDescriptorSetLayout.value());
+            VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_product->m_descriptorPool,
+                .descriptorSetCount = m_frameInFlightCount,
+                .pSetLayouts = instanceSetLayouts.data(),
+            };
+            instanceDescriptorSets.resize(m_frameInFlightCount);
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, instanceDescriptorSets.data());
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
+                return nullptr;
+            }
         }
     }
 
@@ -769,64 +801,76 @@ std::unique_ptr<GPUStateI> SkyboxRenderStateBuilder::build()
 
     // uniform buffers
 
-    m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+    m_product->m_poolMVPUniformBuffers.resize(m_captureCount);
+    m_product->m_poolMVPUniformBuffersMapped.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.configureUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
-        bb.setDevice(m_device);
-        bb.setName(std::to_string((uintptr_t)this) + " Skybox MVP Uniform Buffer");
-        m_product->m_mvpUniformBuffers[i] = bb.build();
+        auto &mvpUniformBuffers = m_product->m_poolMVPUniformBuffers[captureIdx];
+        auto &mvpUniformBuffersMapped = m_product->m_poolMVPUniformBuffersMapped[captureIdx];
+        mvpUniformBuffers.resize(m_frameInFlightCount);
+        mvpUniformBuffersMapped.resize(m_frameInFlightCount);
+        for (int backBufferIdx = 0; backBufferIdx < mvpUniformBuffers.size(); ++backBufferIdx)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureUniformBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::MVP));
+            bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Skybox MVP Uniform Buffer");
+            mvpUniformBuffers[backBufferIdx] = bb.build();
 
-        m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
+            mvpUniformBuffers[backBufferIdx]->mapMemory(&mvpUniformBuffersMapped[backBufferIdx]);
+        }
     }
 
-    for (int i = 0; i < m_product->m_instanceDescriptorSets.size(); ++i)
+    std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
+    mvpBufferInfos.resize(m_frameInFlightCount * m_captureCount);
+
+    UniformDescriptorBuilder udb;
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        VkDescriptorBufferInfo mvpBufferInfo = {
-            .buffer = m_product->m_mvpUniformBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::MVP),
-        };
-
-        UniformDescriptorBuilder udb;
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_instanceDescriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &mvpBufferInfo,
-        });
-
-        if (m_textureDescriptorEnable)
+        const auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        for (uint32_t i = 0u; i < instanceDescriptorSets.size(); ++i)
         {
-            VkDescriptorImageInfo imageInfo = {
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            };
-            if (m_texture.lock())
-            {
-                auto texPtr = m_texture.lock();
-                imageInfo.sampler = *texPtr->getSampler();
-                imageInfo.imageView = texPtr->getImageView();
-            }
+            VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
+            mvpBufferInfo.buffer = m_product->m_poolMVPUniformBuffers[captureIdx][i]->getHandle();
+            mvpBufferInfo.offset = 0;
+            mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
             udb.addSetWrites(VkWriteDescriptorSet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 1,
+                .dstSet = instanceDescriptorSets[i],
+                .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageInfo,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &mvpBufferInfo,
             });
-        }
 
-        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+            if (m_textureDescriptorEnable)
+            {
+                VkDescriptorImageInfo imageInfo = {
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                if (m_texture.lock())
+                {
+                    auto texPtr = m_texture.lock();
+                    imageInfo.sampler = *texPtr->getSampler();
+                    imageInfo.imageView = texPtr->getImageView();
+                }
+                udb.addSetWrites(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = instanceDescriptorSets[i],
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
+                });
+            }
+
+            std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
+            vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        }
     }
 
     return std::move(m_product);
@@ -837,7 +881,7 @@ void SkyboxRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32_t 
                                              const std::vector<std::shared_ptr<Light>> &lights,
                                              const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_poolMVPUniformBuffersMapped[pooledFramebufferIndex][backBufferIndex]);
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
@@ -889,7 +933,7 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = m_frameInFlightCount,
+        .maxSets = m_frameInFlightCount * m_captureCount,
         .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
         .pPoolSizes = m_poolSizes.data(),
     };
@@ -901,26 +945,31 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
     }
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
-        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
-
-    if (instanceDescriptorSetLayout.has_value())
+    m_product->m_poolInstanceDescriptorSets.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
-                                                              instanceDescriptorSetLayout.value());
-        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_product->m_descriptorPool,
-            .descriptorSetCount = m_frameInFlightCount,
-            .pSetLayouts = instanceSetLayouts.data(),
-        };
-        m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
-                                       m_product->m_instanceDescriptorSets.data());
-        if (res != VK_SUCCESS)
+        auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+            m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+
+        if (instanceDescriptorSetLayout.has_value())
         {
-            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
-            return nullptr;
+            std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                                  instanceDescriptorSetLayout.value());
+            VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_product->m_descriptorPool,
+                .descriptorSetCount = m_frameInFlightCount,
+                .pSetLayouts = instanceSetLayouts.data(),
+            };
+            instanceDescriptorSets.resize(m_frameInFlightCount);
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, instanceDescriptorSets.data());
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
+                return nullptr;
+            }
         }
     }
 
@@ -957,64 +1006,76 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
 
     // uniform buffers
 
-    m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+    m_product->m_poolMVPUniformBuffers.resize(m_captureCount);
+    m_product->m_poolMVPUniformBuffersMapped.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.configureUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
-        bb.setDevice(m_device);
-        bb.setName(std::to_string((uintptr_t)this) + " Environment Capture MVP Uniform Buffer");
-        m_product->m_mvpUniformBuffers[i] = bb.build();
+        auto &mvpUniformBuffers = m_product->m_poolMVPUniformBuffers[captureIdx];
+        auto &mvpUniformBuffersMapped = m_product->m_poolMVPUniformBuffersMapped[captureIdx];
+        mvpUniformBuffers.resize(m_frameInFlightCount);
+        mvpUniformBuffersMapped.resize(m_frameInFlightCount);
+        for (int backBufferIdx = 0; backBufferIdx < mvpUniformBuffers.size(); ++backBufferIdx)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureUniformBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::MVP));
+            bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Environment Capture MVP Uniform Buffer");
+            mvpUniformBuffers[backBufferIdx] = bb.build();
 
-        m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
+            mvpUniformBuffers[backBufferIdx]->mapMemory(&mvpUniformBuffersMapped[backBufferIdx]);
+        }
     }
 
-    for (int i = 0; i < m_product->m_instanceDescriptorSets.size(); ++i)
+    std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
+    mvpBufferInfos.resize(m_frameInFlightCount * m_captureCount);
+
+    UniformDescriptorBuilder udb;
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        VkDescriptorBufferInfo mvpBufferInfo = {
-            .buffer = m_product->m_mvpUniformBuffers[i]->getHandle(),
-            .offset = 0,
-            .range = sizeof(RenderStateABC::MVP),
-        };
-
-        UniformDescriptorBuilder udb;
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_instanceDescriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &mvpBufferInfo,
-        });
-
-        if (m_textureDescriptorEnable)
+        const auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        for (int i = 0; i < instanceDescriptorSets.size(); ++i)
         {
-            VkDescriptorImageInfo imageInfo = {
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            };
-            if (m_texture.lock())
-            {
-                auto texPtr = m_texture.lock();
-                imageInfo.sampler = *texPtr->getSampler();
-                imageInfo.imageView = texPtr->getImageView();
-            }
+            VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
+            mvpBufferInfo.buffer = m_product->m_poolMVPUniformBuffers[captureIdx][i]->getHandle();
+            mvpBufferInfo.offset = 0;
+            mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
             udb.addSetWrites(VkWriteDescriptorSet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 1,
+                .dstSet = instanceDescriptorSets[i],
+                .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageInfo,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &mvpBufferInfo,
             });
-        }
 
-        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+            if (m_textureDescriptorEnable)
+            {
+                VkDescriptorImageInfo imageInfo = {
+                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                };
+                if (m_texture.lock())
+                {
+                    auto texPtr = m_texture.lock();
+                    imageInfo.sampler = *texPtr->getSampler();
+                    imageInfo.imageView = texPtr->getImageView();
+                }
+                udb.addSetWrites(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = instanceDescriptorSets[i],
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    .pImageInfo = &imageInfo,
+                });
+            }
+
+            std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
+            vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        }
     }
 
     return std::move(m_product);
@@ -1026,9 +1087,9 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t backBufferInde
                                                          const std::shared_ptr<ProbeGrid> &probeGrid,
                                                          bool captureModeEnabled)
 {
-    uint32_t bufferIndex = std::min(m_mvpUniformBuffersMapped.size() - 1, (size_t)backBufferIndex);
+    uint32_t bufferIndex = std::min(m_poolMVPUniformBuffersMapped[0].size() - 1, (size_t)backBufferIndex);
 
-    MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[bufferIndex]);
+    MVP *mvpData = static_cast<MVP *>(m_poolMVPUniformBuffersMapped[0][bufferIndex]);
     mvpData->model = glm::identity<glm::mat4>();
 
     if (!captureModeEnabled)
@@ -1080,7 +1141,7 @@ std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
     // descriptor pool
     VkDescriptorPoolCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = m_frameInFlightCount * (1u + 1u * m_product->getSubObjectCount()),
+        .maxSets = m_frameInFlightCount * (1u * m_captureCount + 1u * m_product->getSubObjectCount()),
         .poolSizeCount = static_cast<uint32_t>(m_poolSizes.size()),
         .pPoolSizes = m_poolSizes.data(),
     };
@@ -1094,133 +1155,149 @@ std::unique_ptr<GPUStateI> ProbeGridRenderStateBuilder::build()
     m_product->m_materialDescriptorSetEnable = false;
 
     // descriptor set
-    std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
-        m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
-
-    if (instanceDescriptorSetLayout.has_value())
+    m_product->m_poolInstanceDescriptorSets.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
-                                                              instanceDescriptorSetLayout.value());
-        VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = m_product->m_descriptorPool,
-            .descriptorSetCount = m_frameInFlightCount,
-            .pSetLayouts = instanceSetLayouts.data(),
-        };
-        m_product->m_instanceDescriptorSets.resize(m_frameInFlightCount);
-        res = vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo,
-                                       m_product->m_instanceDescriptorSets.data());
-        if (res != VK_SUCCESS)
+        auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+        std::optional<VkDescriptorSetLayout> instanceDescriptorSetLayout =
+            m_product->m_pipeline->getDescriptorSetLayoutAtIndex(0u);
+
+        if (instanceDescriptorSetLayout.has_value())
         {
-            std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
-            return nullptr;
+            std::vector<VkDescriptorSetLayout> instanceSetLayouts(m_frameInFlightCount,
+                                                                  instanceDescriptorSetLayout.value());
+            VkDescriptorSetAllocateInfo instanceDescriptorSetAllocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_product->m_descriptorPool,
+                .descriptorSetCount = m_frameInFlightCount,
+                .pSetLayouts = instanceSetLayouts.data(),
+            };
+            instanceDescriptorSets.resize(m_frameInFlightCount);
+            res =
+                vkAllocateDescriptorSets(deviceHandle, &instanceDescriptorSetAllocInfo, instanceDescriptorSets.data());
+            if (res != VK_SUCCESS)
+            {
+                std::cerr << "Failed to allocate instance descriptor sets : " << res << std::endl;
+                return nullptr;
+            }
         }
     }
 
     // uniform buffers
 
-    m_product->m_mvpUniformBuffers.resize(m_frameInFlightCount);
-    m_product->m_mvpUniformBuffersMapped.resize(m_frameInFlightCount);
-    for (int i = 0; i < m_product->m_mvpUniformBuffers.size(); ++i)
+    m_product->m_poolMVPUniformBuffers.resize(m_captureCount);
+    m_product->m_poolMVPUniformBuffersMapped.resize(m_captureCount);
+    for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
     {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.configureUniformBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::MVP));
-        bb.setDevice(m_device);
-        bb.setName(std::to_string((uintptr_t)this) + " Probe Grid MVP Uniform Buffer");
-        m_product->m_mvpUniformBuffers[i] = bb.build();
-
-        m_product->m_mvpUniformBuffers[i]->mapMemory(&m_product->m_mvpUniformBuffersMapped[i]);
-    }
-
-    m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
-    m_product->m_probeStorageBuffersMapped.resize(m_frameInFlightCount);
-
-    for (int i = 0; i < m_product->m_probeStorageBuffers.size(); ++i)
-    {
-        BufferBuilder bb;
-        BufferDirector bd;
-        bd.configureStorageBufferBuilder(bb);
-        bb.setSize(sizeof(RenderStateABC::ProbeContainer));
-        bb.setDevice(m_device);
-        bb.setName(std::to_string((uintptr_t)this) + " Probe Grid Probe Container Uniform Buffer");
-        m_product->m_probeStorageBuffers[i] = bb.build();
-
-        m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
-    }
-
-    std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
-    mvpBufferInfos.reserve(m_frameInFlightCount);
-
-    std::vector<VkDescriptorBufferInfo> probeBufferInfos;
-    probeBufferInfos.reserve(m_frameInFlightCount);
-
-    std::vector<std::vector<VkDescriptorImageInfo>> envMapImageInfos;
-    envMapImageInfos.reserve(m_frameInFlightCount);
-
-    UniformDescriptorBuilder udb;
-    for (uint32_t i = 0u; i < m_product->m_instanceDescriptorSets.size(); ++i)
-    {
-        VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
-        mvpBufferInfo.buffer = m_product->m_mvpUniformBuffers[i]->getHandle();
-        mvpBufferInfo.offset = 0;
-        mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_instanceDescriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &mvpBufferInfo,
-        });
-
-        VkDescriptorBufferInfo &probeBufferInfo = probeBufferInfos.emplace_back();
-        probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
-        probeBufferInfo.offset = 0;
-        probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
-        udb.addSetWrites(VkWriteDescriptorSet{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = m_product->m_instanceDescriptorSets[i],
-            .dstBinding = 5,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pBufferInfo = &probeBufferInfo,
-        });
-
-        if (m_environmentMaps.size() > 0)
+        auto &mvpUniformBuffers = m_product->m_poolMVPUniformBuffers[captureIdx];
+        auto &mvpUniformBuffersMapped = m_product->m_poolMVPUniformBuffersMapped[captureIdx];
+        mvpUniformBuffers.resize(m_frameInFlightCount);
+        mvpUniformBuffersMapped.resize(m_frameInFlightCount);
+        for (int backBufferIdx = 0; backBufferIdx < mvpUniformBuffers.size(); ++backBufferIdx)
         {
-            auto &envMapImageArrayInfos = envMapImageInfos.emplace_back();
-            envMapImageArrayInfos.reserve(m_environmentMaps.size());
-            // Max probe count per draw (may be higher)
-            for (uint32_t i = 0u; i < m_environmentMaps.size(); i++)
-            {
-                std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureUniformBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::MVP));
+            bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Probe Grid MVP Uniform Buffer");
+            mvpUniformBuffers[backBufferIdx] = bb.build();
 
-                VkDescriptorImageInfo &envMapImageInfo = envMapImageArrayInfos.emplace_back();
-                envMapImageInfo.sampler = *texPtr->getSampler();
-                envMapImageInfo.imageView = texPtr->getImageView();
-                envMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            }
-
-            udb.addSetWrites(VkWriteDescriptorSet{
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = m_product->m_instanceDescriptorSets[i],
-                .dstBinding = 4,
-                .dstArrayElement = 0,
-                .descriptorCount = static_cast<uint32_t>(envMapImageArrayInfos.size()),
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = envMapImageArrayInfos.data(),
-            });
+            mvpUniformBuffers[backBufferIdx]->mapMemory(&mvpUniformBuffersMapped[backBufferIdx]);
         }
+
+        m_product->m_probeStorageBuffers.resize(m_frameInFlightCount);
+        m_product->m_probeStorageBuffersMapped.resize(m_frameInFlightCount);
+
+        for (int i = 0; i < m_product->m_probeStorageBuffers.size(); ++i)
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::ProbeContainer));
+            bb.setDevice(m_device);
+            bb.setName(std::to_string((uintptr_t)this) + " Probe Grid Probe Container Uniform Buffer");
+            m_product->m_probeStorageBuffers[i] = bb.build();
+
+            m_product->m_probeStorageBuffers[i]->mapMemory(&m_product->m_probeStorageBuffersMapped[i]);
+        }
+
+        std::vector<VkDescriptorBufferInfo> mvpBufferInfos;
+        mvpBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        std::vector<VkDescriptorBufferInfo> probeBufferInfos;
+        probeBufferInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        std::vector<std::vector<VkDescriptorImageInfo>> envMapImageInfos;
+        envMapImageInfos.reserve(m_frameInFlightCount * m_captureCount);
+
+        UniformDescriptorBuilder udb;
+        for (int captureIdx = 0; captureIdx < m_captureCount; captureIdx++)
+        {
+            const auto &instanceDescriptorSets = m_product->m_poolInstanceDescriptorSets[captureIdx];
+
+            for (uint32_t i = 0u; i < instanceDescriptorSets.size(); ++i)
+            {
+                VkDescriptorBufferInfo &mvpBufferInfo = mvpBufferInfos.emplace_back();
+                mvpBufferInfo.buffer = m_product->m_poolMVPUniformBuffers[captureIdx][i]->getHandle();
+                mvpBufferInfo.offset = 0;
+                mvpBufferInfo.range = sizeof(RenderStateABC::MVP);
+                udb.addSetWrites(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = instanceDescriptorSets[i],
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .pBufferInfo = &mvpBufferInfo,
+                });
+
+                VkDescriptorBufferInfo &probeBufferInfo = probeBufferInfos.emplace_back();
+                probeBufferInfo.buffer = m_product->m_probeStorageBuffers[i]->getHandle();
+                probeBufferInfo.offset = 0;
+                probeBufferInfo.range = sizeof(RenderStateABC::ProbeContainer);
+                udb.addSetWrites(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .dstSet = instanceDescriptorSets[i],
+                    .dstBinding = 5,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    .pBufferInfo = &probeBufferInfo,
+                });
+
+                if (m_environmentMaps.size() > 0)
+                {
+                    auto &envMapImageArrayInfos = envMapImageInfos.emplace_back();
+                    envMapImageArrayInfos.reserve(m_environmentMaps.size());
+                    // Max probe count per draw (may be higher)
+                    for (uint32_t i = 0u; i < m_environmentMaps.size(); i++)
+                    {
+                        std::shared_ptr<Texture> texPtr = m_environmentMaps[i].lock();
+
+                        VkDescriptorImageInfo &envMapImageInfo = envMapImageArrayInfos.emplace_back();
+                        envMapImageInfo.sampler = *texPtr->getSampler();
+                        envMapImageInfo.imageView = texPtr->getImageView();
+                        envMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
+
+                    udb.addSetWrites(VkWriteDescriptorSet{
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = instanceDescriptorSets[i],
+                        .dstBinding = 4,
+                        .dstArrayElement = 0,
+                        .descriptorCount = static_cast<uint32_t>(envMapImageArrayInfos.size()),
+                        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .pImageInfo = envMapImageArrayInfos.data(),
+                    });
+                }
+            }
+        }
+
+        std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
+        if (!writes.empty())
+            vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
-
-    std::vector<VkWriteDescriptorSet> writes = udb.buildAndRestart()->getSetWrites();
-    if (!writes.empty())
-        vkUpdateDescriptorSets(deviceHandle, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-
     return std::move(m_product);
 }
 
@@ -1229,9 +1306,9 @@ void ProbeGridRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32
                                                 const std::vector<std::shared_ptr<Light>> &lights,
                                                 const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled)
 {
-    if (m_mvpUniformBuffersMapped.size() > 0)
+    if (m_poolMVPUniformBuffersMapped[pooledFramebufferIndex].size() > 0)
     {
-        MVP *mvpData = static_cast<MVP *>(m_mvpUniformBuffersMapped[backBufferIndex]);
+        MVP *mvpData = static_cast<MVP *>(m_poolMVPUniformBuffersMapped[pooledFramebufferIndex][backBufferIndex]);
         mvpData->model = glm::identity<glm::mat4>();
 
         if (!captureModeEnabled)
