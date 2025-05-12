@@ -38,6 +38,7 @@ class Application
      */
     int m_breakAfterFrameCount = -1;
 
+    void initImgui(RenderPhase *imguiPhase);
     void displayImgui();
 
   public:

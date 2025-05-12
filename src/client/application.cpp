@@ -130,6 +130,41 @@ Application::~Application()
     WindowGLFW::terminate();
 }
 
+void Application::initImgui(RenderPhase *imguiPhase)
+{
+    ImGuiRenderStateBuilder imguirsb;
+
+    imguirsb.setDevice(m_discreteDevice);
+    imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+    ImGui::CreateContext();
+    if (!ImGui_ImplGlfw_InitForVulkan(m_window->getHandle(), true))
+    {
+        std::cerr << "Failed to initialize ImGui GLFW Implemenation For Vulkan" << std::endl;
+        throw;
+    }
+
+    std::shared_ptr<RenderStateABC> render_state = RENDER_STATE_PTR(imguirsb.build());
+    imguiPhase->registerRenderStateToAllPool(render_state);
+
+    // this initializes imgui for Vulkan
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_context->getInstanceHandle();
+    init_info.PhysicalDevice = m_discreteDevice->getPhysicalHandle();
+    init_info.Device = m_discreteDevice->getHandle();
+    init_info.Queue = m_discreteDevice->getGraphicsQueue();
+    init_info.DescriptorPool = render_state->getDescriptorPool();
+    init_info.MinImageCount = 2;
+    init_info.ImageCount = m_window->getSwapChain()->getImages().size();
+    init_info.RenderPass = imguiPhase->getRenderPass()->getHandle();
+
+    if (!ImGui_ImplVulkan_Init(&init_info))
+    {
+        std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
+        throw;
+    }
+}
+
 void Application::displayImgui()
 {
     ZoneScoped;
@@ -218,7 +253,18 @@ void Application::runLoop()
     bool show_demo_window = true;
 
     m_scene = SceneABC::load<SampleScene>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
-                                              bufferingType, maxProbeCount);
+                                          bufferingType, maxProbeCount);
+
+    RenderPhase *imguiPhase = nullptr;
+    if (BakedGraph *rg = dynamic_cast<BakedGraph *>(m_renderer->getRenderGraph()))
+        imguiPhase = rg->m_imguiPhase;
+    else if (ComputeGraph *rg = dynamic_cast<ComputeGraph *>(m_renderer->getRenderGraph()))
+        imguiPhase = rg->m_imguiPhase;
+    else if (RC3DGraph *rg = dynamic_cast<RC3DGraph *>(m_renderer->getRenderGraph()))
+        imguiPhase = rg->m_imguiPhase;
+
+    if (imguiPhase)
+        initImgui(imguiPhase);
 
     auto &lights = m_scene->getLights();
     std::shared_ptr<ProbeGrid> grid = nullptr;
