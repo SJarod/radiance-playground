@@ -102,7 +102,8 @@ void Image::copyBufferToImageCube(VkBuffer buffer)
 
 VkImageView Image::createImageView2D()
 {
-    auto deviceHandle = m_device.lock()->getHandle();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
 
     VkImageViewCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -130,13 +131,20 @@ VkImageView Image::createImageView2D()
     VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &imageView);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to create 2D image view : " << res << std::endl;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE_VIEW,
+        .objectHandle = (uint64_t)imageView,
+        .pObjectName = std::string(m_name + " Image View").c_str(),
+    });
 
     return imageView;
 }
 
 VkImageView Image::createImageViewCube()
 {
-    auto deviceHandle = m_device.lock()->getHandle();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
 
     VkImageViewCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -164,6 +172,12 @@ VkImageView Image::createImageViewCube()
     VkResult res = vkCreateImageView(deviceHandle, &createInfo, nullptr, &imageView);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to create cube image view : " << res << std::endl;
+    devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_IMAGE_VIEW,
+        .objectHandle = (uint64_t)imageView,
+        .pObjectName = std::string(m_name + " Cubemap Image View").c_str(),
+    });
 
     return imageView;
 }
