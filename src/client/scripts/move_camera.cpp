@@ -28,7 +28,7 @@ void MoveCamera::init(void *userData)
 
 void MoveCamera::begin()
 {
-    setFocus(true);
+    setFocus(false);
     glfwGetCursorPos(m_window->getHandle(), &m_mousePos.first, &m_mousePos.second);
 }
 
