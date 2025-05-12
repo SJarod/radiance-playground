@@ -4,7 +4,7 @@
 
 class Device;
 
-class SampleScene2D final : public SceneABC
+class SampleSceneRC2D final : public SceneABC
 {
   private:
     std::shared_ptr<Model> m_screen;
