@@ -804,39 +804,5 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             rsb.setPipeline(pb.build());
             rg->m_finalImageDirectIndirect->registerRenderStateToAllPool(RENDER_STATE_PTR(rsb.build()));
         }
-
-        {
-            ImGuiRenderStateBuilder imguirsb;
-
-            imguirsb.setDevice(device);
-            imguirsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-            ImGui::CreateContext();
-            if (!ImGui_ImplGlfw_InitForVulkan(window->getHandle(), true))
-            {
-                std::cerr << "Failed to initialize ImGui GLFW Implemenation For Vulkan" << std::endl;
-                throw;
-            }
-
-            std::shared_ptr<RenderStateABC> render_state = RENDER_STATE_PTR(imguirsb.build());
-            rg->m_imguiPhase->registerRenderStateToAllPool(render_state);
-
-            // this initializes imgui for Vulkan
-            ImGui_ImplVulkan_InitInfo init_info = {};
-            init_info.Instance = cx.lock()->getInstanceHandle();
-            init_info.PhysicalDevice = devicePtr->getPhysicalHandle();
-            init_info.Device = deviceHandle;
-            init_info.Queue = devicePtr->getGraphicsQueue();
-            init_info.DescriptorPool = render_state->getDescriptorPool();
-            init_info.MinImageCount = 2;
-            init_info.ImageCount = 2;
-            init_info.RenderPass = rg->m_imguiPhase->getRenderPass()->getHandle();
-
-            if (!ImGui_ImplVulkan_Init(&init_info))
-            {
-                std::cerr << "Failed to initialize ImGui Implementation for Vulkan" << std::endl;
-                throw;
-            }
-        }
     }
 }
