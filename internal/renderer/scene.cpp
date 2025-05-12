@@ -3,7 +3,11 @@
 #include "engine/camera.hpp"
 #include "engine/scriptable.hpp"
 
+#include "graphics/buffer.hpp"
+
 #include "renderer/model.hpp"
+#include "renderer/render_state.hpp"
+#include "renderer/texture.hpp"
 
 #include "scene.hpp"
 
@@ -13,6 +17,9 @@ SceneABC::~SceneABC()
     {
         std::cout << m_objects[0]->getName() << " Model use count : " << m_objects[0].use_count() << std::endl;
     }
+
+    if (ModelRenderState::s_defaultDiffuseTexture)
+        ModelRenderState::s_defaultDiffuseTexture.reset();
 }
 
 void SceneABC::beginSimulation()

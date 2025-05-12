@@ -88,6 +88,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         tb.setImageData(imagePixels);
         tb.setWidth(2);
         tb.setHeight(2);
+        tb.setName("Square texture 4 color");
         mesh->setTexture(tb.buildAndRestart());
 
         {

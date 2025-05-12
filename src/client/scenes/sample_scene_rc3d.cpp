@@ -142,6 +142,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         tb.setImageData(imagePixels);
         tb.setWidth(2);
         tb.setHeight(2);
+        tb.setName("Square texture 4 color");
         mesh2->setTexture(tb.buildAndRestart());
 
         ModelBuilder modelBuilder2;
@@ -253,6 +254,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         tb.setImageData(defaultDiffusePixels);
         tb.setDevice(device);
         tb.setImageData(defaultDiffusePixels);
+        tb.setName("defaultDiffusePixels");
         ModelRenderState::s_defaultDiffuseTexture = tb.buildAndRestart();
 
         for (int i = 0; i < m_objects.size(); ++i)

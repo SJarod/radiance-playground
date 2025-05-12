@@ -133,6 +133,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         tb.setImageData(imagePixels);
         tb.setWidth(2);
         tb.setHeight(2);
+        tb.setName("Square texture 4 color");
         mesh2->setTexture(tb.buildAndRestart());
 
         ModelBuilder modelBuilder2;
@@ -389,6 +390,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         tb.setImageData(defaultDiffusePixels);
         tb.setDevice(device);
         tb.setImageData(defaultDiffusePixels);
+        tb.setName("defaultDiffusePixels");
         ModelRenderState::s_defaultDiffuseTexture = tb.buildAndRestart();
 
         PipelineDirector<PipelineType::GRAPHICS> environmentMapCapturePd;

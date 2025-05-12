@@ -17,6 +17,8 @@ class Texture
   private:
     std::weak_ptr<Device> m_device;
 
+    std::string m_name = "Unnamed";
+
     uint32_t m_width;
     uint32_t m_height;
 
@@ -60,17 +62,21 @@ class Texture
     {
         if (m_depthImage.has_value())
             return m_depthImage.value()->getFormat();
-        
+
         return std::nullopt;
     }
-    [[nodiscard]] inline const uint32_t& getWidth() const
+    [[nodiscard]] inline const uint32_t &getWidth() const
     {
         return m_width;
     }
 
-    [[nodiscard]] inline const uint32_t& getHeight() const
+    [[nodiscard]] inline const uint32_t &getHeight() const
     {
         return m_height;
+    }
+    [[nodiscard]] inline std::string getName() const
+    {
+        return m_name;
     }
 };
 
@@ -147,6 +153,10 @@ class TextureBuilder
     void setDepthImageEnable(bool enable)
     {
         m_depthImageEnable = enable;
+    }
+    void setName(std::string name)
+    {
+        m_product->m_name = name;
     }
 
     std::unique_ptr<Texture> buildAndRestart();
@@ -275,6 +285,10 @@ class CubemapBuilder
     void setDepthImageEnable(bool enable)
     {
         m_depthImageEnable = enable;
+    }
+    void setName(std::string name)
+    {
+        m_product->m_name = name;
     }
 
     std::unique_ptr<Texture> buildAndRestart();

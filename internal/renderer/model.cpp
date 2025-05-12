@@ -84,6 +84,7 @@ std::unique_ptr<Model> ModelBuilder::build()
                     textureDirector.configureSRGBTextureBuilder(textureBuilder);
                     textureBuilder.setDevice(m_device);
                     textureBuilder.setTextureFilename(texturePath.string());
+                    textureBuilder.setName(texturePath.string() + " Model texture");
 
                     meshTexture = textureBuilder.buildAndRestart();
                     loadedTextures.insert({texturePath, meshTexture});

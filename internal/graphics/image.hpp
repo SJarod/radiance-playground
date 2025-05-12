@@ -77,6 +77,10 @@ class Image
     {
         return m_format;
     }
+    [[nodiscard]] std::string getName() const
+    {
+        return m_name;
+    }
 };
 
 class ImageBuilder

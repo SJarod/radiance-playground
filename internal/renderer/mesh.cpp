@@ -8,6 +8,8 @@
 #include "graphics/buffer.hpp"
 #include "graphics/device.hpp"
 
+#include "renderer/texture.hpp"
+
 #include "mesh.hpp"
 
 Mesh::~Mesh()
@@ -17,6 +19,9 @@ Mesh::~Mesh()
         std::cout << "\t" << m_indexBuffer->getName() << std::endl;
     if (m_vertexBuffer)
         std::cout << "\t" << m_vertexBuffer->getName() << std::endl;
+    if (m_texture)
+        std::cout << "\t" << m_texture->getName() << std::endl;
+
     m_indexBuffer.reset();
     m_vertexBuffer.reset();
 }

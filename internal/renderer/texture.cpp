@@ -11,6 +11,10 @@
 
 Texture::~Texture()
 {
+    std::cout << "Destroying texture " << m_name << std::endl;
+    if (m_image)
+        std::cout << "\t" << m_image->getName() << std::endl;
+
     m_image.reset();
     if (m_device.expired())
         return;
@@ -66,12 +70,14 @@ std::unique_ptr<Texture> TextureBuilder::buildAndRestart()
     ib.setWidth(m_product->m_width);
     ib.setHeight(m_product->m_height);
     ib.setTiling(m_tiling);
-    ib.setName("Texture");
+    ib.setName(m_textureFilename + m_product->m_name + " Texture");
 
     if (m_initialLayout.has_value())
         ib.setInitialLayout(m_initialLayout.value());
 
     m_product->m_image = ib.build();
+
+    std::cout << "Creating texture " << m_product->m_name << " : " << m_product->m_image->getName() << std::endl;
 
     ImageLayoutTransitionBuilder iltb;
     ImageLayoutTransitionDirector iltd;
