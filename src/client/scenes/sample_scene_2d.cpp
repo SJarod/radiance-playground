@@ -29,7 +29,7 @@
 
 #include "sample_scene_2d.hpp"
 
-void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
                          RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
@@ -125,7 +125,7 @@ void SampleScene2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device
         }
     }
 
-    ComputeGraph *rg = dynamic_cast<ComputeGraph *>(renderGraph);
+    RC2DGraph *rg = dynamic_cast<RC2DGraph *>(renderGraph);
     // load objects into render graph
     {
         // material

@@ -115,7 +115,7 @@ Application::Application()
     rb.setSwapChain(m_window->getSwapChain());
     rb.setFrameInFlightCount(bufferingType);
     rb.setRenderGraph(
-        RenderGraphLoader::load<BakedGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        RenderGraphLoader::load<RC2DGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
     m_renderer = rb.build();
 }
 
@@ -265,13 +265,13 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = SceneABC::load<SampleScene>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
-                                          bufferingType, maxProbeCount);
+    m_scene = SceneABC::load<SampleSceneRC2D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                              bufferingType, maxProbeCount);
 
     RenderPhase *imguiPhase = nullptr;
     if (BakedGraph *rg = dynamic_cast<BakedGraph *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;
-    else if (ComputeGraph *rg = dynamic_cast<ComputeGraph *>(m_renderer->getRenderGraph()))
+    else if (RC2DGraph *rg = dynamic_cast<RC2DGraph *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;
     else if (RC3DGraph *rg = dynamic_cast<RC3DGraph *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;

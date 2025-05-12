@@ -5,7 +5,7 @@
 class RenderPhase;
 class ComputePhase;
 
-class ComputeGraph final : public RenderGraph
+class RC2DGraph final : public RenderGraph
 {
   private:
     void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
