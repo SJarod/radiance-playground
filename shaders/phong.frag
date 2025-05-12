@@ -146,17 +146,19 @@ void applySingleDirectionalLight(inout LightingResult fragLighting, in Direction
 void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal)
 {
 	const ivec3 indexBorders = dimensions - ivec3(1u);
-	const vec3 fragPosLocalToGrid = max(fragPos - cornerPosition, 0.0);
-	const ivec3 probeCornerIndex = ivec3(fragPosLocalToGrid / extent * dimensions);
+	const vec3 spacing = extent / vec3(indexBorders);
 
-	const ivec3 probe3DIndex000 = min(probeCornerIndex + ivec3(0, 0, 0), indexBorders);
-	const ivec3 probe3DIndex010 = min(probeCornerIndex + ivec3(0, 1, 0), indexBorders);
-	const ivec3 probe3DIndex100 = min(probeCornerIndex + ivec3(1, 0, 0), indexBorders);
-	const ivec3 probe3DIndex001 = min(probeCornerIndex + ivec3(0, 0, 1), indexBorders);
-	const ivec3 probe3DIndex110 = min(probeCornerIndex + ivec3(1, 1, 0), indexBorders);
-	const ivec3 probe3DIndex011 = min(probeCornerIndex + ivec3(0, 1, 1), indexBorders);
-	const ivec3 probe3DIndex101 = min(probeCornerIndex + ivec3(1, 0, 1), indexBorders);
-	const ivec3 probe3DIndex111 = min(probeCornerIndex + ivec3(1, 1, 1), indexBorders);
+	const vec3 fragPosLocalToGrid = max(fragPos - cornerPosition, 0.0);
+	const ivec3 probeCorner3DIndex = ivec3(clamp(fragPosLocalToGrid / spacing, vec3(0.0), dimensions));
+
+	const ivec3 probe3DIndex000 = min(probeCorner3DIndex + ivec3(0, 0, 0), indexBorders);
+	const ivec3 probe3DIndex010 = min(probeCorner3DIndex + ivec3(0, 1, 0), indexBorders);
+	const ivec3 probe3DIndex100 = min(probeCorner3DIndex + ivec3(1, 0, 0), indexBorders);
+	const ivec3 probe3DIndex001 = min(probeCorner3DIndex + ivec3(0, 0, 1), indexBorders);
+	const ivec3 probe3DIndex110 = min(probeCorner3DIndex + ivec3(1, 1, 0), indexBorders);
+	const ivec3 probe3DIndex011 = min(probeCorner3DIndex + ivec3(0, 1, 1), indexBorders);
+	const ivec3 probe3DIndex101 = min(probeCorner3DIndex + ivec3(1, 0, 1), indexBorders);
+	const ivec3 probe3DIndex111 = min(probeCorner3DIndex + ivec3(1, 1, 1), indexBorders);
 
 	// 1DIndex = 3DIndex.x * dimensions.z + 3DIndex.y * dimensions.z * dimensions.x + 3DIndex.z
 	const ivec3 weights = ivec3(dimensions.y * dimensions.z, dimensions.z, 1);
@@ -183,8 +185,8 @@ void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal
 	const vec3 irradiance101 = texture(irradianceMaps[probe1DIndex101], normal).rgb;
 	const vec3 irradiance111 = texture(irradianceMaps[probe1DIndex111], normal).rgb;
 	
-	vec3 interpIrradiance = trilerpClamped(irradiance000, irradiance010, irradiance100, irradiance110,
-									irradiance001, irradiance011, irradiance101, irradiance111, t);
+	vec3 interpIrradiance = trilerpClamped(irradiance000, irradiance100, irradiance010, irradiance110,
+										   irradiance001, irradiance101, irradiance011, irradiance111, t);
 
 	fragLighting.diffuse += interpIrradiance;
 	//fragLighting.diffuse += clamp(interpIrradiance, 0.0, 1.0);
