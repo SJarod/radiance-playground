@@ -25,7 +25,7 @@
 #include "render_graphs/rc3d_graph.hpp"
 
 #include "scripts/move_camera.hpp"
-#include "scripts/radiance_cascades.hpp"
+#include "scripts/radiance_cascades3d.hpp"
 
 #include "wsi/window.hpp"
 
@@ -50,8 +50,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         moveCameraScript->init(&userData);
         m_scripts.emplace_back(std::move(moveCameraScript));
 
-        auto radianceCascadesScript = std::make_unique<RadianceCascades>();
-        RadianceCascades::init_data init{
+        auto radianceCascadesScript = std::make_unique<RadianceCascades3D>();
+        RadianceCascades3D::init_data init{
             .device = device,
             .frameInFlightCount = frameInFlightCount,
         };
