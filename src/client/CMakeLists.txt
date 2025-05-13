@@ -11,6 +11,8 @@ target_sources(${component}
     scripts/probes.cpp
     scripts/radiance_cascades.hpp
     scripts/radiance_cascades.cpp
+    scripts/radiance_cascades3d.hpp
+    scripts/radiance_cascades3d.cpp
 
     application.cpp
     application.hpp
