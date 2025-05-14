@@ -1,0 +1,162 @@
+#version 450
+
+#define M_PI 3.1415926535897932384626433832795
+
+layout(binding = 0) uniform sampler2D baseImage;
+
+struct probe
+{
+	vec2 position;
+};
+
+struct cascade_desc
+{
+    // number of probes p
+    int p;
+    // number of discrete values per probes q
+    int q;
+
+    // interval length
+    float dw;
+};
+
+vec2 get_direction_from_angle(float w)
+{
+	return normalize(vec2(cos(w), sin(w)));
+}
+
+layout (std140, binding = 1) uniform parameters {
+    int maxCascadeCount;
+    int maxProbeCount;
+    int minDiscreteValueCount;
+    float minRadianceintervalLength;
+    float lightIntensity;
+    int maxRayIterationCount;
+} paramsubo;
+
+// cascade desc buffer
+layout (std430, binding = 2) readonly buffer CascadeDescUBO {
+    cascade_desc[] descs;
+} cdubo;
+
+// cascade probes position buffer
+layout (std140, binding = 3) readonly buffer CascadeUBO {
+    probe[] positions;
+} cubo;
+
+// radiance interval storage buffer
+layout (std140, binding = 4) buffer RadianceIntervalUBO {
+    vec4[] intervals;
+} riubo;
+
+// raycasting to detect incoming radiance to a point p (and detect transparency)
+// R(p, w)
+vec4 raycasting_function(vec2 p, vec2 dir, float len)
+{
+    // taken from https://www.shadertoy.com/view/mtlBzX
+    int n = int(gl_WorkGroupID.x);
+    float t1 = cdubo.descs[0].dw;
+    float tMin = n == 0 ? 0.0 : t1 * float(1 << 2 * (n - 1));
+    float tMax = t1 * float(1 << 2 * n);
+    tMax = tMax - tMin;
+
+    float stepSize = len / float(paramsubo.maxRayIterationCount);
+    vec2 sampledStep = p;
+
+	vec4 incomingRadiance = vec4(0.0);
+	for (int i = 0; i < paramsubo.maxRayIterationCount + 1; ++i)
+	{
+		// incoming radiance (direct lighting)
+		// in flatland, the incoming radiance is the color of the render texture
+		// in 3D it would be the lighting value of the hit surface
+		// the raycasting function may use a quadtree or octree to
+		// process through the ray in a scene independent manner
+		vec4 directLighting = texture(baseImage, sampledStep);
+		// directLighting.a == 1.0 : opaque (raycast hit)
+		// directLighting.a == 0.0 : transparent (raycast miss)
+        float hit = step(0.5, directLighting.a);
+        
+		incomingRadiance = directLighting * hit;
+        // radiance.a == 1.0 : transparent (transparency value)
+        // radiance.a == 0.0 : opaque
+        incomingRadiance.a = 1.0 - hit;
+        
+        sampledStep += dir * stepSize * (1.0 - hit); // only move step if hit failed
+
+        if (hit == 1.0)
+            break;
+	}
+    return incomingRadiance;
+}
+
+vec4 probe_encode_radiance(inout probe p, in int intervalIndex, in int intervalCount, in float intervalLength, in float intervalOffset)
+{
+    return vec4(1.0);
+}
+
+// the cascades are managed by the dispatch (work group)
+#define LOCAL_SIZE_X 128 // one thread per probe (more or less)
+#define LOCAL_SIZE_Y 1
+#define LOCAL_SIZE_Z 1
+layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y, local_size_z = LOCAL_SIZE_Z) in;
+
+void main()
+{
+    if (gl_WorkGroupID.x >= paramsubo.maxCascadeCount)
+        return;
+
+    // radiance gather
+    int cascadeIndex = int(gl_WorkGroupID.x);
+    
+    vec4 result = vec4(0.0);
+        
+    cascade_desc desc = cdubo.descs[cascadeIndex];
+    int probeCount = desc.p;
+    int intervalCount = desc.q;
+
+    float intervalLength = desc.dw;
+
+    int probeIndexOffset = 0;
+    int intervalIndexOffset = 0;
+    for (int i = 0; i < cascadeIndex; ++i)
+    {
+        // get previous cascade (min index is 0)
+        int previousCascadeIndex = max(0, i);
+        cascade_desc previous_desc = cdubo.descs[previousCascadeIndex];
+
+        probeIndexOffset += previous_desc.p;
+        intervalIndexOffset += previous_desc.p * previous_desc.q;
+    }
+
+    int itCount = max(1, probeCount / LOCAL_SIZE_X);
+    for (int i = 0; i < itCount; ++i)
+    {
+        int ii = int(gl_LocalInvocationID.x) + (LOCAL_SIZE_X * i);
+        if (ii >= probeCount)
+            break;
+
+        // index of probe is offsetted by the number of probes in the previous cascade
+        int probeIndex = probeIndexOffset + ii;
+
+        float intervalOffset = 0.0;
+        if (cascadeIndex > 0)
+            intervalOffset = float(1 << (cascadeIndex - 1));
+        intervalOffset *= float(paramsubo.minRadianceintervalLength);
+
+        probe p;
+	    p.position = cubo.positions[probeIndex].position;
+
+        for (int j = 0; j < intervalCount; ++j)
+        {
+            // index of interval is offsetted by the number of intervals before hand
+            // the number of intervals per probes in the previous cascades
+            // the strides are intervalCount length
+            int intervalProbeIndex = intervalIndexOffset + ii * intervalCount;
+        
+	        vec4 radianceInterval = probe_encode_radiance(p, j, intervalCount, intervalLength, intervalOffset);
+        
+            int intervalIndex = intervalProbeIndex + j;
+            riubo.intervals[intervalIndex] = radianceInterval;
+        }
+    }
+}

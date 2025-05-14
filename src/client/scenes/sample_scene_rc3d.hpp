@@ -14,7 +14,9 @@ class Model;
 class SampleSceneRC3D final : public SceneABC
 {
   public:
-    std::shared_ptr<ProbeGrid> m_grid;
+    std::shared_ptr<ProbeGrid> m_grid0;
+    std::shared_ptr<ProbeGrid> m_grid1;
+    std::shared_ptr<ProbeGrid> m_grid2;
 
     std::shared_ptr<Model> m_screen;
 

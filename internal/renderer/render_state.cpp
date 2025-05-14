@@ -1056,7 +1056,7 @@ std::unique_ptr<GPUStateI> EnvironmentCaptureRenderStateBuilder::build()
 
             if (m_textureDescriptorEnable)
             {
-                VkDescriptorImageInfo& imageInfo = envMapImageInfos.emplace_back();
+                VkDescriptorImageInfo &imageInfo = envMapImageInfos.emplace_back();
                 imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                 if (m_texture.lock())
@@ -1112,13 +1112,16 @@ void EnvironmentCaptureRenderState::updateUniformBuffers(uint32_t backBufferInde
     }
 }
 
-void EnvironmentCaptureRenderState::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex, uint32_t backBufferIndex, uint32_t pooledFramebufferIndex)
+void EnvironmentCaptureRenderState::recordBackBufferDescriptorSetsCommands(const VkCommandBuffer &commandBuffer,
+                                                                           uint32_t subObjectIndex,
+                                                                           uint32_t backBufferIndex,
+                                                                           uint32_t pooledFramebufferIndex)
 {
     std::vector<VkDescriptorSet> descriptorSets;
 
     if (m_instanceDescriptorSetEnable)
     {
-        const auto& instanceDescriptorSets = m_poolInstanceDescriptorSets.front();
+        const auto &instanceDescriptorSets = m_poolInstanceDescriptorSets.front();
         if (backBufferIndex < instanceDescriptorSets.size())
         {
             descriptorSets.push_back(instanceDescriptorSets[backBufferIndex]);
@@ -1129,10 +1132,11 @@ void EnvironmentCaptureRenderState::recordBackBufferDescriptorSetsCommands(const
         return;
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline->getPipelineLayout(), 0,
-        descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+                            descriptorSets.size(), descriptorSets.data(), 0, nullptr);
 }
 
-void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer& commandBuffer, uint32_t subObjectIndex)
+void EnvironmentCaptureRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer,
+                                                                       uint32_t subObjectIndex)
 {
     auto skyboxPtr = m_skybox.lock();
 
@@ -1362,8 +1366,11 @@ void ProbeGridRenderState::updateUniformBuffers(uint32_t backBufferIndex, uint32
 void ProbeGridRenderState::recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer,
                                                               uint32_t subObjectIndex)
 {
-    const auto &dimensions = m_grid.lock()->getDimensions();
-    const uint32_t instanceCount = dimensions.x * dimensions.y * dimensions.z;
+    auto gridPtr = m_grid.lock();
+    const auto &dimensions = gridPtr->getDimensions();
+    uint32_t instanceCount = dimensions.x * dimensions.y * dimensions.z;
+    if (gridPtr->instanceCountOverride > 0)
+        instanceCount = (uint32_t)gridPtr->instanceCountOverride;
 
     VkBuffer vbos[] = {m_mesh->getVertexBufferHandle()};
     VkDeviceSize offsets[] = {0};

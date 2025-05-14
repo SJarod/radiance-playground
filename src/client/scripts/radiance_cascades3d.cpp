@@ -20,23 +20,29 @@ RadianceCascades3D::cascade RadianceCascades3D::createCascade(cascade_desc cd) c
     result.desc = cd;
 
     // probe count per dimension
-    float px = sqrt(float(cd.p));
+    float px = std::cbrt(float(cd.p));
     float py = px;
+    float pz = px;
     float ipx = 1.0 / px;
     float ipy = 1.0 / py;
+    float ipz = 1.0 / pz;
 
     // center the probes
-    glm::vec2 offset = glm::vec2(ipx * -0.5, ipy * -0.5);
+    glm::vec3 offset = glm::vec3(ipx * -0.5, ipy * -0.5, ipz * -0.5);
 
     // probes within  the cascade
-    for (float i = 0.0; i < px; ++i)
+    for (int i = 0; i < (int)px; ++i)
     {
-        for (float j = 0.0; j < py; ++j)
+        for (int j = 0; j < (int)py; ++j)
         {
-            // initialize probe posititon
-            int probeIndex = int(px * i + j);
-            result.probes[probeIndex].position.x = ipx * float(i) - offset.x;
-            result.probes[probeIndex].position.y = ipy * float(j) - offset.y;
+            for (int k = 0; k < (int)pz; ++k)
+            {
+                // initialize probe posititon
+                int probeIndex = int(px * i + j + px * py * k);
+                result.probes[probeIndex].position.x = ipx * m_range.x * float(i) - offset.x;
+                result.probes[probeIndex].position.y = ipy * m_range.y * float(j) - offset.y;
+                result.probes[probeIndex].position.z = ipz * m_range.z * float(k) - offset.z;
+            }
         }
     }
 
@@ -53,10 +59,10 @@ std::vector<RadianceCascades3D::cascade> RadianceCascades3D::createCascades(casc
     for (int i = 0; i < cascadeCount; ++i)
     {
         result.push_back(createCascade(desc0));
-        // P1 = P0/4
-        desc0.p /= 4;
-        // Q1 = 2Q0
-        desc0.q *= 2;
+        // P1 = P0/4 in 2d P0/8 in 3d
+        desc0.p /= 8;
+        // Q1 = 2Q0 in 3d 4Q0 in 3d
+        desc0.q *= 4;
         // DW1 = 2DW0
         desc0.dw *= 2.0;
     }
@@ -127,10 +133,12 @@ void RadianceCascades3D::init(void *userData)
         for (int i = 0; i < cascades.size(); ++i)
         {
             probeCount += cascades[i].desc.p;
+            probePositions.push_back({});
 
             for (const probe &p : cascades[i].probes)
             {
                 positions.push_back(p);
+                probePositions[i].push_back(p.position);
             }
         }
 
