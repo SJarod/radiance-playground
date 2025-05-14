@@ -34,6 +34,39 @@ void MoveCamera::begin()
 
 void MoveCamera::update(float deltaTime)
 {
+    double xpos, ypos;
+    glfwGetCursorPos(m_window->getHandle(), &xpos, &ypos);
+    std::pair<double, double> deltaMousePos;
+    deltaMousePos.first = m_mousePos.first - xpos;
+    deltaMousePos.second = m_mousePos.second - ypos;
+    m_mousePos.first = xpos;
+    m_mousePos.second = ypos;
+
+    if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    {
+        Transform cameraTransform = m_mainCamera->getTransform();
+
+        glm::vec3 forward = glm::normalize(glm::vec3(0.f, 0.f, -1.f) * cameraTransform.rotation);
+        glm::vec3 target = cameraTransform.position + forward * 10.f;
+        glm::vec3 dir = glm::normalize(-target);
+
+        float pitchDelta = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
+        float yawDelta = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
+
+        float pitch = glm::eulerAngles(cameraTransform.rotation).x;
+        float yaw = glm::eulerAngles(cameraTransform.rotation).y;
+        glm::quat QuatAroundX = glm::angleAxis(pitch + pitchDelta, glm::vec3(1.0, 0.0, 0.0));
+        glm::quat QuatAroundY = glm::angleAxis(yaw + yawDelta, glm::vec3(0.0, 1.0, 0.0));
+        glm::quat finalOrientation = QuatAroundX * QuatAroundY;
+
+        cameraTransform.position = target + dir * 10.f;
+        cameraTransform.rotation =
+            glm::quat_cast(glm::lookAt(cameraTransform.position, target, glm::vec3(0.f, 1.f, 0.f)));
+
+        m_mainCamera->setTransform(cameraTransform);
+        return;
+    }
+
     if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {
         setFocus(true);
@@ -47,14 +80,6 @@ void MoveCamera::update(float deltaTime)
 
     if (InputManager::GetKeyDown(Keycode::ESCAPE))
         setFocus(!m_isFocused);
-
-    double xpos, ypos;
-    glfwGetCursorPos(m_window->getHandle(), &xpos, &ypos);
-    std::pair<double, double> deltaMousePos;
-    deltaMousePos.first = m_mousePos.first - xpos;
-    deltaMousePos.second = m_mousePos.second - ypos;
-    m_mousePos.first = xpos;
-    m_mousePos.second = ypos;
 
     if (!m_isFocused)
         return;
