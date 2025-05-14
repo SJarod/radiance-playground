@@ -34,10 +34,19 @@ void MoveCamera::begin()
 
 void MoveCamera::update(float deltaTime)
 {
-    if (InputManager::GetKeyDown(Keycode::ESCAPE))
+    if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {
-        setFocus(!m_isFocused);
+        setFocus(true);
+        m_cameraSpeedMultiplier += deltaTime * 5.f;
     }
+    else
+    {
+        setFocus(false);
+        m_cameraSpeedMultiplier = 1.f;
+    }
+
+    if (InputManager::GetKeyDown(Keycode::ESCAPE))
+        setFocus(!m_isFocused);
 
     double xpos, ypos;
     glfwGetCursorPos(m_window->getHandle(), &xpos, &ypos);
@@ -68,7 +77,8 @@ void MoveCamera::update(float deltaTime)
     glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * cameraTransform.rotation;
     if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
         dir = glm::normalize(dir);
-    cameraTransform.position += m_mainCamera->getSpeed() * dir * deltaTime * isFastMovementActive;
+    cameraTransform.position +=
+        m_mainCamera->getSpeed() * dir * deltaTime * isFastMovementActive * m_cameraSpeedMultiplier;
 
     m_mainCamera->setTransform(cameraTransform);
 }

@@ -21,6 +21,8 @@ class MoveCamera : public ScriptableABC
     WindowGLFW *m_window;
     CameraABC *m_mainCamera;
 
+    float m_cameraSpeedMultiplier = 1.f;
+
     bool m_isFocused = true;
 
     void setFocus(bool newFocus);
