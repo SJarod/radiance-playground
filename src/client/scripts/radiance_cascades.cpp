@@ -28,6 +28,8 @@ RadianceCascades::cascade RadianceCascades::createCascade(cascade_desc cd) const
     // center the probes
     glm::vec2 offset = glm::vec2(ipx * -0.5, ipy * -0.5);
 
+    std::cout << "----------------------------new cascade---------------------------" << std::endl;
+
     // probes within  the cascade
     for (float i = 0.0; i < px; ++i)
     {
@@ -37,6 +39,8 @@ RadianceCascades::cascade RadianceCascades::createCascade(cascade_desc cd) const
             int probeIndex = int(px * i + j);
             result.probes[probeIndex].position.x = ipx * float(i) - offset.x;
             result.probes[probeIndex].position.y = ipy * float(j) - offset.y;
+            std::cout << probeIndex << " : " << result.probes[probeIndex].position.x << ", "
+                      << result.probes[probeIndex].position.y << std::endl;
         }
     }
 

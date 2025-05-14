@@ -28,7 +28,9 @@ RadianceCascades3D::cascade RadianceCascades3D::createCascade(cascade_desc cd) c
     float ipz = 1.0 / pz;
 
     // center the probes
-    glm::vec3 offset = glm::vec3(ipx * -0.5, ipy * -0.5, ipz * -0.5);
+    glm::vec3 offset = glm::vec3(ipx * -0.5, ipy * -0.5, ipz * -0.5) * m_range;
+
+    std::cout << "----------------------------new cascade---------------------------" << std::endl;
 
     // probes within  the cascade
     for (int i = 0; i < (int)px; ++i)
@@ -42,6 +44,9 @@ RadianceCascades3D::cascade RadianceCascades3D::createCascade(cascade_desc cd) c
                 result.probes[probeIndex].position.x = ipx * m_range.x * float(i) - offset.x;
                 result.probes[probeIndex].position.y = ipy * m_range.y * float(j) - offset.y;
                 result.probes[probeIndex].position.z = ipz * m_range.z * float(k) - offset.z;
+                std::cout << probeIndex << " : " << result.probes[probeIndex].position.x << ", "
+                          << result.probes[probeIndex].position.y << ", " << result.probes[probeIndex].position.z
+                          << std::endl;
             }
         }
     }

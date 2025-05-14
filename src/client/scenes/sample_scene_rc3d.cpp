@@ -272,15 +272,15 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         cubeMb.setDevice(device);
         std::shared_ptr<Mesh> cubeMesh = cubeMb.buildAndRestart();
 
-        // ProbeGridRenderStateBuilder prsb0;
-        // prsb0.setFrameInFlightCount(frameInFlightCount);
-        // prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        // prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        // prsb0.setDevice(device);
-        // prsb0.setPipeline(probeGridDebugPipeline);
-        // prsb0.setProbeGrid(m_grid0);
-        // prsb0.setMesh(cubeMesh);
-        // rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb0.build()));
+        ProbeGridRenderStateBuilder prsb0;
+        prsb0.setFrameInFlightCount(frameInFlightCount);
+        prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb0.setDevice(device);
+        prsb0.setPipeline(probeGridDebugPipeline);
+        prsb0.setProbeGrid(m_grid0);
+        prsb0.setMesh(cubeMesh);
+        rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb0.build()));
         ProbeGridRenderStateBuilder prsb1;
         prsb1.setFrameInFlightCount(frameInFlightCount);
         prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -288,17 +288,17 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         prsb1.setDevice(device);
         prsb1.setPipeline(probeGridDebugPipeline);
         prsb1.setProbeGrid(m_grid1);
-        prsb1.setMesh(cubeMesh);
+        prsb1.setMesh(sphereMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb1.build()));
-        // ProbeGridRenderStateBuilder prsb2;
-        // prsb2.setFrameInFlightCount(frameInFlightCount);
-        // prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        // prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        // prsb2.setDevice(device);
-        // prsb2.setPipeline(probeGridDebugPipeline);
-        // prsb2.setProbeGrid(m_grid2);
-        // prsb2.setMesh(cubeMesh);
-        // rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb2.build()));
+        ProbeGridRenderStateBuilder prsb2;
+        prsb2.setFrameInFlightCount(frameInFlightCount);
+        prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb2.setDevice(device);
+        prsb2.setPipeline(probeGridDebugPipeline);
+        prsb2.setProbeGrid(m_grid2);
+        prsb2.setMesh(cubeMesh);
+        rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb2.build()));
 
         // skybox
         UniformDescriptorBuilder skyboxUdb;
