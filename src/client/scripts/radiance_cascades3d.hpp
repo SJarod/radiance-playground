@@ -22,9 +22,15 @@ class RadianceCascades3D : public ScriptableABC
     };
 
   private:
+    const glm::vec3 m_range = glm::vec3(10.f);
     const int m_maxCascadeCount = 3;
+    /**
+     * @brief probe count per dimension
+     *
+     */
+    const int m_dimensionSize = 4;
     // p = probe count is a square number
-    const int m_maxProbeCount = 8 * 8;
+    const int m_maxProbeCount = m_dimensionSize * m_dimensionSize * m_dimensionSize;
     // q = discrete value count will be doubled every cascade
     // number of radiance intervals for the probes from first cascade
     const int m_minDiscreteValueCount = 8;
@@ -111,6 +117,12 @@ class RadianceCascades3D : public ScriptableABC
     int getTotalProbeCount(std::vector<cascade> cascades) const;
 
   public:
+    /**
+     * @brief probes positions per casacde
+     *
+     */
+    std::vector<std::vector<glm::vec3>> probePositions;
+
     virtual void init(void *userData) override;
     virtual void begin() override;
     virtual void update(float deltaTime) override;

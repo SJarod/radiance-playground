@@ -110,72 +110,6 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         light2->specularColor = glm::vec3(1.0);
         light2->specularPower = 1.0;
         m_lights.push_back(light2);
-
-        const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
-            {{0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 1.f, 0.f, 1.f}, {0.f, 0.f}},
-            {{0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {0.f, 1.f}},
-            {{-0.5f, 0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {1.f, 1.f}},
-            {{-0.5f, -0.5f, -0.5f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
-            {{0.5f, -0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.f, 1.f, 0.f, 1.f}, {0.f, 0.f}},
-            {{0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {0.f, 0.f, 1.f, 1.f}, {0.f, 1.f}},
-            {{-0.5f, 0.5f, -0.5f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f, 1.f}, {1.f, 1.f}},
-        };
-        const std::vector<uint16_t> indices = {
-            0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
-        };
-
-        MeshBuilder mb;
-        MeshDirector md;
-        mb.setDevice(device);
-        mb.setVertices(vertices);
-        mb.setIndices(indices);
-        std::shared_ptr<Mesh> mesh2 = mb.buildAndRestart();
-
-        const std::vector<unsigned char> imagePixels = {
-            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
-        };
-
-        TextureBuilder tb;
-        td.configureSRGBTextureBuilder(tb);
-        tb.setDevice(device);
-        tb.setImageData(imagePixels);
-        tb.setWidth(2);
-        tb.setHeight(2);
-        tb.setName("Square texture 4 color");
-        mesh2->setTexture(tb.buildAndRestart());
-
-        ModelBuilder modelBuilder2;
-        modelBuilder2.setMesh(mesh2);
-        modelBuilder2.setName("Planes");
-
-        m_objects.push_back(modelBuilder2.build());
-
-        MeshBuilder sphereMb;
-        md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
-        sphereMb.setDevice(device);
-        std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
-
-        ModelBuilder sphereModelBuilder;
-        sphereModelBuilder.setMesh(sphereMesh);
-        sphereModelBuilder.setName("Sphere");
-        std::shared_ptr<Model> sphereModel = sphereModelBuilder.build();
-        Transform sphereTransform = sphereModel->getTransform();
-        sphereTransform.position = glm::vec3(1.f, 1.f, 0.f);
-        sphereModel->setTransform(sphereTransform);
-        m_objects.push_back(sphereModel);
-
-        MeshBuilder cubeMb;
-        md.createAssimpMeshBuilder(cubeMb);
-        cubeMb.setDevice(device);
-        cubeMb.setModelFilename("assets/cube.obj");
-        std::shared_ptr<Mesh> cubeMesh = cubeMb.buildAndRestart();
-
-        ModelBuilder cubeModelBuilder;
-        cubeModelBuilder.setMesh(cubeMesh);
-        cubeModelBuilder.setName("Cube");
-
-        m_objects.push_back(cubeModelBuilder.build());
     }
 
     RC3DGraph *rg = dynamic_cast<RC3DGraph *>(renderGraph);
@@ -299,7 +233,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         PipelineBuilder<PipelineType::GRAPHICS> probeGridDebugPb;
         probeGridDebugPb.setDevice(device);
         probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
-        probeGridDebugPb.addFragmentShaderStage("probe_grid_debug");
+        probeGridDebugPb.addFragmentShaderStage("white");
         probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
         probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
         probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
@@ -310,20 +244,22 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
 
         PipelineDirector<PipelineType::GRAPHICS> probeGridDebugPd;
         probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
+        // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
         probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
 
         std::shared_ptr<Pipeline> probeGridDebugPipeline = probeGridDebugPb.build();
 
         // probes
-        ProbeGridBuilder gridBuilder;
-        const glm::vec3 extent = glm::vec3(60.f, 10.f, 20.f);
-        const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, 0.f, extent.z * -0.5f);
-        gridBuilder.setXAxisProbeCount(4u);
-        gridBuilder.setYAxisProbeCount(4u);
-        gridBuilder.setZAxisProbeCount(4u);
-        gridBuilder.setExtent(extent);
-        gridBuilder.setCornerPosition(cornerPosition);
-        m_grid = gridBuilder.build();
+        auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
+        m_grid0 = std::make_unique<ProbeGrid>();
+        m_grid0->setProbesForce(s[0]->probePositions[0]);
+        m_grid0->instanceCountOverride = s[0]->probePositions[0].size();
+        m_grid1 = std::make_unique<ProbeGrid>();
+        m_grid1->setProbesForce(s[0]->probePositions[1]);
+        m_grid1->instanceCountOverride = s[0]->probePositions[1].size();
+        m_grid2 = std::make_unique<ProbeGrid>();
+        m_grid2->setProbesForce(s[0]->probePositions[2]);
+        m_grid2->instanceCountOverride = s[0]->probePositions[2].size();
 
         MeshDirector md;
         MeshBuilder sphereMb;
@@ -336,15 +272,33 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         cubeMb.setDevice(device);
         std::shared_ptr<Mesh> cubeMesh = cubeMb.buildAndRestart();
 
-        ProbeGridRenderStateBuilder prsb;
-        prsb.setFrameInFlightCount(3);
-        prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        prsb.setDevice(device);
-        prsb.setPipeline(probeGridDebugPipeline);
-        prsb.setProbeGrid(m_grid);
-        prsb.setMesh(cubeMesh);
-        rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb.build()));
+        // ProbeGridRenderStateBuilder prsb0;
+        // prsb0.setFrameInFlightCount(frameInFlightCount);
+        // prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        // prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        // prsb0.setDevice(device);
+        // prsb0.setPipeline(probeGridDebugPipeline);
+        // prsb0.setProbeGrid(m_grid0);
+        // prsb0.setMesh(cubeMesh);
+        // rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb0.build()));
+        ProbeGridRenderStateBuilder prsb1;
+        prsb1.setFrameInFlightCount(frameInFlightCount);
+        prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb1.setDevice(device);
+        prsb1.setPipeline(probeGridDebugPipeline);
+        prsb1.setProbeGrid(m_grid1);
+        prsb1.setMesh(cubeMesh);
+        rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb1.build()));
+        // ProbeGridRenderStateBuilder prsb2;
+        // prsb2.setFrameInFlightCount(frameInFlightCount);
+        // prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        // prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        // prsb2.setDevice(device);
+        // prsb2.setPipeline(probeGridDebugPipeline);
+        // prsb2.setProbeGrid(m_grid2);
+        // prsb2.setMesh(cubeMesh);
+        // rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb2.build()));
 
         // skybox
         UniformDescriptorBuilder skyboxUdb;
@@ -475,7 +429,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             PipelineDirector<PipelineType::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
-            pb.addComputeShaderStage("radiance_gather");
+            pb.addComputeShaderStage("radiance_gather_voxel");
             UniformDescriptorBuilder udb;
             // rendered image
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -521,7 +475,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            auto s = getReadOnlyInstancedComponents<RadianceCascades>();
+            auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
             if (!s.empty())
             {
                 auto rc = s[0];
@@ -552,7 +506,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             });
             csb.setDescriptorSetUpdatePred(
                 [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    auto s = getReadOnlyInstancedComponents<RadianceCascades>();
+                    auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
                     std::vector<VkWriteDescriptorSet> writes;
                     if (!s.empty())
                     {
@@ -683,7 +637,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             rsb.setInstanceDescriptorSetUpdatePred(
                 [&](const RenderPhase *parentPhase, const VkDescriptorSet set, uint32_t backBufferIndex) {
                     std::vector<VkWriteDescriptorSet> writes;
-                    auto s = getReadOnlyInstancedComponents<RadianceCascades>();
+                    auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
                     if (!s.empty())
                     {
                         auto rc = s[0];
@@ -761,7 +715,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());
             pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("final_image_direct_indirect");
+            pb.addFragmentShaderStage("radiance_apply_deferred");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);

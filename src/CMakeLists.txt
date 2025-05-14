@@ -17,17 +17,27 @@ add_subdirectory(client)
 set(SHADER_SOURCES
 	shaders/unlit.vert
 	shaders/unlit.frag
+	shaders/white.frag
+
 	shaders/phong.vert
 	shaders/phong.frag
+
 	shaders/environment_map.vert
 	shaders/environment_map.frag
+
 	shaders/skybox.vert
 	shaders/skybox.frag
+
 	shaders/irradiance_convolution.frag
+
 	shaders/screen.vert
 	shaders/final_image_direct.frag
 	shaders/final_image_direct_indirect.frag
+	shaders/radiance_apply_deferred.frag
+
 	shaders/radiance_gather.comp
+	shaders/radiance_gather_voxel.comp
+	
 	shaders/probe_grid_debug.frag
 	shaders/probe_grid_debug.vert
 )

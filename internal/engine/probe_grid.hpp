@@ -35,6 +35,8 @@ class ProbeGrid
     glm::vec3 m_extent = {2.f, 2.f, 2.f};
 
   public:
+    int instanceCountOverride = -1;
+
     [[nodiscard]] inline const std::vector<std::unique_ptr<Probe>> &getProbes() const
     {
         return m_probes;
@@ -58,6 +60,23 @@ class ProbeGrid
     [[nodiscard]] inline const glm::vec3 &getCornerPosition() const
     {
         return m_cornerPosition;
+    }
+
+  public:
+    /**
+     * @brief force set the probes to the given probe position
+     * the array is reset
+     *
+     * @param probes
+     */
+    inline void setProbesForce(std::vector<glm::vec3> probes)
+    {
+        m_probes.clear();
+        m_probes.reserve(probes.size());
+        for (int i = 0; i < probes.size(); ++i)
+        {
+            m_probes.push_back(std::make_unique<Probe>(probes[i]));
+        }
     }
 };
 

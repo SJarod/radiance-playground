@@ -284,7 +284,7 @@ void Application::runLoop()
     if (SampleScene *scene3d = dynamic_cast<SampleScene *>(m_scene.get()))
         grid = scene3d->m_grid;
     else if (SampleSceneRC3D *scene3d = dynamic_cast<SampleSceneRC3D *>(m_scene.get()))
-        grid = scene3d->m_grid;
+        grid = scene3d->m_grid0;
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
