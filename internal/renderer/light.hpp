@@ -1,11 +1,6 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <vulkan/vulkan.hpp>
-
-#include "engine/vertex.hpp"
-#include "graphics/buffer.hpp"
+#include <glm/glm.hpp>
 
 class Light
 {
