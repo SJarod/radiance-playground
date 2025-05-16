@@ -56,7 +56,7 @@ void MeshBuilder::createVertexBuffer()
 
     // transfer from staging buffer to vertex buffer
 
-    m_product->m_vertexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
+    m_product->m_vertexBuffer->transferBufferToBuffer(*stagingBuffer);
     stagingBuffer.reset();
 }
 
@@ -87,7 +87,7 @@ void MeshBuilder::createIndexBuffer()
     m_product->m_indexBuffer = bb.build();
     std::cout << "Creating mesh " << m_product->m_name << " : " << m_product->m_indexBuffer->getName() << std::endl;
 
-    m_product->m_indexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
+    m_product->m_indexBuffer->transferBufferToBuffer(*stagingBuffer);
     stagingBuffer.reset();
 }
 
@@ -119,6 +119,11 @@ void MeshBuilder::setIndicesFromAiMesh(const aiMesh *pMesh)
 
 std::unique_ptr<Mesh> MeshBuilder::buildAndRestart()
 {
+    assert(!m_device.expired());
+
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
     if (m_bLoadFromFile)
     {
         Assimp::Importer importer;

@@ -38,7 +38,7 @@ void SkyboxBuilder::createVertexBuffer()
 
     // transfer from staging buffer to vertex buffer
 
-    m_product->m_vertexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
+    m_product->m_vertexBuffer->transferBufferToBuffer(*stagingBuffer);
     stagingBuffer.reset();
 }
 
@@ -55,7 +55,7 @@ void SkyboxBuilder::createIndexBuffer()
     bd.configureStagingBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
-            bb.setName("Skybox Staging Index Buffer");
+    bb.setName("Skybox Staging Index Buffer");
 
     std::unique_ptr<Buffer> stagingBuffer = bb.build();
 
@@ -65,10 +65,10 @@ void SkyboxBuilder::createIndexBuffer()
     bd.configureIndexBufferBuilder(bb);
     bb.setDevice(m_product->m_device);
     bb.setSize(indexBufferSize);
-            bb.setName("Skybox Index Buffer");
+    bb.setName("Skybox Index Buffer");
     m_product->m_indexBuffer = bb.build();
 
-    m_product->m_indexBuffer->transferBufferToBuffer(stagingBuffer->getHandle());
+    m_product->m_indexBuffer->transferBufferToBuffer(*stagingBuffer);
     stagingBuffer.reset();
 }
 

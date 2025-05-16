@@ -37,7 +37,7 @@ class Buffer
 
     void copyDataToMemory(const void *srcData);
 
-    void transferBufferToBuffer(VkBuffer src);
+    void transferBufferToBuffer(Buffer &src);
 
   public:
     [[nodiscard]] inline const VkBuffer &getHandle() const
@@ -54,6 +54,8 @@ class Buffer
     {
         return m_name;
     }
+
+    [[nodiscard]] VkDeviceAddress getDeviceAddress() const;
 };
 
 class BufferBuilder
