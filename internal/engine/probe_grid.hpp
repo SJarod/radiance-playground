@@ -9,18 +9,6 @@ class Probe
 {
   public:
     glm::vec3 position;
-
-  public:
-    Probe(const glm::vec3 &position) : position(position)
-    {
-    }
-
-    virtual ~Probe() = default;
-
-    Probe(const Probe &) = delete;
-    Probe &operator=(const Probe &) = delete;
-    Probe(Probe &&) = delete;
-    Probe &operator=(Probe &&) = delete;
 };
 
 class ProbeGrid
