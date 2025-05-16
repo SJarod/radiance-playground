@@ -48,7 +48,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
 
-    RenderPhaseBuilder opaqueCaptureRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueCaptureRb;
     opaqueCaptureRb.setDevice(device);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
@@ -75,7 +75,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto skyboxCaptureDepthAttachment = rpab.buildAndRestart();
     skyboxCaptureRpb.addDepthAttachment(*skyboxCaptureDepthAttachment);
 
-    RenderPhaseBuilder skyboxCaptureRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> skyboxCaptureRb;
     skyboxCaptureRb.setDevice(device);
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
@@ -106,7 +106,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto irradianceColorAttachment = rpab.buildAndRestart();
     irradianceConvolutionRpb.addColorAttachment(*irradianceColorAttachment);
 
-    RenderPhaseBuilder irradianceConvolutionRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> irradianceConvolutionRb;
     irradianceConvolutionRb.setDevice(device);
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
@@ -131,7 +131,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto clearDepthAttachment = rpab.buildAndRestart();
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder opaqueRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueRb;
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setBufferingType(frameInFlightCount);
@@ -156,7 +156,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto probesDebugDepthAttachment = rpab.buildAndRestart();
     probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
 
-    RenderPhaseBuilder probesDebugRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> probesDebugRb;
     probesDebugRb.setDevice(device);
     probesDebugRb.setRenderPass(probesDebugRpb.build());
     auto probesDebugPhase = probesDebugRb.build();
@@ -181,7 +181,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto loadDepthAttachment = rpab.buildAndRestart();
     skyboxRpb.addDepthAttachment(*loadDepthAttachment);
 
-    RenderPhaseBuilder skyboxRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> skyboxRb;
     skyboxRb.setDevice(device);
     skyboxRb.setRenderPass(skyboxRpb.build());
     skyboxRb.setBufferingType(frameInFlightCount);
@@ -199,7 +199,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder phaseb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
         phaseb.setParentPhase(m_skyboxPhase);
@@ -220,7 +220,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
-    RenderPhaseBuilder imguiRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> imguiRb;
     imguiRb.setDevice(device);
     imguiRb.setRenderPass(imguiRpb.build());
     imguiRb.setBufferingType(frameInFlightCount);

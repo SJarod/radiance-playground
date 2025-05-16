@@ -36,7 +36,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto clearDepthAttachment = rpab.buildAndRestart();
         opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-        RenderPhaseBuilder opaqueRb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> opaqueRb;
         opaqueRb.setDevice(device);
         opaqueRb.setRenderPass(opaqueRpb.build());
         opaqueRb.setBufferingType(frameInFlightCount);
@@ -63,7 +63,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto probesDebugDepthAttachment = rpab.buildAndRestart();
         probesDebugRpb.addDepthAttachment(*probesDebugDepthAttachment);
 
-        RenderPhaseBuilder probesDebugRb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> probesDebugRb;
         probesDebugRb.setDevice(device);
         probesDebugRb.setRenderPass(probesDebugRpb.build());
         probesDebugPhase = probesDebugRb.build();
@@ -91,7 +91,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto loadDepthAttachment = rpab.buildAndRestart();
         skyboxRpb.addDepthAttachment(*loadDepthAttachment);
 
-        RenderPhaseBuilder skyboxRb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> skyboxRb;
         skyboxRb.setDevice(device);
         skyboxRb.setRenderPass(skyboxRpb.build());
         skyboxRb.setBufferingType(frameInFlightCount);
@@ -109,7 +109,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder phaseb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
         phaseb.setBufferingType(frameInFlightCount);
@@ -140,7 +140,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
         passb.addFragmentShaderSubpassDependencyToItself();
-        RenderPhaseBuilder phaseb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
         phaseb.setPhaseName("Final direct + indirect");
@@ -162,7 +162,7 @@ void RC3DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto imguiLoadColorAttachment = rpab.buildAndRestart();
         imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
-        RenderPhaseBuilder imguiRb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> imguiRb;
         imguiRb.setDevice(device);
         imguiRb.setRenderPass(imguiRpb.build());
         imguiRb.setBufferingType(frameInFlightCount);

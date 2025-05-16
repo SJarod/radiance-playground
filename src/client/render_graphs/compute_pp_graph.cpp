@@ -8,7 +8,7 @@
 #include "compute_pp_graph.hpp"
 
 void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
-                        uint32_t maxProbeCount)
+                     uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
@@ -33,14 +33,13 @@ void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
     auto clearDepthAttachment = rpab.buildAndRestart();
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder opaqueRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueRb;
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setPhaseName("Opaque");
     opaqueRb.setBufferingType(frameInFlightCount);
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = opaquePhase.get();
-
 
     std::unique_ptr<RenderPhase> postProcessPhase;
     {
@@ -53,7 +52,7 @@ void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         rpab.setFinalLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
-        RenderPhaseBuilder phaseb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
         phaseb.setBufferingType(frameInFlightCount);
@@ -84,7 +83,7 @@ void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
         auto finalLoadColorAttachment = rpab.buildAndRestart();
         passb.addColorAttachment(*finalLoadColorAttachment);
         passb.addFragmentShaderSubpassDependencyToItself();
-        RenderPhaseBuilder phaseb;
+        RenderPhaseBuilder<RenderTypeE::RASTER> phaseb;
         phaseb.setDevice(device);
         phaseb.setRenderPass(passb.build());
         phaseb.setPhaseName("Final direct + indirect");
@@ -104,7 +103,7 @@ void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t 
     auto imguiLoadColorAttachment = rpab.buildAndRestart();
     imguiRpb.addColorAttachment(*imguiLoadColorAttachment);
 
-    RenderPhaseBuilder imguiRb;
+    RenderPhaseBuilder<RenderTypeE::RASTER> imguiRb;
     imguiRb.setDevice(device);
     imguiRb.setPhaseName("Dear ImGui");
     imguiRb.setRenderPass(imguiRpb.build());

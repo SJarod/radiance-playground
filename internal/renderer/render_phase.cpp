@@ -46,7 +46,7 @@ RenderPhase::~RenderPhase()
 
 void RenderPhase::registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState)
 {
-    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
+    for (int poolIndex = 0; poolIndex < m_pooledBackBuffers.size(); poolIndex++)
     {
         for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
@@ -66,7 +66,7 @@ void RenderPhase::registerRenderStateToSpecificPool(std::shared_ptr<RenderStateA
         return;
     }
 
-    for (int poolIndex = 0; poolIndex < m_renderPass->getFramebufferPoolSize(); poolIndex++)
+    for (int poolIndex = 0; poolIndex < m_pooledBackBuffers.size(); poolIndex++)
     {
         for (int i = 0; i < m_pooledBackBuffers[poolIndex].size(); ++i)
         {
@@ -116,15 +116,16 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
     };
     std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
 
+    assert(m_renderPass.has_value());
     renderArea.extent.width =
-        std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass->getMinRenderArea().extent.width);
-    renderArea.extent.height =
-        std::min(renderArea.extent.height - renderArea.offset.y, m_renderPass->getMinRenderArea().extent.height);
+        std::min(renderArea.extent.width - renderArea.offset.x, m_renderPass.value()->getMinRenderArea().extent.width);
+    renderArea.extent.height = std::min(renderArea.extent.height - renderArea.offset.y,
+                                        m_renderPass.value()->getMinRenderArea().extent.height);
 
     VkRenderPassBeginInfo renderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = m_renderPass->getHandle(),
-        .framebuffer = m_renderPass->getFramebuffer(pooledFramebufferIndex, imageIndex),
+        .renderPass = m_renderPass.value()->getHandle(),
+        .framebuffer = m_renderPass.value()->getFramebuffer(pooledFramebufferIndex, imageIndex),
         .renderArea = renderArea,
         .clearValueCount = static_cast<uint32_t>(clearValues.size()),
         .pClearValues = clearValues.data(),
@@ -168,9 +169,9 @@ void RenderPhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRend
 
     // keep track of this newly rendered image
     m_lastFramebuffer = std::optional<VkFramebuffer>(renderPassBeginInfo.framebuffer);
-    m_lastFramebufferImageResource = m_renderPass->getImageResource(imageIndex);
+    m_lastFramebufferImageResource = m_renderPass.value()->getImageResource(imageIndex);
     m_lastFramebufferImageView =
-        std::optional<VkImageView>(m_renderPass->getImageView(pooledFramebufferIndex, imageIndex));
+        std::optional<VkImageView>(m_renderPass.value()->getImageView(pooledFramebufferIndex, imageIndex));
 }
 
 void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uint32_t pooledFramebufferIndex) const
@@ -204,16 +205,17 @@ void RenderPhase::swapBackBuffers(uint32_t pooledFramebufferIndex)
     m_backBufferIndex = (m_backBufferIndex + 1) % m_pooledBackBuffers[pooledFramebufferIndex].size();
 }
 
-std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
+std::unique_ptr<RenderPhase> RenderPhaseBuilder<RenderTypeE::RASTER>::build()
 {
-    assert(m_product->m_renderPass);
     assert(m_device.lock());
 
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 
     // back buffers
-    const uint32_t poolSize = m_product->m_renderPass->getFramebufferPoolSize();
+    uint32_t poolSize = 1u;
+    if (m_product->m_renderPass.has_value())
+        poolSize = m_product->m_renderPass.value()->getFramebufferPoolSize();
 
     m_product->m_pooledRenderStates.resize(poolSize);
     m_product->m_pooledBackBuffers.resize(poolSize);
@@ -305,9 +307,12 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder::build()
 
 void RenderPhase::updateSwapchainOnRenderPass(const SwapChain *newSwapchain)
 {
+    if (!m_renderPass.has_value())
+        return;
+
     const std::vector<std::vector<VkImageView>> &imageViewPool = {newSwapchain->getImageViews()};
     const std::vector<VkImageView> &depthImageViewPool = {newSwapchain->getDepthImageView()};
-    m_renderPass->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
+    m_renderPass.value()->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
 }
 
 ComputePhase::~ComputePhase()
@@ -506,4 +511,175 @@ void ComputePhase::registerComputeState(std::shared_ptr<ComputeState> state)
     }
 
     m_computeStates.push_back(state);
+}
+
+void RayTracePhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex,
+                                     uint32_t pooledFramebufferIndex, VkRect2D renderArea, const CameraABC &camera,
+                                     const std::vector<std::shared_ptr<Light>> &lights,
+                                     const std::shared_ptr<ProbeGrid> &probeGrid)
+{
+    ZoneScoped;
+
+    if (singleFrameRenderIndex > 0)
+    {
+        VkFence currentFence = getCurrentFence(pooledFramebufferIndex);
+        VkResult res = vkWaitForFences(m_device.lock()->getHandle(), 1, &currentFence, VK_TRUE, UINT64_MAX);
+        assert(res != VK_TIMEOUT);
+        vkResetFences(m_device.lock()->getHandle(), 1, &currentFence);
+    }
+
+    const VkCommandBuffer &commandBuffer = getCurrentBackBuffer(pooledFramebufferIndex).commandBuffer;
+
+    vkResetCommandBuffer(commandBuffer, 0);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = 0,
+        .pInheritanceInfo = nullptr,
+    };
+    VkResult res = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+    if (res != VK_SUCCESS)
+    {
+        std::cerr << "Failed to begin recording command buffer : " << res << std::endl;
+        return;
+    }
+
+    const auto &renderStates = m_pooledRenderStates[pooledFramebufferIndex];
+    for (int i = 0; i < renderStates.size(); ++i)
+    {
+        RenderStateABC *renderState = renderStates[i].get();
+        renderState->updatePushConstants(commandBuffer, singleFrameRenderIndex, camera, lights);
+        renderState->updateUniformBuffers(m_backBufferIndex, singleFrameRenderIndex, pooledFramebufferIndex, camera,
+                                          lights, probeGrid, m_isCapturePhase);
+        renderState->updateDescriptorSetsPerFrame(m_parentPhase, commandBuffer, m_backBufferIndex,
+                                                  pooledFramebufferIndex);
+    }
+
+    VkRenderPassBeginInfo renderPassBeginInfo;
+    if (m_renderPass.has_value())
+    {
+        VkClearValue clearColor = {
+            .color = {0.05f, 0.05f, 0.05f, 0.f},
+        };
+        VkClearValue clearDepth = {
+            .depthStencil = {1.f, 0},
+        };
+        std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
+
+        renderArea.extent.width = std::min(renderArea.extent.width - renderArea.offset.x,
+                                           m_renderPass.value()->getMinRenderArea().extent.width);
+        renderArea.extent.height = std::min(renderArea.extent.height - renderArea.offset.y,
+                                            m_renderPass.value()->getMinRenderArea().extent.height);
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = m_renderPass.value()->getHandle(),
+            .framebuffer = m_renderPass.value()->getFramebuffer(pooledFramebufferIndex, imageIndex),
+            .renderArea = renderArea,
+            .clearValueCount = static_cast<uint32_t>(clearValues.size()),
+            .pClearValues = clearValues.data(),
+        };
+        vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    for (int i = 0; i < renderStates.size(); ++i)
+    {
+        RenderStateABC *renderState = renderStates[i].get();
+
+        if (const auto &pipeline = renderState->getPipeline())
+        {
+            pipeline->recordBind(commandBuffer, renderArea);
+        }
+
+        for (uint32_t subObjectIndex = 0u; subObjectIndex < renderState->getSubObjectCount(); subObjectIndex++)
+        {
+            renderState->recordBackBufferDescriptorSetsCommands(commandBuffer, subObjectIndex, m_backBufferIndex,
+                                                                pooledFramebufferIndex);
+            renderState->recordBackBufferDrawObjectCommands(commandBuffer, subObjectIndex);
+        }
+    }
+
+    if (m_renderPass.has_value())
+        vkCmdEndRenderPass(commandBuffer);
+
+    res = vkEndCommandBuffer(commandBuffer);
+    if (res != VK_SUCCESS)
+        std::cerr << "Failed to record command buffer : " << res << std::endl;
+
+    if (m_renderPass.has_value())
+    {
+        // keep track of this newly rendered image
+        m_lastFramebuffer = std::optional<VkFramebuffer>(renderPassBeginInfo.framebuffer);
+        m_lastFramebufferImageResource = m_renderPass.value()->getImageResource(imageIndex);
+        m_lastFramebufferImageView =
+            std::optional<VkImageView>(m_renderPass.value()->getImageView(pooledFramebufferIndex, imageIndex));
+    }
+}
+
+RayTracePhase::AsGeom RayTracePhase::getAsGeometry(std::shared_ptr<Mesh> mesh) const
+{
+    // from
+    // https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/vkrt_tutorial.md.html#accelerationstructure/bottom-levelaccelerationstructure
+
+    // BLAS builder requires raw device addresses.
+    VkDeviceAddress vertexAddress = mesh->getVertexBuffer()->getDeviceAddress();
+    VkDeviceAddress indexAddress = mesh->getIndexBuffer()->getDeviceAddress();
+
+    uint32_t maxPrimitiveCount = mesh->getPrimitiveCount();
+
+    // Describe buffer as array of VertexObj.
+    VkAccelerationStructureGeometryTrianglesDataKHR triangles{
+        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
+    triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT; // vec3 vertex position data.
+    triangles.vertexData.deviceAddress = vertexAddress;
+    triangles.vertexStride = sizeof(Vertex);
+    // Describe index data (32-bit unsigned int)
+    triangles.indexType = VK_INDEX_TYPE_UINT32;
+    triangles.indexData.deviceAddress = indexAddress;
+    // Indicate identity transform by setting transformData to null device pointer.
+    // triangles.transformData = {};
+    triangles.maxVertex = mesh->getVertexCount() - 1;
+
+    // Identify the above data as containing opaque triangles.
+    VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+    asGeom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+    asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    asGeom.geometry.triangles = triangles;
+
+    // The entire array will be used to build the BLAS.
+    VkAccelerationStructureBuildRangeInfoKHR offset;
+    offset.firstVertex = 0;
+    offset.primitiveCount = maxPrimitiveCount;
+    offset.primitiveOffset = 0;
+    offset.transformOffset = 0;
+
+    return AsGeom(asGeom, offset);
+}
+
+void RayTracePhase::generateBottomLevelAS()
+{
+    // uint32_t blasCount = m_pooledRenderStates[0].size();
+
+    // for (int i = 0; i <)
+
+    //     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
+    //         .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+    //         .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+    //         .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+    //         .dstAccelerationStructure = rtproduct->m_blas,
+    //         .geometryCount = 1,
+    //     };
+    // VkAccelerationStructureBuildSizesInfoKHR sizeInfo;
+    // vkGetAccelerationStructureBuildSizesKHR(deviceHandle, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+    // &buildInfo,
+    //                                         &buildInfo.geometryCount, &sizeInfo);
+    // VkAccelerationStructureCreateInfoKHR createInfo = {
+    //     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+    //     .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+    // };
+    // vkCreateAccelerationStructureKHR(deviceHandle, &createInfo, nullptr, &rtproduct->m_blas);
+}
+
+void RayTracePhase::generateTopLevelAS()
+{
 }

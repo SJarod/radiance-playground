@@ -19,6 +19,12 @@ class CameraABC;
 class RenderStateABC;
 class ComputeState;
 
+enum class RenderTypeE
+{
+    RASTER = 0,
+    RAYTRACE = 1,
+};
+
 // TODO : structure of array instead of array of structure
 struct BackBufferT
 {
@@ -30,17 +36,17 @@ struct BackBufferT
     VkFence inFlightFence;
 };
 
-class RenderPhaseBuilder;
+template <RenderTypeE TType> class RenderPhaseBuilder;
 
 class BasePhaseABC
 {
+  private:
+    virtual [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
+
   protected:
     std::weak_ptr<Device> m_device;
 
     BasePhaseABC() = default;
-
-  private:
-    virtual [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
 
   public:
     virtual ~BasePhaseABC() = default;
@@ -50,6 +56,18 @@ class BasePhaseABC
     BasePhaseABC(BasePhaseABC &&) = delete;
     BasePhaseABC &operator=(BasePhaseABC &&) = delete;
 
+    virtual void recordBackBuffer() const = 0;
+    virtual void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const = 0;
+
+    /**
+     * @brief wait for this phase to complete
+     *
+     */
+    virtual void wait() const = 0;
+
+    virtual void swapBackBuffers() = 0;
+
+  public:
     virtual [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
     virtual [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
     virtual [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const = 0;
@@ -61,13 +79,25 @@ class BasePhaseABC
  */
 class RenderPhase : public BasePhaseABC
 {
-    friend RenderPhaseBuilder;
+    friend RenderPhaseBuilder<RenderTypeE::RASTER>;
 
-  private:
+  protected:
+    /**
+     * @brief the parent phase field is not used (no need to be set), it was used to get the reference from the child
+     * phase when updating the descriptor sets but users can directly access whatever phase they want when using a
+     * capturing lambda
+     *
+     */
     [[deprecated]]
     const RenderPhase *m_parentPhase = nullptr;
 
-    std::unique_ptr<RenderPass> m_renderPass;
+    /**
+     * @brief the render pass is optional because a rasterization phase can use the dynamic rendering extension or even
+     * use a ray tracing pipline (no render pass) or ray queries (ray tracing in other shader stages) in the
+     * rasterization pipeline
+     *
+     */
+    std::optional<std::unique_ptr<RenderPass>> m_renderPass;
 
     std::vector<std::vector<std::shared_ptr<RenderStateABC>>> m_pooledRenderStates;
 
@@ -94,30 +124,73 @@ class RenderPhase : public BasePhaseABC
      */
     std::optional<VkImageView> m_lastFramebufferImageView = nullptr;
 
-    RenderPhase() = default;
-
-  private:
     [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const override
     {
         return m_pooledBackBuffers[pooledFramebufferIndex][m_backBufferIndex];
     }
 
+    RenderPhase() = default;
+
   public:
-    ~RenderPhase();
+    virtual ~RenderPhase();
 
     RenderPhase(const RenderPhase &) = delete;
     RenderPhase &operator=(const RenderPhase &) = delete;
     RenderPhase(RenderPhase &&) = delete;
     RenderPhase &operator=(RenderPhase &&) = delete;
 
+    /**
+     * @brief this RenderPhase class does not implement this function nor the functions below yet, it uses a system with
+     * pools for rendering in a cubemap, thus the record back buffer function takes a rather large amount of arguments
+     * (those arguments may not be necessary in the case where a single rendering is performed such as with a ray
+     * tracing pipeline and no render pass)
+     *
+     */
+    void recordBackBuffer() const override
+    {
+        assert(false);
+    }
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const override
+    {
+        assert(false);
+    }
+
+    /**
+     * @brief wait for this phase to complete
+     *
+     */
+    void wait() const override
+    {
+        assert(false);
+    }
+
+    void swapBackBuffers() override
+    {
+        assert(false);
+    }
+
     void registerRenderStateToAllPool(std::shared_ptr<RenderStateABC> renderState);
     void registerRenderStateToSpecificPool(std::shared_ptr<RenderStateABC> renderState,
                                            uint32_t pooledFramebufferIndex);
 
-    void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex,
-                          VkRect2D renderArea, const CameraABC &camera,
-                          const std::vector<std::shared_ptr<Light>> &lights,
-                          const std::shared_ptr<ProbeGrid> &probeGrid);
+    /**
+     * @brief TODO : move the arguments in a struct to facilitate the call of this function and the modularity with
+     * other phases
+     * it is not a const function as it will save the last rendered image in this object in order to access it from
+     * other phases
+     *
+     * @param imageIndex
+     * @param singleFrameRenderIndex
+     * @param pooledFramebufferIndex
+     * @param renderArea
+     * @param camera
+     * @param lights
+     * @param probeGrid
+     */
+    virtual void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex,
+                                  VkRect2D renderArea, const CameraABC &camera,
+                                  const std::vector<std::shared_ptr<Light>> &lights,
+                                  const std::shared_ptr<ProbeGrid> &probeGrid);
     void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride, uint32_t pooledFramebufferIndex) const;
 
     void swapBackBuffers(uint32_t pooledFramebufferIndex);
@@ -144,7 +217,8 @@ class RenderPhase : public BasePhaseABC
     }
     [[nodiscard]] const RenderPass *getRenderPass() const
     {
-        return m_renderPass.get();
+        assert(m_renderPass.has_value());
+        return m_renderPass.value().get();
     }
     [[nodiscard]] std::pair<std::optional<VkImage>, VkImageView> getMostRecentRenderedImage() const
     {
@@ -152,6 +226,41 @@ class RenderPhase : public BasePhaseABC
         return std::pair<std::optional<VkImage>, VkImageView>(m_lastFramebufferImageResource,
                                                               m_lastFramebufferImageView.value());
     }
+};
+typedef RenderPhase RasterPhase;
+typedef RenderPhase CubePhase;
+
+class RayTracePhase final : public RenderPhase
+{
+    friend RenderPhaseBuilder<RenderTypeE::RASTER>;
+
+  private:
+    std::vector<VkAccelerationStructureKHR> m_blas;
+    std::vector<VkAccelerationStructureKHR> m_tlas;
+
+    /**
+     * @brief combination of Vulkan structures representing a mesh as a ray traceable geometry
+     *
+     */
+    using AsGeom = std::pair<VkAccelerationStructureGeometryKHR, VkAccelerationStructureBuildRangeInfoKHR>;
+
+    /**
+     * @brief Get the As Geometry object
+     * function implementation is from
+     * https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/vkrt_tutorial.md.html#accelerationstructure/bottom-levelaccelerationstructure
+     *
+     * @return AsGeom
+     */
+    [[nodiscard]] AsGeom getAsGeometry(std::shared_ptr<Mesh> mesh) const;
+
+  public:
+    void generateBottomLevelAS();
+    void generateTopLevelAS();
+
+    void recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRenderIndex, uint32_t pooledFramebufferIndex,
+                          VkRect2D renderArea, const CameraABC &camera,
+                          const std::vector<std::shared_ptr<Light>> &lights,
+                          const std::shared_ptr<ProbeGrid> &probeGrid) override;
 };
 
 class PhaseBuilderABC
@@ -174,16 +283,20 @@ class PhaseBuilderABC
     }
 };
 
-class RenderPhaseBuilder : public PhaseBuilderABC
+template <RenderTypeE TType> class RenderPhaseBuilder final : public PhaseBuilderABC
 {
-  private:
+};
+
+template <> class RenderPhaseBuilder<RenderTypeE::RASTER> : public PhaseBuilderABC
+{
+  protected:
     std::unique_ptr<RenderPhase> m_product;
 
     std::weak_ptr<Device> m_device;
 
     uint32_t m_bufferingType = 2;
 
-    void restart()
+    virtual void restart()
     {
         m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
     }
@@ -221,7 +334,23 @@ class RenderPhaseBuilder : public PhaseBuilderABC
         m_product->m_isCapturePhase = enable;
     }
 
+    /**
+     * @brief this build function is used for the rasterizer phase but used for the raytracing phase as well
+     * the sole difference between the rasterizer phase and the ray tracing phase is that the latter has an optional
+     * render pass (if the phase has a renderpass, it may by a rasterizer using ray queries, if not, the phase uses a
+     * ray tracing pipeline or a dynamic rendering system)
+     *
+     * @return std::unique_ptr<RenderPhase>
+     */
     std::unique_ptr<RenderPhase> build();
+};
+template <> class RenderPhaseBuilder<RenderTypeE::RAYTRACE> : public RenderPhaseBuilder<RenderTypeE::RASTER>
+{
+  private:
+    void restart() override
+    {
+        m_product = std::unique_ptr<RenderPhase>(new RayTracePhase);
+    }
 };
 
 class ComputePhaseBuilder;
@@ -230,7 +359,7 @@ class ComputePhaseBuilder;
  * @brief manages the command buffers for the compute shader
  *
  */
-class ComputePhase : public BasePhaseABC
+class ComputePhase final : public BasePhaseABC
 {
     friend ComputePhaseBuilder;
 
@@ -257,16 +386,16 @@ class ComputePhase : public BasePhaseABC
 
     void registerComputeState(std::shared_ptr<ComputeState> state);
 
-    void recordBackBuffer() const;
-    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const;
+    void recordBackBuffer() const override;
+    void submitBackBuffer(const VkSemaphore *acquireSemaphoreOverride) const override;
 
     /**
      * @brief wait for this compute phase to complete
      *
      */
-    void wait() const;
+    void wait() const override;
 
-    void swapBackBuffers();
+    void swapBackBuffers() override;
 
   public:
     [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex = -1) const override
@@ -283,7 +412,7 @@ class ComputePhase : public BasePhaseABC
     }
 };
 
-class ComputePhaseBuilder : public PhaseBuilderABC
+class ComputePhaseBuilder final : public PhaseBuilderABC
 {
   private:
     std::unique_ptr<ComputePhase> m_product;

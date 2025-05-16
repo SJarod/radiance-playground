@@ -42,9 +42,17 @@ class Mesh
     Mesh &operator=(Mesh &&) = delete;
 
   public:
+    [[nodiscard]] inline const Buffer *getVertexBuffer() const
+    {
+        return m_vertexBuffer.get();
+    }
     [[nodiscard]] inline const VkBuffer getVertexBufferHandle() const
     {
         return m_vertexBuffer->getHandle();
+    }
+    [[nodiscard]] inline const Buffer *getIndexBuffer() const
+    {
+        return m_indexBuffer.get();
     }
     [[nodiscard]] inline const VkBuffer getIndexBufferHandle() const
     {
