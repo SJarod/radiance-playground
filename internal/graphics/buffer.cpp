@@ -30,7 +30,7 @@ void Buffer::copyDataToMemory(const void *srcData)
     vmaUnmapMemory(devicePtr->getAllocator(), m_allocation);
 }
 
-void Buffer::transferBufferToBuffer(VkBuffer src)
+void Buffer::transferBufferToBuffer(Buffer &src)
 {
     auto devicePtr = m_device.lock();
 
@@ -39,7 +39,7 @@ void Buffer::transferBufferToBuffer(VkBuffer src)
     VkBufferCopy copyRegion{
         .size = m_size,
     };
-    vkCmdCopyBuffer(commandBuffer, src, m_handle, 1, &copyRegion);
+    vkCmdCopyBuffer(commandBuffer, src.getHandle(), m_handle, 1, &copyRegion);
 
     devicePtr->cmdEndOneTimeSubmit(commandBuffer);
 }
@@ -60,6 +60,15 @@ Buffer::~Buffer()
     vmaDestroyBuffer(devicePtr->getAllocator(), m_handle, m_allocation);
     devicePtr->addBufferCount(-1);
     devicePtr->untrackBufferName(m_name);
+}
+
+VkDeviceAddress Buffer::getDeviceAddress() const
+{
+    VkBufferDeviceAddressInfo info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = m_handle,
+    };
+    return vkGetBufferDeviceAddress(m_device.lock()->getHandle(), &info);
 }
 
 std::unique_ptr<Buffer> BufferBuilder::build()

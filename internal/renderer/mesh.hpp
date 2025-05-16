@@ -68,6 +68,11 @@ class Mesh
         return m_name;
     }
 
+    [[nodiscadrd]] inline uint32_t getPrimitiveCount() const
+    {
+        return m_indices.size() / 3;
+    }
+
   public:
     void setTexture(const std::shared_ptr<Texture> &texture)
     {
