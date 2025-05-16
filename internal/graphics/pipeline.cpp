@@ -120,13 +120,13 @@ bool BasePipelineBuilder::createPipelineLayout()
     return true;
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::restart()
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::restart()
 {
     BasePipelineBuilder::restart();
     m_dynamicStates.clear();
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::addVertexShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addVertexShaderStage(const char *shaderName, const char *entryPoint)
 {
     std::vector<char> shader;
     if (!read_binary_file("shaders/" + std::string(shaderName) + ".vert.spv", shader))
@@ -142,7 +142,7 @@ void PipelineBuilder<PipelineType::GRAPHICS>::addVertexShaderStage(const char *s
     });
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::addFragmentShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addFragmentShaderStage(const char *shaderName, const char *entryPoint)
 {
     std::vector<char> shader;
     if (!read_binary_file("shaders/" + std::string(shaderName) + ".frag.spv", shader))
@@ -158,7 +158,7 @@ void PipelineBuilder<PipelineType::GRAPHICS>::addFragmentShaderStage(const char 
     });
 }
 
-void PipelineBuilder<PipelineType::COMPUTE>::addComputeShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::COMPUTE>::addComputeShaderStage(const char *shaderName, const char *entryPoint)
 {
     assert(m_shaderStageCreateInfos.empty());
 
@@ -175,34 +175,34 @@ void PipelineBuilder<PipelineType::COMPUTE>::addComputeShaderStage(const char *s
         .pName = entryPoint,
     });
 }
-void PipelineBuilder<PipelineType::GRAPHICS>::addDynamicState(VkDynamicState state)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addDynamicState(VkDynamicState state)
 {
     m_dynamicStates.emplace_back(state);
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::addPushConstantRange(VkPushConstantRange pushConstantRange)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addPushConstantRange(VkPushConstantRange pushConstantRange)
 {
     m_pushConstantRanges.push_back(pushConstantRange);
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::setDrawTopology(VkPrimitiveTopology topology,
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::setDrawTopology(VkPrimitiveTopology topology,
                                                               bool bPrimitiveRestartEnable)
 {
     m_topology = topology;
     m_bPrimitiveRestartEnable = bPrimitiveRestartEnable;
 }
 
-void PipelineBuilder<PipelineType::GRAPHICS>::setExtent(VkExtent2D extent)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::setExtent(VkExtent2D extent)
 {
     m_extent = extent;
 }
 
-std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
+std::unique_ptr<Pipeline> PipelineBuilder<PipelineTypeE::GRAPHICS>::build()
 {
     assert(m_device.lock());
     assert(m_renderPass);
 
-    m_product->m_type = PipelineType::GRAPHICS;
+    m_product->m_type = PipelineTypeE::GRAPHICS;
 
     const VkDevice &deviceHandle = m_device.lock()->getHandle();
 
@@ -361,8 +361,8 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::GRAPHICS>::build()
     return std::move(m_product);
 }
 
-void PipelineDirector<PipelineType::GRAPHICS>::configureColorDepthRasterizerBuilder(
-    PipelineBuilder<PipelineType::GRAPHICS> &builder)
+void PipelineDirector<PipelineTypeE::GRAPHICS>::configureColorDepthRasterizerBuilder(
+    PipelineBuilder<PipelineTypeE::GRAPHICS> &builder)
 {
     builder.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
     builder.addDynamicState(VK_DYNAMIC_STATE_SCISSOR);
@@ -412,16 +412,16 @@ void PipelineDirector<PipelineType::GRAPHICS>::configureColorDepthRasterizerBuil
     builder.setBlendConstants(0.f, 0.f, 0.f, 0.f);
 }
 
-void PipelineDirector<PipelineType::COMPUTE>::configureComputeBuilder(PipelineBuilder<PipelineType::COMPUTE> &builder)
+void PipelineDirector<PipelineTypeE::COMPUTE>::configureComputeBuilder(PipelineBuilder<PipelineTypeE::COMPUTE> &builder)
 {
     // do nothing
 }
 
-std::unique_ptr<Pipeline> PipelineBuilder<PipelineType::COMPUTE>::build()
+std::unique_ptr<Pipeline> PipelineBuilder<PipelineTypeE::COMPUTE>::build()
 {
     assert(!m_device.expired());
 
-    m_product->m_type = PipelineType::COMPUTE;
+    m_product->m_type = PipelineTypeE::COMPUTE;
 
     auto deviceHandle = m_device.lock()->getHandle();
 
@@ -447,7 +447,7 @@ void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, VkRect2D extent)
 {
     switch (m_type)
     {
-    case PipelineType::GRAPHICS: {
+    case PipelineTypeE::GRAPHICS: {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_handle);
 
         VkViewport viewport = {.x = 0.f,
@@ -461,7 +461,7 @@ void Pipeline::recordBind(const VkCommandBuffer &commandBuffer, VkRect2D extent)
     }
     break;
 
-    case PipelineType::COMPUTE: {
+    case PipelineTypeE::COMPUTE: {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_handle);
     }
     break;

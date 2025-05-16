@@ -157,7 +157,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> phongPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
         phongPb.addFragmentShaderStage("phong");
@@ -169,7 +169,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> phongPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> phongPd;
         phongPd.configureColorDepthRasterizerBuilder(phongPb);
         phongPb.addUniformDescriptorPack(phongInstanceUdb.buildAndRestart());
         phongPb.addUniformDescriptorPack(phongMaterialUdb.buildAndRestart());
@@ -230,7 +230,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> probeGridDebugPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
         probeGridDebugPb.setDevice(device);
         probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
         probeGridDebugPb.addFragmentShaderStage("white");
@@ -242,7 +242,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> probeGridDebugPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
         probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
         // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
         probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
@@ -315,8 +315,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> skyboxPb;
-        PipelineDirector<PipelineType::GRAPHICS> skyboxPd;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> skyboxPb;
+        PipelineDirector<PipelineTypeE::GRAPHICS> skyboxPd;
         skyboxPd.configureColorDepthRasterizerBuilder(skyboxPb);
         skyboxPb.setDevice(device);
         skyboxPb.addVertexShaderStage("skybox");
@@ -401,8 +401,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             };
             vkUpdateDescriptorSets(deviceHandle, 1, &write, 0, nullptr);
         });
-        PipelineBuilder<PipelineType::GRAPHICS> postProcessPb;
-        PipelineDirector<PipelineType::GRAPHICS> postProcessPd;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> postProcessPb;
+        PipelineDirector<PipelineTypeE::GRAPHICS> postProcessPd;
         postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
         postProcessPb.setDevice(device);
         postProcessPb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
@@ -425,8 +425,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         rg->m_finalImageDirect->registerRenderStateToAllPool(RENDER_STATE_PTR(quadRsb.build()));
 
         {
-            PipelineBuilder<PipelineType::COMPUTE> pb;
-            PipelineDirector<PipelineType::COMPUTE> pd;
+            PipelineBuilder<PipelineTypeE::COMPUTE> pb;
+            PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
             pb.addComputeShaderStage("radiance_gather_voxel");
@@ -709,8 +709,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
                     }
                     vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
                 });
-            PipelineBuilder<PipelineType::GRAPHICS> pb;
-            PipelineDirector<PipelineType::GRAPHICS> pd;
+            PipelineBuilder<PipelineTypeE::GRAPHICS> pb;
+            PipelineDirector<PipelineTypeE::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());

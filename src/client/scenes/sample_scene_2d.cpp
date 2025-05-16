@@ -169,7 +169,7 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> phongPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
         phongPb.addFragmentShaderStage("unlit");
@@ -181,7 +181,7 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> phongPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> phongPd;
         phongPd.configureColorDepthRasterizerBuilder(phongPb);
         phongPb.addUniformDescriptorPack(phongInstanceUdb.buildAndRestart());
         phongPb.addUniformDescriptorPack(phongMaterialUdb.buildAndRestart());
@@ -260,8 +260,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
 
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-            PipelineBuilder<PipelineType::GRAPHICS> pb;
-            PipelineDirector<PipelineType::GRAPHICS> pd;
+            PipelineBuilder<PipelineTypeE::GRAPHICS> pb;
+            PipelineDirector<PipelineTypeE::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
@@ -286,8 +286,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         }
 
         {
-            PipelineBuilder<PipelineType::COMPUTE> pb;
-            PipelineDirector<PipelineType::COMPUTE> pd;
+            PipelineBuilder<PipelineTypeE::COMPUTE> pb;
+            PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
             pb.addComputeShaderStage("radiance_gather");
@@ -570,8 +570,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
                     }
                     vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
                 });
-            PipelineBuilder<PipelineType::GRAPHICS> pb;
-            PipelineDirector<PipelineType::GRAPHICS> pd;
+            PipelineBuilder<PipelineTypeE::GRAPHICS> pb;
+            PipelineDirector<PipelineTypeE::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());

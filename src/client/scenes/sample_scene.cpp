@@ -188,14 +188,14 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> irradianceConvolutionPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> irradianceConvolutionPb;
         irradianceConvolutionPb.setDevice(device);
         irradianceConvolutionPb.addVertexShaderStage("skybox");
         irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
         irradianceConvolutionPb.setRenderPass(rg->m_irradianceConvolutionPhase->getRenderPass());
         irradianceConvolutionPb.setExtent(window->getSwapChain()->getExtent());
 
-        PipelineDirector<PipelineType::GRAPHICS> irradianceConvolutionPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> irradianceConvolutionPd;
         irradianceConvolutionPd.configureColorDepthRasterizerBuilder(irradianceConvolutionPb);
         irradianceConvolutionPb.addUniformDescriptorPack(irradianceConvolutionUdb.buildAndRestart());
 
@@ -242,7 +242,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> phongPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
         phongPb.addFragmentShaderStage("phong");
@@ -254,7 +254,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> phongPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> phongPd;
         phongPd.configureColorDepthRasterizerBuilder(phongPb);
         phongPb.addUniformDescriptorPack(phongInstanceUdb.buildAndRestart());
         phongPb.addUniformDescriptorPack(phongMaterialUdb.buildAndRestart());
@@ -301,7 +301,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> phongCapturePb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> phongCapturePb;
         phongCapturePb.setDevice(device);
         phongCapturePb.addVertexShaderStage("phong");
         phongCapturePb.addFragmentShaderStage("phong");
@@ -313,7 +313,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> phongCapturePd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> phongCapturePd;
         phongCapturePd.configureColorDepthRasterizerBuilder(phongCapturePb);
         phongCapturePb.addUniformDescriptorPack(phongCaptureInstanceUdb.buildAndRestart());
         phongCapturePb.addUniformDescriptorPack(phongCaptureMaterialUdb.buildAndRestart());
@@ -334,7 +334,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> environmentMapPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> environmentMapPb;
         environmentMapPb.setDevice(device);
         environmentMapPb.addVertexShaderStage("environment_map");
         environmentMapPb.addFragmentShaderStage("environment_map");
@@ -346,7 +346,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> environmentMapPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> environmentMapPd;
         environmentMapPd.configureColorDepthRasterizerBuilder(environmentMapPb);
         environmentMapPb.addUniformDescriptorPack(environmentMapUdb.buildAndRestart());
 
@@ -366,7 +366,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> environmentMapCapturePb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> environmentMapCapturePb;
         environmentMapCapturePb.setDevice(device);
         environmentMapCapturePb.addVertexShaderStage("environment_map");
         environmentMapCapturePb.addFragmentShaderStage("environment_map");
@@ -393,7 +393,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         tb.setName("defaultDiffusePixels");
         ModelRenderState::s_defaultDiffuseTexture = tb.buildAndRestart();
 
-        PipelineDirector<PipelineType::GRAPHICS> environmentMapCapturePd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> environmentMapCapturePd;
         environmentMapCapturePd.configureColorDepthRasterizerBuilder(environmentMapCapturePb);
         environmentMapCapturePb.addUniformDescriptorPack(environmentMapCaptureUdb.buildAndRestart());
 
@@ -468,7 +468,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> probeGridDebugPb;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
         probeGridDebugPb.setDevice(device);
         probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
         probeGridDebugPb.addFragmentShaderStage("probe_grid_debug");
@@ -480,7 +480,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .size = 16,
         });
 
-        PipelineDirector<PipelineType::GRAPHICS> probeGridDebugPd;
+        PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
         probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
         probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
 
@@ -534,8 +534,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> skyboxPb;
-        PipelineDirector<PipelineType::GRAPHICS> skyboxPd;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> skyboxPb;
+        PipelineDirector<PipelineTypeE::GRAPHICS> skyboxPd;
         skyboxPd.configureColorDepthRasterizerBuilder(skyboxPb);
         skyboxPb.setDevice(device);
         skyboxPb.addVertexShaderStage("skybox");
@@ -563,8 +563,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
-        PipelineBuilder<PipelineType::GRAPHICS> skyboxCapturePb;
-        PipelineDirector<PipelineType::GRAPHICS> skyboxCapturePd;
+        PipelineBuilder<PipelineTypeE::GRAPHICS> skyboxCapturePb;
+        PipelineDirector<PipelineTypeE::GRAPHICS> skyboxCapturePd;
         skyboxCapturePd.configureColorDepthRasterizerBuilder(skyboxCapturePb);
         skyboxCapturePb.setDevice(device);
         skyboxCapturePb.addVertexShaderStage("skybox");
@@ -662,8 +662,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });
-            PipelineBuilder<PipelineType::GRAPHICS> pb;
-            PipelineDirector<PipelineType::GRAPHICS> pd;
+            PipelineBuilder<PipelineTypeE::GRAPHICS> pb;
+            PipelineDirector<PipelineTypeE::GRAPHICS> pd;
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
