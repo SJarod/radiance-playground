@@ -6,7 +6,6 @@
 #include "engine/transform.hpp"
 
 class Mesh;
-class MeshBuilder;
 class Device;
 
 class Model

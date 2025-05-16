@@ -3,10 +3,9 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 
-#include "engine/transform.hpp"
 #include "engine/vertex.hpp"
+
 #include "graphics/buffer.hpp"
 
 class Device;

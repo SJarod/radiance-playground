@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <glm/gtc/constants.hpp>
+
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
