@@ -8,20 +8,20 @@
 class Device;
 class RenderPass;
 class BasePipelineBuilder;
-enum class PipelineType
+enum class PipelineTypeE
 {
     GRAPHICS = 0,
     COMPUTE = 1,
     COUNT = 2,
 };
-template <PipelineType TType> class PipelineBuilder;
+template <PipelineTypeE TType> class PipelineBuilder;
 class UniformDescriptor;
 
 class Pipeline
 {
     friend BasePipelineBuilder;
-    friend PipelineBuilder<PipelineType::GRAPHICS>;
-    friend PipelineBuilder<PipelineType::COMPUTE>;
+    friend PipelineBuilder<PipelineTypeE::GRAPHICS>;
+    friend PipelineBuilder<PipelineTypeE::COMPUTE>;
 
   private:
     std::weak_ptr<Device> m_device;
@@ -30,7 +30,7 @@ class Pipeline
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_handle;
 
-    PipelineType m_type;
+    PipelineTypeE m_type;
 
     Pipeline() = default;
 
@@ -85,7 +85,7 @@ class BasePipelineBuilder
 
     std::vector<std::shared_ptr<UniformDescriptor>> m_uniformDescriptorPacks;
 
-    // TODO : move to PipelineBuilder<PipelineType::GRAPHICS>
+    // TODO : move to PipelineBuilder<PipelineTypeE::GRAPHICS>
     const RenderPass *m_renderPass;
 
     virtual void restart();
@@ -111,18 +111,18 @@ class BasePipelineBuilder
     {
         m_uniformDescriptorPacks.push_back(desc);
     }
-    // TODO : move to PipelineBuilder<PipelineType::GRAPHICS>
+    // TODO : move to PipelineBuilder<PipelineTypeE::GRAPHICS>
     void setRenderPass(const RenderPass *a)
     {
         m_renderPass = a;
     }
 };
 
-template <PipelineType TType> class PipelineBuilder : public BasePipelineBuilder
+template <PipelineTypeE TType> class PipelineBuilder : public BasePipelineBuilder
 {
 };
 
-template <> class PipelineBuilder<PipelineType::GRAPHICS> : public BasePipelineBuilder
+template <> class PipelineBuilder<PipelineTypeE::GRAPHICS> : public BasePipelineBuilder
 {
   private:
     // dynamic states
@@ -344,7 +344,7 @@ template <> class PipelineBuilder<PipelineType::GRAPHICS> : public BasePipelineB
     std::unique_ptr<Pipeline> build();
 };
 
-template <> class PipelineBuilder<PipelineType::COMPUTE> : public BasePipelineBuilder
+template <> class PipelineBuilder<PipelineTypeE::COMPUTE> : public BasePipelineBuilder
 {
   private:
   public:
@@ -358,18 +358,18 @@ template <> class PipelineBuilder<PipelineType::COMPUTE> : public BasePipelineBu
     std::unique_ptr<Pipeline> build();
 };
 
-template <PipelineType TType> class PipelineDirector
+template <PipelineTypeE TType> class PipelineDirector
 {
 };
 
-template <> class PipelineDirector<PipelineType::GRAPHICS>
+template <> class PipelineDirector<PipelineTypeE::GRAPHICS>
 {
   public:
-    void configureColorDepthRasterizerBuilder(PipelineBuilder<PipelineType::GRAPHICS> &builder);
+    void configureColorDepthRasterizerBuilder(PipelineBuilder<PipelineTypeE::GRAPHICS> &builder);
 };
 
-template <> class PipelineDirector<PipelineType::COMPUTE>
+template <> class PipelineDirector<PipelineTypeE::COMPUTE>
 {
   public:
-    void configureComputeBuilder(PipelineBuilder<PipelineType::COMPUTE> &builder);
+    void configureComputeBuilder(PipelineBuilder<PipelineTypeE::COMPUTE> &builder);
 };
