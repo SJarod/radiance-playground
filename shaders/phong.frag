@@ -213,10 +213,12 @@ void main()
 
 	applyImageBasedIrradiance(fragLighting, normal);
 
-	oColor = texture(texSampler, fragUV);
-	oColor *= vec4(fragLighting.ambient + fragLighting.diffuse + fragLighting.specular, 1.0);
+	vec3 color = texture(texSampler, fragUV).rgb;
+	color *= fragLighting.ambient + fragLighting.diffuse + fragLighting.specular;
 
 #ifdef DEBUG_IRRADIANCE_MAP
-	oColor = texture(irradianceMap, normal);
+	color = texture(irradianceMap, normal);
 #endif
+
+	oColor = vec4(pow(color, vec3(1.0/2.2)), 1.0);
 }
