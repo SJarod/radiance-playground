@@ -10,9 +10,25 @@ class RenderPass;
 class BasePipelineBuilder;
 enum class PipelineTypeE
 {
+    /**
+     * @brief rasterization pipeline (can be used with ray queries)
+     *
+     */
     GRAPHICS = 0,
+    RASTER = GRAPHICS,
+    /**
+     * @brief compute pipeline
+     *
+     */
     COMPUTE = 1,
-    COUNT = 2,
+    /**
+     * @brief ray tracing pipeline
+     * TODO
+     *
+     */
+    RAYTRACE = 2,
+
+    COUNT = 3,
 };
 template <PipelineTypeE TType> class PipelineBuilder;
 class UniformDescriptor;
