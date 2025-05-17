@@ -204,7 +204,8 @@ class Device
     {
         return m_imageCount;
     }
-
+    [[nodiscard]] const VkInstance getContextInstance() const;
+    
   public:
     void addBufferCount(int n)
     {

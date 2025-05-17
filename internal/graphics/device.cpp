@@ -71,6 +71,11 @@ std::vector<VkQueueFamilyProperties> Device::getQueueFamilyProperties() const
     return out;
 }
 
+const VkInstance Device::getContextInstance() const
+{
+    return m_cx.lock()->getInstanceHandle();
+}
+
 std::optional<uint32_t> Device::findQueueFamilyIndex(const VkQueueFlags &capabilities) const
 {
     auto props = getQueueFamilyProperties();
