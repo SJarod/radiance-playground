@@ -90,6 +90,9 @@ Application::Application()
         db.setSurface(m_window->getSurface());
         db.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         db.addDeviceExtension(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+        db.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        db.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        db.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
         m_devices.emplace_back(db.build());
         if (m_devices.back()->isDiscrete())
         {
@@ -266,7 +269,7 @@ void Application::runLoop()
     bool show_demo_window = true;
 
     m_scene = SceneABC::load<SampleScene>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
-                                              bufferingType, maxProbeCount);
+                                          bufferingType, maxProbeCount);
 
     RenderPhase *imguiPhase = nullptr;
     if (BakedGraph *rg = dynamic_cast<BakedGraph *>(m_renderer->getRenderGraph()))

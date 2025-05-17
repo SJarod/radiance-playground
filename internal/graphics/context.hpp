@@ -7,8 +7,6 @@
 
 #include "instance.hpp"
 
-#define PFN_DECLARE_VK(funcName) PFN_##funcName funcName
-
 class Device;
 class ContextBuilder;
 

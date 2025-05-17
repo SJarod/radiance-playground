@@ -10,6 +10,8 @@
 
 #include "device.hpp"
 
+#define VK_INSTANCE_PROC_ADDR(func) func = PFN_##func(vkGetInstanceProcAddr(m_cx.lock()->getInstanceHandle(), #func))
+
 Device::~Device()
 {
     std::cout << "Destroying device : " << getDeviceName() << std::endl;
@@ -135,8 +137,7 @@ void Device::cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const
 void Device::addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo)
 {
     if (!vkSetDebugUtilsObjectNameEXT)
-        vkSetDebugUtilsObjectNameEXT = PFN_vkSetDebugUtilsObjectNameEXT(
-            vkGetInstanceProcAddr(m_cx.lock()->getInstanceHandle(), "vkSetDebugUtilsObjectNameEXT"));
+        VK_INSTANCE_PROC_ADDR(vkSetDebugUtilsObjectNameEXT);
     vkSetDebugUtilsObjectNameEXT(m_handle, &nameInfo);
 }
 
@@ -144,32 +145,46 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
 {
     m_product->m_physicalHandle = a;
 
-    m_product->m_multiviewFeature =
-        VkPhysicalDeviceMultiviewFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-                                          .multiview = true,
-                                          .multiviewGeometryShader = false,
-                                          .multiviewTessellationShader = false};
+    m_product->m_asFeatures = VkPhysicalDeviceAccelerationStructureFeaturesKHR{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+        .accelerationStructure = true,
+    };
+    m_product->m_multiviewFeature = VkPhysicalDeviceMultiviewFeatures{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+        .pNext = &m_product->m_asFeatures,
+        .multiview = true,
+        .multiviewGeometryShader = false,
+        .multiviewTessellationShader = false,
+    };
 
     m_product->m_bufferDeviceAddressFeature = VkPhysicalDeviceBufferDeviceAddressFeatures{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-        .pNext = &m_product->m_multiviewFeature};
+        .pNext = &m_product->m_multiviewFeature,
+    };
 
-    m_product->m_features13 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-                               .pNext = &m_product->m_bufferDeviceAddressFeature};
+    m_product->m_features13 = VkPhysicalDeviceVulkan13Features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .pNext = &m_product->m_bufferDeviceAddressFeature,
+    };
     // enabling synchronization2 feature
     m_product->m_features13.synchronization2 = VK_TRUE;
 
-    m_product->m_features = {
+    m_product->m_features = VkPhysicalDeviceFeatures2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .pNext = &m_product->m_features13,
     };
 
     vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);
+
     vkGetPhysicalDeviceProperties(a, &m_product->m_props);
+    vkGetPhysicalDeviceProperties2(a, &m_product->m_props2);
 
     m_product->m_graphicsFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
     m_product->m_computeFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
 }
+
+#define VK_INSTANCE_PROC_ADDR_BUILDER(func)                                                                            \
+    m_product->func = PFN_##func(vkGetInstanceProcAddr(m_cx.lock()->getInstanceHandle(), #func))
 
 std::unique_ptr<Device> DeviceBuilder::build()
 {
@@ -256,7 +271,8 @@ std::unique_ptr<Device> DeviceBuilder::build()
     vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
 
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
-    allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocatorCreateInfo.flags =
+        VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
     allocatorCreateInfo.physicalDevice = m_product->m_physicalHandle;
     allocatorCreateInfo.device = m_product->m_handle;
@@ -264,6 +280,10 @@ std::unique_ptr<Device> DeviceBuilder::build()
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
     vmaCreateAllocator(&allocatorCreateInfo, &m_product->m_allocator);
+
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkCreateAccelerationStructureKHR);
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkCmdBuildAccelerationStructuresKHR);
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkGetAccelerationStructureBuildSizesKHR);
 
     return std::move(m_product);
 }
