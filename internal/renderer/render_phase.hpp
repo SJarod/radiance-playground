@@ -4,6 +4,9 @@
 #include <memory>
 #include <string>
 
+#include <vulkan/vulkan.hpp>
+
+#include "graphics/buffer.hpp"
 #include "graphics/render_pass.hpp"
 
 class Device;
@@ -14,7 +17,6 @@ class Mesh;
 class Light;
 class ProbeGrid;
 class Texture;
-class Buffer;
 class CameraABC;
 class RenderStateABC;
 class ComputeState;
@@ -23,6 +25,7 @@ enum class RenderTypeE
 {
     RASTER = 0,
     RAYTRACE = 1,
+    COUNT = 2,
 };
 
 // TODO : structure of array instead of array of structure
@@ -236,6 +239,7 @@ class RayTracePhase final : public RenderPhase
 
   private:
     std::vector<VkAccelerationStructureKHR> m_blas;
+    std::vector<std::unique_ptr<Buffer>> m_blasBuffers;
     std::vector<VkAccelerationStructureKHR> m_tlas;
 
     /**
@@ -252,6 +256,12 @@ class RayTracePhase final : public RenderPhase
      * @return AsGeom
      */
     [[nodiscard]] AsGeom getAsGeometry(std::shared_ptr<Mesh> mesh) const;
+
+    /**
+     * @brief update the descriptor sets of all the states a once more to write the top level acceleration structure
+     *
+     */
+    void updateDescriptorSets();
 
   public:
     void generateBottomLevelAS();
@@ -289,6 +299,12 @@ template <RenderTypeE TType> class RenderPhaseBuilder final : public PhaseBuilde
 
 template <> class RenderPhaseBuilder<RenderTypeE::RASTER> : public PhaseBuilderABC
 {
+  private:
+    void restart()
+    {
+        m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
+    }
+
   protected:
     std::unique_ptr<RenderPhase> m_product;
 
@@ -296,16 +312,18 @@ template <> class RenderPhaseBuilder<RenderTypeE::RASTER> : public PhaseBuilderA
 
     uint32_t m_bufferingType = 2;
 
-    virtual void restart()
-    {
-        m_product = std::unique_ptr<RenderPhase>(new RenderPhase);
-    }
-
   public:
     RenderPhaseBuilder()
     {
         restart();
     }
+
+    virtual ~RenderPhaseBuilder() = default;
+
+    RenderPhaseBuilder(const RenderPhaseBuilder &) = delete;
+    RenderPhaseBuilder &operator=(const RenderPhaseBuilder &) = delete;
+    RenderPhaseBuilder(RenderPhaseBuilder &&) = delete;
+    RenderPhaseBuilder &operator=(RenderPhaseBuilder &&) = delete;
 
     void setDevice(std::weak_ptr<Device> device)
     {
@@ -344,12 +362,18 @@ template <> class RenderPhaseBuilder<RenderTypeE::RASTER> : public PhaseBuilderA
      */
     std::unique_ptr<RenderPhase> build();
 };
-template <> class RenderPhaseBuilder<RenderTypeE::RAYTRACE> : public RenderPhaseBuilder<RenderTypeE::RASTER>
+template <> class RenderPhaseBuilder<RenderTypeE::RAYTRACE> final : public RenderPhaseBuilder<RenderTypeE::RASTER>
 {
   private:
-    void restart() override
+    void restart()
     {
         m_product = std::unique_ptr<RenderPhase>(new RayTracePhase);
+    }
+
+  public:
+    RenderPhaseBuilder()
+    {
+        restart();
     }
 };
 
