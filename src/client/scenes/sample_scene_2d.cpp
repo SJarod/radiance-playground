@@ -200,7 +200,7 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.setProbeDescriptorEnable(false);

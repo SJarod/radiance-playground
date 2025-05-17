@@ -407,7 +407,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.setDevice(device);
@@ -424,7 +424,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
                 captureMrsb.setDevice(device);

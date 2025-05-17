@@ -271,11 +271,11 @@ void ModelRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
 }
-void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void ModelRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
-        .descriptorCount = m_frameInFlightCount,
+        .descriptorCount = m_frameInFlightCount * static_cast<uint32_t>(size),
     });
 }
 
@@ -692,7 +692,7 @@ void ImGuiRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
 }
-void ImGuiRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void ImGuiRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
@@ -712,11 +712,11 @@ void SkyboxRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
 }
-void SkyboxRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void SkyboxRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
-        .descriptorCount = m_frameInFlightCount,
+        .descriptorCount = m_frameInFlightCount * static_cast<uint32_t>(size),
     });
 }
 
@@ -917,11 +917,11 @@ void EnvironmentCaptureRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline>
 {
     m_product->m_pipeline = pipeline;
 }
-void EnvironmentCaptureRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void EnvironmentCaptureRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
-        .descriptorCount = m_frameInFlightCount,
+        .descriptorCount = m_frameInFlightCount * static_cast<uint32_t>(size),
     });
 }
 
@@ -1151,11 +1151,11 @@ void ProbeGridRenderStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline
 {
     m_product->m_pipeline = pipeline;
 }
-void ProbeGridRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void ProbeGridRenderStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,
-        .descriptorCount = m_frameInFlightCount,
+        .descriptorCount = m_frameInFlightCount * static_cast<uint32_t>(size),
     });
 }
 
@@ -1389,7 +1389,7 @@ void ComputeStateBuilder::setPipeline(std::shared_ptr<Pipeline> pipeline)
 {
     m_product->m_pipeline = pipeline;
 }
-void ComputeStateBuilder::addPoolSize(VkDescriptorType poolSizeType)
+void ComputeStateBuilder::addPoolSize(VkDescriptorType poolSizeType, size_t size)
 {
     m_poolSizes.push_back(VkDescriptorPoolSize{
         .type = poolSizeType,

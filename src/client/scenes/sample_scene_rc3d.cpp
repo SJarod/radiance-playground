@@ -199,7 +199,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             mrsb.setDevice(device);
@@ -275,7 +275,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         ProbeGridRenderStateBuilder prsb0;
         prsb0.setFrameInFlightCount(frameInFlightCount);
         prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb0.setDevice(device);
         prsb0.setPipeline(probeGridDebugPipeline);
         prsb0.setProbeGrid(m_grid0);
@@ -284,7 +284,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         ProbeGridRenderStateBuilder prsb1;
         prsb1.setFrameInFlightCount(frameInFlightCount);
         prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb1.setDevice(device);
         prsb1.setPipeline(probeGridDebugPipeline);
         prsb1.setProbeGrid(m_grid1);
@@ -293,7 +293,7 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         ProbeGridRenderStateBuilder prsb2;
         prsb2.setFrameInFlightCount(frameInFlightCount);
         prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb2.setDevice(device);
         prsb2.setPipeline(probeGridDebugPipeline);
         prsb2.setProbeGrid(m_grid2);

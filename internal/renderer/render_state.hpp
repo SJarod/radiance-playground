@@ -266,7 +266,7 @@ class RenderStateBuilderI
   public:
     virtual void setDevice(std::weak_ptr<Device> device) = 0;
     virtual void setPipeline(std::shared_ptr<Pipeline> pipeline) = 0;
-    virtual void addPoolSize(VkDescriptorType poolSizeType) = 0;
+    virtual void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) = 0;
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
 
@@ -355,7 +355,7 @@ class ModelRenderStateBuilder : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
@@ -476,7 +476,7 @@ class ImGuiRenderStateBuilder : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
@@ -580,7 +580,7 @@ class SkyboxRenderStateBuilder : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
@@ -694,7 +694,7 @@ class EnvironmentCaptureRenderStateBuilder : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
@@ -803,7 +803,7 @@ class ProbeGridRenderStateBuilder : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
@@ -948,7 +948,7 @@ class ComputeStateBuilder final : public RenderStateBuilderI
         m_product->m_device = device;
     }
     void setPipeline(std::shared_ptr<Pipeline> pipeline) override;
-    void addPoolSize(VkDescriptorType poolSizeType) override;
+    void addPoolSize(VkDescriptorType poolSizeType, size_t size = 1) override;
     void setFrameInFlightCount(uint32_t a) override
     {
         m_frameInFlightCount = a;
