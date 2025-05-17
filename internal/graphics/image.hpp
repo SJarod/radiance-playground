@@ -8,7 +8,6 @@
 #include <vk_mem_alloc.h>
 
 class Device;
-class Buffer;
 class ImageLayoutTransitionBuilder;
 
 class ImageLayoutTransition

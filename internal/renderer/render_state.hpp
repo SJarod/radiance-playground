@@ -296,6 +296,8 @@ class ModelRenderState : public RenderStateABC
     bool m_pushViewPosition = true;
 
   public:
+    static std::shared_ptr<Texture> s_defaultDiffuseTexture;
+
     void updatePushConstants(const VkCommandBuffer &commandBuffer, uint32_t singleFrameRenderIndex,
                              const CameraABC &camera, const std::vector<std::shared_ptr<Light>> &lights) override;
     void recordBackBufferDrawObjectCommands(const VkCommandBuffer &commandBuffer, uint32_t subObjectIndex) override;
@@ -305,9 +307,14 @@ class ModelRenderState : public RenderStateABC
                               const std::vector<std::shared_ptr<Light>> &lights,
                               const std::shared_ptr<ProbeGrid> &probeGrid, bool captureModeEnabled) override;
 
-    uint32_t getSubObjectCount() const override;
+  public:
+    [[nodiscard]] uint32_t getSubObjectCount() const override;
 
-    static std::shared_ptr<Texture> s_defaultDiffuseTexture;
+    [[nodiscard]] const Model *getModel() const
+    {
+        assert(!m_model.expired());
+        return m_model.lock().get();
+    }
 };
 
 class ModelRenderStateBuilder : public RenderStateBuilderI
