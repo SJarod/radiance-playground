@@ -244,10 +244,10 @@ void Application::displayImgui()
                     ImGui::DragFloat3("Direction", &directionalLight->direction.x);
                 }
 
-                ImGui::ColorEdit3("Diffuse Color", &light->diffuseColor.r);
+                ImGui::ColorEdit3("Diffuse Color", &light->diffuseColor.x);
                 ImGui::DragFloat("Diffuse Power", &light->diffusePower);
 
-                ImGui::ColorEdit3("Specular Color", &light->specularColor.r);
+                ImGui::ColorEdit3("Specular Color", &light->specularColor.x);
                 ImGui::DragFloat("Specular Power", &light->specularPower);
 
                 ImGui::PopID();

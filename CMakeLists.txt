@@ -11,6 +11,8 @@ set(PROJECT_NAME pbr)
 # initiating project given its name
 project(${PROJECT_NAME})
 
+set(RENDERER_OPTION_USE_NV_PRO_CORE ON)
+
 add_subdirectory(externals)
 add_subdirectory(internal)
 add_subdirectory(src)

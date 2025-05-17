@@ -1,5 +1,8 @@
 #pragma once
 
+#undef near
+#undef far
+
 #include <glm/glm.hpp>
 
 #include "transform.hpp"
@@ -21,11 +24,11 @@ class CameraABC
     [[nodiscard]] glm::mat4 getViewMatrix() const;
     virtual [[nodiscard]] glm::mat4 getProjectionMatrix() const = 0;
 
-    [[nodiscard]] const Transform &getTransform() const
+    [[nodiscard]] inline const Transform &getTransform() const
     {
         return m_transform;
     }
-    [[nodiscard]] const float &getSpeed() const
+    [[nodiscard]] inline const float &getSpeed() const
     {
         return m_speed;
     }
@@ -35,19 +38,19 @@ class CameraABC
     }
 
   public:
-    void setYFlip(const bool bFlip)
+    inline void setYFlip(const bool bFlip)
     {
         m_bYFlip = bFlip;
     }
-    void setNear(const float near)
+    inline void setNear(const float near)
     {
         m_near = near;
     }
-    void setFar(const float far)
+    inline void setFar(const float far)
     {
         m_far = far;
     }
-    void setTransform(const Transform &transform)
+    inline void setTransform(const Transform &transform)
     {
         m_transform = transform;
     }

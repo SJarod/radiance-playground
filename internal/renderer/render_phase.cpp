@@ -665,6 +665,8 @@ void RayTracePhase::updateDescriptorSets()
 
 void RayTracePhase::generateBottomLevelAS()
 {
+#ifdef USE_NV_PRO_CORE
+#else
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 
@@ -758,8 +760,6 @@ void RayTracePhase::generateBottomLevelAS()
         scratchAddresses.push_back(scratch0 + i * maxScratchSize);
     }
 
-    auto cmd = devicePtr->cmdBeginOneTimeSubmit();
-
     VkDeviceSize budget = 0;
     m_blas.reserve(nbBlas);
     std::vector<VkAccelerationStructureBuildRangeInfoKHR *> ppRangeInfos;
@@ -796,6 +796,8 @@ void RayTracePhase::generateBottomLevelAS()
             break;
     }
 
+    VkCommandBuffer cmd = devicePtr->cmdBeginOneTimeSubmit("Bottom Level Acceleration Structure build");
+
     devicePtr->vkCmdBuildAccelerationStructuresKHR(cmd, static_cast<uint32_t>(geometryBuildInfos.size()),
                                                    geometryBuildInfos.data(), ppRangeInfos.data());
 
@@ -807,6 +809,7 @@ void RayTracePhase::generateBottomLevelAS()
                          nullptr);
 
     devicePtr->cmdEndOneTimeSubmit(cmd);
+#endif
 }
 
 void RayTracePhase::generateTopLevelAS()
