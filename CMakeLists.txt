@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
-set(PROJECT_NAME pbr)
+set(PROJECT_NAME radiance_playground)
 
 # initiating project given its name
 project(${PROJECT_NAME})

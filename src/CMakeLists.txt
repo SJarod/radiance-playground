@@ -1,4 +1,4 @@
-set(component rhi_sandbox)
+set(component playground)
 
 add_executable(${component})
 
