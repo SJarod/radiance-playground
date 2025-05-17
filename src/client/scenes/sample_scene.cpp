@@ -447,6 +447,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
+        rg->m_opaquePhase->generateBottomLevelAS();
+        // rg->m_opaquePhase->generateTopLevelAS();
 
         UniformDescriptorBuilder probeGridDebugUdb;
         probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{

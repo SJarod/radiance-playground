@@ -16,7 +16,7 @@ class BakedGraph final : public RenderGraph
     RenderPhase *m_skyboxCapturePhase;
 
     RenderPhase *m_irradianceConvolutionPhase;
-    RenderPhase *m_opaquePhase;
+    RayTracePhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
 
     /**
