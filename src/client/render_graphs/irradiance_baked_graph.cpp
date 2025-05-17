@@ -131,12 +131,12 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto clearDepthAttachment = rpab.buildAndRestart();
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueRb;
+    RenderPhaseBuilder<RenderTypeE::RAYTRACE> opaqueRb;
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setBufferingType(frameInFlightCount);
     auto opaquePhase = opaqueRb.build();
-    m_opaquePhase = opaquePhase.get();
+    m_opaquePhase = static_cast<RayTracePhase *>(opaquePhase.get());
 
     RenderPassBuilder probesDebugRpb;
     probesDebugRpb.setDevice(device);
