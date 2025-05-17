@@ -16,12 +16,14 @@
 class Context;
 class DeviceBuilder;
 
+#define PFN_DECLARE_VK(funcName) PFN_##funcName funcName = nullptr
+
 class Device
 {
     friend DeviceBuilder;
 
   private:
-    PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
+    PFN_DECLARE_VK(vkSetDebugUtilsObjectNameEXT);
 
   private:
     std::weak_ptr<Context> m_cx;
@@ -37,7 +39,16 @@ class Device
     VkPhysicalDeviceMultiviewFeatures m_multiviewFeature;
     VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR m_asFeatures;
+    
     VkPhysicalDeviceProperties m_props;
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR m_asprops = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR,
+    };
+    VkPhysicalDeviceProperties2 m_props2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &m_asprops,
+    };
 
     // logical device
     VkDevice m_handle;
@@ -70,6 +81,10 @@ class Device
     Device() = default;
 
   public:
+    PFN_DECLARE_VK(vkCreateAccelerationStructureKHR);
+    PFN_DECLARE_VK(vkCmdBuildAccelerationStructuresKHR);
+    PFN_DECLARE_VK(vkGetAccelerationStructureBuildSizesKHR);
+
     ~Device();
 
     Device(const Device &) = delete;
@@ -83,6 +98,12 @@ class Device
     std::optional<uint32_t> findMemoryTypeIndex(VkMemoryRequirements requirements,
                                                 VkMemoryPropertyFlags properties) const;
 
+    /**
+     * @brief begin a command buffer in the transient command pool
+     * the command pool has been created with the graphics queue index
+     *
+     * @return VkCommandBuffer
+     */
     VkCommandBuffer cmdBeginOneTimeSubmit() const;
     void cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const;
 
@@ -99,13 +120,17 @@ class Device
     {
         return m_deviceExtensions.data();
     }
-    [[nodiscard]] inline const VkPhysicalDeviceFeatures2 &getPhysicalDeviceFeatures2()
+    [[nodiscard]] inline const VkPhysicalDeviceFeatures2 &getPhysicalDeviceFeatures2() const
     {
         return m_features;
     }
-    [[nodiscard]] inline const VkPhysicalDeviceProperties &getPhysicalDeviceProperties()
+    [[nodiscard]] inline const VkPhysicalDeviceProperties &getPhysicalDeviceProperties() const
     {
         return m_props;
+    }
+    [[nodiscard]] inline const VkPhysicalDeviceAccelerationStructurePropertiesKHR &getPhysicalDeviceASProperties() const
+    {
+        return m_asprops;
     }
 
     [[nodiscard]] inline const VkPhysicalDevice &getPhysicalHandle() const
