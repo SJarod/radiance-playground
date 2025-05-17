@@ -97,7 +97,7 @@ std::optional<uint32_t> Device::findPresentQueueFamilyIndex() const
     return std::optional<uint32_t>();
 }
 
-VkCommandBuffer Device::cmdBeginOneTimeSubmit() const
+VkCommandBuffer Device::cmdBeginOneTimeSubmit(std::string cmdName) const
 {
     VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -111,6 +111,12 @@ VkCommandBuffer Device::cmdBeginOneTimeSubmit() const
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
+    addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = VK_OBJECT_TYPE_COMMAND_BUFFER,
+        .objectHandle = (uint64_t)commandBuffer,
+        .pObjectName = std::string(cmdName + " transient command buffer").c_str(),
+    });
     VkResult res = vkBeginCommandBuffer(commandBuffer, &beginInfo);
     if (res != VK_SUCCESS)
         std::cerr << "Failed to begin one time submit command buffer : " << res << std::endl;
@@ -130,14 +136,15 @@ void Device::cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const
     if (res != VK_SUCCESS)
         std::cerr << "Failed to submit one time command buffer : " << res << std::endl;
 
-    vkQueueWaitIdle(m_graphicsQueue);
+    res = vkQueueWaitIdle(m_graphicsQueue);
+    if (res != VK_SUCCESS)
+        std::cerr << "Wait for transient command buffer failed : " << res << std::endl;
+
     vkFreeCommandBuffers(m_handle, m_commandPoolTransient, 1, &commandBuffer);
 }
 
-void Device::addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo)
+void Device::addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo) const
 {
-    if (!vkSetDebugUtilsObjectNameEXT)
-        VK_INSTANCE_PROC_ADDR(vkSetDebugUtilsObjectNameEXT);
     vkSetDebugUtilsObjectNameEXT(m_handle, &nameInfo);
 }
 
@@ -145,8 +152,12 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
 {
     m_product->m_physicalHandle = a;
 
+    m_product->m_rtvalidationFeatures = VkPhysicalDeviceRayTracingValidationFeaturesNV{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV,
+    };
     m_product->m_asFeatures = VkPhysicalDeviceAccelerationStructureFeaturesKHR{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+        .pNext = &m_product->m_rtvalidationFeatures,
         .accelerationStructure = true,
     };
     m_product->m_multiviewFeature = VkPhysicalDeviceMultiviewFeatures{
@@ -176,8 +187,36 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
 
     vkGetPhysicalDeviceFeatures2(a, &m_product->m_features);
 
+#ifndef NDEBUG
+    if (m_product->m_rtvalidationFeatures.rayTracingValidation)
+        addDeviceExtension(VK_NV_RAY_TRACING_VALIDATION_EXTENSION_NAME);
+#endif
+
     vkGetPhysicalDeviceProperties(a, &m_product->m_props);
     vkGetPhysicalDeviceProperties2(a, &m_product->m_props2);
+
+    {
+        uint32_t count;
+        vkEnumerateDeviceLayerProperties(a, &count, nullptr);
+        std::vector<VkLayerProperties> props(count);
+        vkEnumerateDeviceLayerProperties(a, &count, props.data());
+        std::cout << "Available layers for " << m_product->getDeviceName() << std::endl;
+        for (int i = 0; i < count; ++i)
+        {
+            std::cout << "\t" << props[i].layerName << std::endl;
+        }
+    }
+    {
+        uint32_t count;
+        vkEnumerateDeviceExtensionProperties(a, nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> props(count);
+        vkEnumerateDeviceExtensionProperties(a, nullptr, &count, props.data());
+        std::cout << "Available extensions for " << m_product->getDeviceName() << std::endl;
+        for (int i = 0; i < count; ++i)
+        {
+            std::cout << "\t" << props[i].extensionName << std::endl;
+        }
+    }
 
     m_product->m_graphicsFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
     m_product->m_computeFamilyIndex = m_product->findQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
@@ -280,6 +319,8 @@ std::unique_ptr<Device> DeviceBuilder::build()
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
     vmaCreateAllocator(&allocatorCreateInfo, &m_product->m_allocator);
+
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkSetDebugUtilsObjectNameEXT);
 
     VK_INSTANCE_PROC_ADDR_BUILDER(vkCreateAccelerationStructureKHR);
     VK_INSTANCE_PROC_ADDR_BUILDER(vkCmdBuildAccelerationStructuresKHR);

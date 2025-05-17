@@ -66,7 +66,9 @@ Application::Application()
 
     glfwSetKeyCallback(m_window->getHandle(), InputManager::KeyCallback);
     ContextBuilder cb;
+#ifndef NDEBUG
     cb.addLayer("VK_LAYER_KHRONOS_validation");
+#endif
     cb.addLayer("VK_LAYER_LUNARG_monitor");
     cb.addLayer("VK_LAYER_KHRONOS_synchronization2");
     cb.addInstanceExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);

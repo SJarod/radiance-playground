@@ -40,7 +40,8 @@ class Device
     VkPhysicalDeviceBufferDeviceAddressFeatures m_bufferDeviceAddressFeature;
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;
     VkPhysicalDeviceAccelerationStructureFeaturesKHR m_asFeatures;
-    
+    VkPhysicalDeviceRayTracingValidationFeaturesNV m_rtvalidationFeatures;
+
     VkPhysicalDeviceProperties m_props;
     VkPhysicalDeviceAccelerationStructurePropertiesKHR m_asprops = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR,
@@ -104,10 +105,10 @@ class Device
      *
      * @return VkCommandBuffer
      */
-    VkCommandBuffer cmdBeginOneTimeSubmit() const;
+    VkCommandBuffer cmdBeginOneTimeSubmit(std::string cmdName = "Unnamed") const;
     void cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const;
 
-    void addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo);
+    void addDebugObjectName(VkDebugUtilsObjectNameInfoEXT nameInfo) const;
 
   public:
     [[nodiscard]] std::vector<VkQueueFamilyProperties> getQueueFamilyProperties() const;

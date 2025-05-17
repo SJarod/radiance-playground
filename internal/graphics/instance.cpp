@@ -46,9 +46,10 @@ std::unique_ptr<Instance> InstanceBuilder::build()
     vkEnumerateInstanceLayerProperties(&count, nullptr);
     std::vector<VkLayerProperties> props(count);
     vkEnumerateInstanceLayerProperties(&count, props.data());
+    std::cout << "Available instance extensions" << std::endl;
     for (int i = 0; i < count; ++i)
     {
-        std::cout << props[i].layerName << std::endl;
+        std::cout << "\t" << props[i].layerName << std::endl;
     }
 
     VkResult res = vkCreateInstance(&createInfo, nullptr, &m_product->m_handle);
