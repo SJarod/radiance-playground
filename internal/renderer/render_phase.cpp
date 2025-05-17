@@ -9,6 +9,7 @@
 #include "graphics/swapchain.hpp"
 
 #include "mesh.hpp"
+#include "model.hpp"
 #include "texture.hpp"
 
 #include "engine/camera.hpp"
@@ -18,6 +19,8 @@
 #include "render_state.hpp"
 
 #include "render_phase.hpp"
+
+#define alignup(x, alignment) ((x + alignment - 1) / alignment) * alignment
 
 RenderPhase::~RenderPhase()
 {
@@ -656,28 +659,154 @@ RayTracePhase::AsGeom RayTracePhase::getAsGeometry(std::shared_ptr<Mesh> mesh) c
     return AsGeom(asGeom, offset);
 }
 
+void RayTracePhase::updateDescriptorSets()
+{
+}
+
 void RayTracePhase::generateBottomLevelAS()
 {
-    // uint32_t blasCount = m_pooledRenderStates[0].size();
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
 
-    // for (int i = 0; i <)
+    uint32_t minAlignment =
+        devicePtr->getPhysicalDeviceASProperties()
+            .minAccelerationStructureScratchOffsetAlignment; /*m_rtASProperties.minAccelerationStructureScratchOffsetAlignment*/
 
-    //     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
-    //         .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
-    //         .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-    //         .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
-    //         .dstAccelerationStructure = rtproduct->m_blas,
-    //         .geometryCount = 1,
-    //     };
-    // VkAccelerationStructureBuildSizesInfoKHR sizeInfo;
-    // vkGetAccelerationStructureBuildSizesKHR(deviceHandle, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-    // &buildInfo,
-    //                                         &buildInfo.geometryCount, &sizeInfo);
-    // VkAccelerationStructureCreateInfoKHR createInfo = {
-    //     .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
-    //     .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-    // };
-    // vkCreateAccelerationStructureKHR(deviceHandle, &createInfo, nullptr, &rtproduct->m_blas);
+    // from
+    // https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/vkrt_tutorial.md.html#accelerationstructure/bottom-levelaccelerationstructure/helperdetails:raytracingbuilder::buildblas()
+
+    uint32_t nbBlas{0};
+    VkDeviceSize asTotalSize{0};    // Memory size of all allocated BLAS
+    uint32_t nbCompactions{0};      // Nb of BLAS requesting compaction
+    VkDeviceSize maxScratchSize{0}; // Largest scratch size
+
+    std::vector<VkAccelerationStructureBuildSizesInfoKHR> sizeInfos;
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> geometryBuildInfos;
+    std::vector<std::vector<VkAccelerationStructureGeometryKHR>> geometries;
+    std::vector<std::vector<VkAccelerationStructureBuildRangeInfoKHR>> rangeInfos;
+    for (int i = 0; i < m_pooledRenderStates[0].size(); ++i)
+    {
+        if (auto state = std::dynamic_pointer_cast<ModelRenderState>(m_pooledRenderStates[0][i]))
+        {
+            auto meshes = state->getModel()->getMeshes();
+            geometries.push_back({});
+            rangeInfos.push_back({});
+            geometries.back().reserve(meshes.size());
+            rangeInfos.back().reserve(meshes.size());
+            std::vector<uint32_t> pMaxPrimitiveCounts(meshes.size());
+            for (int j = 0; j < meshes.size(); ++j)
+            {
+                AsGeom g = getAsGeometry(meshes[j]);
+                geometries.back().push_back(VkAccelerationStructureGeometryKHR{g.first});
+                rangeInfos.back().push_back(VkAccelerationStructureBuildRangeInfoKHR{g.second});
+                pMaxPrimitiveCounts[j] = g.second.primitiveCount;
+            }
+            ++nbBlas;
+
+            VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+                .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .geometryCount = static_cast<uint32_t>(geometries.back().size()),
+                .pGeometries = geometries.back().data(),
+                .ppGeometries = nullptr,
+                .scratchData =
+                    VkDeviceOrHostAddressKHR{
+                        .deviceAddress = 0,
+                    },
+            };
+
+            VkAccelerationStructureBuildSizesInfoKHR sizeInfo = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+            };
+            devicePtr->vkGetAccelerationStructureBuildSizesKHR(deviceHandle,
+                                                               VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                                                               &buildInfo, pMaxPrimitiveCounts.data(), &sizeInfo);
+            geometryBuildInfos.push_back(buildInfo);
+            sizeInfos.push_back(sizeInfo);
+
+            maxScratchSize = alignup(std::max(maxScratchSize, sizeInfos.back().buildScratchSize), minAlignment);
+            asTotalSize += maxScratchSize;
+        }
+        else
+        {
+            // only Model Render State objects should be registered in a Ray Trace Phase
+            // this proves the wrong usage of this object class
+            assert(false);
+        }
+    }
+
+    VkDeviceSize hintMaxBudget{256'000'000}; // 256 MB
+
+    BufferBuilder bb;
+    bb.setDevice(m_device);
+    bb.setName("as scratch buffer");
+    bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    bb.setUsage(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    uint64_t numScratch = std::max(uint64_t(1), hintMaxBudget / maxScratchSize);
+    bb.setSize(maxScratchSize * numScratch);
+    // Allocate the scratch buffers holding the temporary data of the acceleration structure builder
+    // 2) allocating the scratch buffer
+    std::unique_ptr<Buffer> blasScratchBuffer = bb.build();
+    bb.restart();
+    // 3) getting the device address for the scratch buffer
+    std::vector<VkDeviceAddress> scratchAddresses;
+    VkDeviceAddress scratch0 = blasScratchBuffer->getDeviceAddress();
+    for (int i = 0; i < numScratch; ++i)
+    {
+        scratchAddresses.push_back(scratch0 + i * maxScratchSize);
+    }
+
+    auto cmd = devicePtr->cmdBeginOneTimeSubmit();
+
+    VkDeviceSize budget = 0;
+    m_blas.reserve(nbBlas);
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR *> ppRangeInfos;
+    for (int i = 0; i < nbBlas; ++i)
+    {
+        VkAccelerationStructureKHR as;
+
+        bb.setDevice(m_device);
+        bb.setName("as buffer");
+        bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        bb.setUsage(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+        bb.setSize(sizeInfos[i].accelerationStructureSize);
+        m_blasBuffers.push_back(bb.build());
+        bb.restart();
+
+        VkAccelerationStructureCreateInfoKHR createInfo = {
+            .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+            .buffer = m_blasBuffers.back()->getHandle(),
+            .offset = 0,
+            .size = sizeInfos[i].accelerationStructureSize,
+            .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+        };
+        devicePtr->vkCreateAccelerationStructureKHR(deviceHandle, &createInfo, nullptr, &as);
+        geometryBuildInfos[i].dstAccelerationStructure = as;
+        geometryBuildInfos[i].scratchData = VkDeviceOrHostAddressKHR{
+            .deviceAddress = scratchAddresses[i],
+        };
+        m_blas.push_back(as);
+
+        ppRangeInfos.push_back(rangeInfos[i].data());
+
+        budget += sizeInfos[i].accelerationStructureSize;
+        if (budget >= hintMaxBudget)
+            break;
+    }
+
+    devicePtr->vkCmdBuildAccelerationStructuresKHR(cmd, static_cast<uint32_t>(geometryBuildInfos.size()),
+                                                   geometryBuildInfos.data(), ppRangeInfos.data());
+
+    VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                         VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &barrier, 0, nullptr, 0,
+                         nullptr);
+
+    devicePtr->cmdEndOneTimeSubmit(cmd);
 }
 
 void RayTracePhase::generateTopLevelAS()
