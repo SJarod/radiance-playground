@@ -252,6 +252,7 @@ class RayTracePhase final : public RenderPhase
 #else
     std::vector<VkAccelerationStructureKHR> m_blas;
     std::vector<std::unique_ptr<Buffer>> m_blasBuffers;
+    
     std::vector<VkAccelerationStructureKHR> m_tlas;
 #endif
 

@@ -11,7 +11,7 @@ set(PROJECT_NAME radiance_playground)
 # initiating project given its name
 project(${PROJECT_NAME})
 
-set(RENDERER_OPTION_USE_NV_PRO_CORE ON)
+set(RENDERER_OPTION_USE_NV_PRO_CORE OFF)
 
 add_subdirectory(externals)
 
