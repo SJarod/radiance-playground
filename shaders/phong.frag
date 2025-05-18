@@ -1,4 +1,7 @@
-#version 450
+#version 460
+
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 #define MAX_PROBE_COUNT 64
 #define DEFAULT_AMBIENT vec3(0.0)
@@ -55,6 +58,8 @@ layout(location = 0) out vec4 oColor;
 
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
 layout(set = 0, binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
+
+layout(binding = 6) uniform accelerationStructureEXT topLevelAS;
 
 struct Probe
 {
@@ -221,4 +226,26 @@ void main()
 #endif
 
 	oColor = vec4(pow(color, vec3(1.0/2.2)), 1.0);
+	
+	// Ray Query for shadow
+	vec3  origin    = fragPos;
+	vec3  direction = normalize(pointLights[0].position - origin);  // vector to light
+	float tMin      = 0.01f;
+	float tMax      = length(pointLights[0].position - origin);
+
+	// Initializes a ray query object but does not start traversal
+	rayQueryEXT rayQuery;
+	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+	// Start traversal: return false if traversal is complete
+	while(rayQueryProceedEXT(rayQuery))
+	{
+	}
+
+	// Returns type of committed (true) intersection
+	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	{
+		// Got an intersection == Shadow
+		oColor *= 0.1;
+	}
 }

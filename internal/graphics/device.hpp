@@ -41,6 +41,7 @@ class Device
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures m_uniformBuffersStandardLayoutFeature;
     VkPhysicalDeviceAccelerationStructureFeaturesKHR m_asFeatures;
     VkPhysicalDeviceRayTracingValidationFeaturesNV m_rtvalidationFeatures;
+    VkPhysicalDeviceRayQueryFeaturesKHR m_rqFeatures;
 
     VkPhysicalDeviceProperties m_props;
     VkPhysicalDeviceAccelerationStructurePropertiesKHR m_asprops = {

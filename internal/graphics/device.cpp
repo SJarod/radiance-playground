@@ -157,8 +157,12 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
 {
     m_product->m_physicalHandle = a;
 
+    m_product->m_rqFeatures = VkPhysicalDeviceRayQueryFeaturesKHR{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+    };
     m_product->m_rtvalidationFeatures = VkPhysicalDeviceRayTracingValidationFeaturesNV{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_VALIDATION_FEATURES_NV,
+        .pNext = &m_product->m_rqFeatures,
     };
     m_product->m_asFeatures = VkPhysicalDeviceAccelerationStructureFeaturesKHR{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,

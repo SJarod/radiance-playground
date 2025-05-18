@@ -61,7 +61,7 @@ foreach(SOURCE ${SHADER_SOURCES})
 	add_custom_command(TARGET ${component}
 		POST_BUILD
 		COMMAND echo [${SHADER_I}/${SHADER_COUNT}] ${SOURCE}...
-		COMMAND glslc ${CMAKE_SOURCE_DIR}/${SOURCE} -o ${SHADER_OUTPUT}
+		COMMAND glslc ${CMAKE_SOURCE_DIR}/${SOURCE} -o ${SHADER_OUTPUT} --target-spv=spv1.4
 		COMMAND echo ${SOURCE} : ${SHADER_OUTPUT}
 	)
 	MATH(EXPR SHADER_I "${SHADER_I} + 1")
