@@ -42,32 +42,26 @@ void MoveCamera::update(float deltaTime)
     m_mousePos.first = xpos;
     m_mousePos.second = ypos;
 
-    if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    // orbital camera
+    static glm::vec3 posStamp = glm::vec3(0.f);
+    if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_3) == GLFW_PRESS)
     {
+        setFocus(true);
+        float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
+        float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
         Transform cameraTransform = m_mainCamera->getTransform();
 
-        glm::vec3 forward = glm::normalize(glm::vec3(0.f, 0.f, -1.f) * cameraTransform.rotation);
-        glm::vec3 target = cameraTransform.position + forward * 10.f;
-        glm::vec3 dir = glm::normalize(-target);
-
-        float pitchDelta = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
-        float yawDelta = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
-
-        float pitch = glm::eulerAngles(cameraTransform.rotation).x;
-        float yaw = glm::eulerAngles(cameraTransform.rotation).y;
-        glm::quat QuatAroundX = glm::angleAxis(pitch + pitchDelta, glm::vec3(1.0, 0.0, 0.0));
-        glm::quat QuatAroundY = glm::angleAxis(yaw + yawDelta, glm::vec3(0.0, 1.0, 0.0));
-        glm::quat finalOrientation = QuatAroundX * QuatAroundY;
-
-        cameraTransform.position = target + dir * 10.f;
+        // fps camera rotation
         cameraTransform.rotation =
-            glm::quat_cast(glm::lookAt(cameraTransform.position, target, glm::vec3(0.f, 1.f, 0.f)));
+            glm::quat(glm::vec3(-pitch, 0.f, 0.f)) * cameraTransform.rotation * glm::quat(glm::vec3(0.f, -yaw, 0.f));
+
+        // offset dependening on the position stamp (last camera position)
+        cameraTransform.position = posStamp + glm::vec3(0.f, 0.f, -15.f) * cameraTransform.rotation;
 
         m_mainCamera->setTransform(cameraTransform);
         return;
     }
-
-    if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
+    else if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
     {
         setFocus(true);
         m_cameraSpeedMultiplier += deltaTime * 5.f;
@@ -78,13 +72,18 @@ void MoveCamera::update(float deltaTime)
         m_cameraSpeedMultiplier = 1.f;
     }
 
+    // fpv camera
     if (InputManager::GetKeyDown(Keycode::ESCAPE))
         setFocus(!m_isFocused);
 
     if (!m_isFocused)
         return;
 
-    float isFastMovementActive = InputManager::GetKey(Keycode::LEFT_SHIFT) ? 3.f : 1.f;
+    float isFastMovementActive = 1.f;
+    if (InputManager::GetKey(Keycode::LEFT_SHIFT)) // speed
+        isFastMovementActive = 3.f;
+    else if (InputManager::GetKey(Keycode::LEFT_CONTROL)) // slow-down
+        isFastMovementActive = 0.2f;
 
     float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
     float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
@@ -104,6 +103,9 @@ void MoveCamera::update(float deltaTime)
         dir = glm::normalize(dir);
     cameraTransform.position +=
         m_mainCamera->getSpeed() * dir * deltaTime * isFastMovementActive * m_cameraSpeedMultiplier;
+
+    // place the position stamp at a point forward
+    posStamp = cameraTransform.position + glm::vec3(0.f, 0.f, 15.f) * cameraTransform.rotation;
 
     m_mainCamera->setTransform(cameraTransform);
 }
