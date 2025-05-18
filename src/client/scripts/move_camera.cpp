@@ -73,9 +73,6 @@ void MoveCamera::update(float deltaTime)
     }
 
     // fpv camera
-    if (InputManager::GetKeyDown(Keycode::ESCAPE))
-        setFocus(!m_isFocused);
-
     if (!m_isFocused)
         return;
 

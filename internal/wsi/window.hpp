@@ -5,9 +5,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include <GLFW/glfw3.h>
 #include "graphics/surface.hpp"
 #include "graphics/swapchain.hpp"
+#include <GLFW/glfw3.h>
 
 class WindowI
 {
@@ -69,6 +69,10 @@ class WindowGLFW : public WindowI
     [[nodiscard]] inline const SwapChain *getSwapChain() const
     {
         return m_swapchain.get();
+    }
+    [[nodiscard]] inline float getAspectRatio() const
+    {
+        return m_width / (float)m_height;
     }
 
   public:

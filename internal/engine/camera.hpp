@@ -64,6 +64,16 @@ class PerspectiveCamera : public CameraABC
 
   public:
     [[nodiscard]] glm::mat4 getProjectionMatrix() const override;
+
+  public:
+    inline void setFovY(float fov)
+    {
+        m_yFov = fov;
+    }
+    inline void setAspectRatio(float ar)
+    {
+        m_aspectRatio = ar;
+    }
 };
 
 class OrthographicCamera : public CameraABC

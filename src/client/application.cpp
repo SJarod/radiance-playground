@@ -365,6 +365,8 @@ int Application::runLoop()
         {
             m_window->recreateSwapChain();
             m_renderer->setSwapChain(m_window->getSwapChain());
+            if (auto cam = dynamic_cast<PerspectiveCamera *>(m_scene->getMainCamera()))
+                cam->setAspectRatio(m_window->getAspectRatio());
         }
 
         m_window->swapBuffers();

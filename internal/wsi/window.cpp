@@ -79,10 +79,9 @@ void WindowGLFW::recreateSwapChain()
 
     SwapChainBuilder scb;
     scb.setDevice(m_swapchain->getDevice());
-    int width, height;
-    glfwGetWindowSize(m_handle, &width, &height);
-    scb.setWidth(width);
-    scb.setHeight(height);
+    glfwGetWindowSize(m_handle, &m_width, &m_height);
+    scb.setWidth(m_width);
+    scb.setHeight(m_height);
     scb.setSwapchainImageFormat(VkSurfaceFormatKHR{
         .format = VK_FORMAT_R8G8B8A8_UNORM,
         .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
