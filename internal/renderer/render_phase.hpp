@@ -252,7 +252,7 @@ class RayTracePhase final : public RenderPhase
 #else
     std::vector<VkAccelerationStructureKHR> m_blas;
     std::vector<std::unique_ptr<Buffer>> m_blasBuffers;
-    
+
     std::vector<VkAccelerationStructureKHR> m_tlas;
     std::vector<std::unique_ptr<Buffer>> m_tlasBuffers;
 #endif
@@ -297,9 +297,13 @@ class RayTracePhase final : public RenderPhase
                           const std::shared_ptr<ProbeGrid> &probeGrid) override;
 
   public:
-    [[nodiscard]] inline const std::vector<VkAccelerationStructureKHR> &getTLAS() const
+    [[nodiscard]] inline const std::vector<VkAccelerationStructureKHR> getTLAS() const
     {
+#ifdef USE_NV_PRO_CORE
+        return std::vector<VkAccelerationStructureKHR>{m_rtBuilder.getAccelerationStructure()};
+#else
         return m_tlas;
+#endif
     }
 };
 

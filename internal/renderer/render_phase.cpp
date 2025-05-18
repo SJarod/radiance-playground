@@ -200,7 +200,10 @@ void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uin
     VkResult res =
         vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence(pooledFramebufferIndex));
     if (res != VK_SUCCESS)
+    {
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
+        assert(false);
+    }
 }
 
 void RenderPhase::swapBackBuffers(uint32_t pooledFramebufferIndex)
@@ -244,11 +247,16 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder<RenderTypeE::RASTER>::build()
                 return nullptr;
             }
 
+            // manually checking the phase type (the inheritance architecture does not allow to check in the derived
+            // class)
+            std::string phaseType = "RenderPhase";
+            if (const RayTracePhase *product = dynamic_cast<RayTracePhase *>(m_product.get()))
+                phaseType = "RayTracePhase";
             devicePtr->addDebugObjectName(VkDebugUtilsObjectNameInfoEXT{
                 .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
                 .objectType = VK_OBJECT_TYPE_COMMAND_BUFFER,
                 .objectHandle = (uint64_t)(backBuffers[i].commandBuffer),
-                .pObjectName = std::string(m_phaseName + " RenderPhase : " + std::to_string(i)).c_str(),
+                .pObjectName = std::string(m_phaseName + " " + phaseType + " : " + std::to_string(i)).c_str(),
             });
         }
 
@@ -405,7 +413,10 @@ void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) co
 
     VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence());
     if (res != VK_SUCCESS)
+    {
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
+        assert(false);
+    }
 }
 
 void ComputePhase::wait() const
@@ -947,20 +958,23 @@ void RayTracePhase::generateBottomLevelAS()
 void RayTracePhase::generateTopLevelAS()
 {
 #ifdef USE_NV_PRO_CORE
-    // std::vector<VkAccelerationStructureInstanceKHR> tlas;
-    // tlas.reserve(m_instances.size());
-    // for (const HelloVulkan::ObjInstance &inst : m_instances)
-    // {
-    //     VkAccelerationStructureInstanceKHR rayInst{};
-    //     rayInst.transform = nvvk::toTransformMatrixKHR(inst.transform); // Position of the instance
-    //     rayInst.instanceCustomIndex = inst.objIndex;                    // gl_InstanceCustomIndexEXT
-    //     rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(inst.objIndex);
-    //     rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    //     rayInst.mask = 0xFF;                                //  Only be hit if rayMask & instance.mask != 0
-    //     rayInst.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
-    //     tlas.emplace_back(rayInst);
-    // }
-    // m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+    std::vector<VkAccelerationStructureInstanceKHR> tlas;
+    for (int i = 0; i < m_pooledRenderStates[0].size(); ++i)
+    {
+        if (auto state = std::dynamic_pointer_cast<ModelRenderState>(m_pooledRenderStates[0][i]))
+        {
+            VkAccelerationStructureInstanceKHR rayInst{};
+            rayInst.transform = nvvk::toTransformMatrixKHR(
+                state->getModel()->getTransform().getTransformMatrix()); // Position of the instance
+            rayInst.instanceCustomIndex = i;                             // gl_InstanceCustomIndexEXT
+            rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(i);
+            rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            rayInst.mask = 0xFF;                                //  Only be hit if rayMask & instance.mask != 0
+            rayInst.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
+            tlas.emplace_back(rayInst);
+        }
+    }
+    m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 #else
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
@@ -981,21 +995,22 @@ void RayTracePhase::generateTopLevelAS()
             rangeInfos.push_back({});
             geometries.back().reserve(meshes.size());
             rangeInfos.back().reserve(meshes.size());
-            std::vector<uint32_t> pMaxInstanceCount(meshes.size());
+            std::vector<uint32_t> pMaxInstanceCount(m_pooledRenderStates[0].size());
             for (int j = 0; j < meshes.size(); ++j)
             {
                 AsGeom g = getAsGeometry(meshes[j]);
                 geometries.back().push_back(VkAccelerationStructureGeometryKHR{g.first});
-                rangeInfos.back().push_back(VkAccelerationStructureBuildRangeInfoKHR{
-                    .primitiveCount = 1,
-                    .primitiveOffset = 0,
-                    .firstVertex = 0,
-                    .transformOffset = 0,
-                });
-
-                // each mesh represent one instance (for now)
-                pMaxInstanceCount[j] = 1;
+                geometries.back().back().geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
             }
+            rangeInfos.back().push_back(VkAccelerationStructureBuildRangeInfoKHR{
+                .primitiveCount = 1,
+                .primitiveOffset = 0,
+                .firstVertex = 0,
+                .transformOffset = 0,
+            });
+
+            // each mesh represent one instance (for now)
+            pMaxInstanceCount[i] = 1;
 
             VkAccelerationStructureDeviceAddressInfoKHR vasdai = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
@@ -1016,15 +1031,21 @@ void RayTracePhase::generateTopLevelAS()
             };
             vasis.push_back(vasi);
 
+            std::vector<VkAccelerationStructureGeometryKHR *> pgeom(geometries.size());
+            for (int j = 0; j < geometries.size(); ++j)
+            {
+                pgeom.push_back(geometries[j].data());
+            }
+            VkAccelerationStructureGeometryKHR **ppgeom = pgeom.data();
             VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
                 .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
                 .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
                 .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
                 .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
                 .srcAccelerationStructure = VK_NULL_HANDLE,
-                .geometryCount = static_cast<uint32_t>(geometries.back().size()),
-                .pGeometries = geometries.back().data(),
-                .ppGeometries = nullptr,
+                .geometryCount = 1,
+                .pGeometries = nullptr,
+                .ppGeometries = ppgeom,
                 .scratchData =
                     VkDeviceOrHostAddressKHR{
                         .deviceAddress = 0,
