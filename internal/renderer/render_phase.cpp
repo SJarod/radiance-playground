@@ -829,6 +829,7 @@ void RayTracePhase::generateBottomLevelAS()
                 .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
                 .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
                 .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .srcAccelerationStructure = VK_NULL_HANDLE,
                 .geometryCount = static_cast<uint32_t>(geometries.back().size()),
                 .pGeometries = geometries.back().data(),
                 .ppGeometries = nullptr,
@@ -865,18 +866,25 @@ void RayTracePhase::generateBottomLevelAS()
     bb.setName("as scratch buffer");
     bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     bb.setUsage(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    uint64_t numScratch = std::max(uint64_t(1), hintMaxBudget / maxScratchSize);
-    bb.setSize(maxScratchSize * numScratch);
+    VkDeviceSize totalScratch{0};
+    for (int i = 0; i < sizeInfos.size(); ++i)
+    {
+        VkDeviceSize alignedSize = alignup(sizeInfos[i].buildScratchSize, minAlignment);
+        totalScratch += alignedSize;
+    }
+    bb.setSize(totalScratch);
     // Allocate the scratch buffers holding the temporary data of the acceleration structure builder
     // 2) allocating the scratch buffer
     std::unique_ptr<Buffer> blasScratchBuffer = bb.build();
-    bb.restart();
     // 3) getting the device address for the scratch buffer
     std::vector<VkDeviceAddress> scratchAddresses;
     VkDeviceAddress scratch0 = blasScratchBuffer->getDeviceAddress();
-    for (int i = 0; i < numScratch; ++i)
+    VkDeviceAddress address = {};
+    for (int i = 0; i < sizeInfos.size(); ++i)
     {
-        scratchAddresses.push_back(scratch0 + i * maxScratchSize);
+        scratchAddresses.push_back(scratch0 + address);
+        VkDeviceSize alignedSize = alignup(sizeInfos[i].buildScratchSize, minAlignment);
+        address += alignedSize;
     }
 
     VkDeviceSize budget = 0;
@@ -886,26 +894,31 @@ void RayTracePhase::generateBottomLevelAS()
     {
         VkAccelerationStructureKHR as;
 
+        bb.restart();
         bb.setDevice(m_device);
         bb.setName("as buffer");
         bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         bb.setUsage(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-        bb.setSize(sizeInfos[i].accelerationStructureSize);
+        bb.setSize(alignup(sizeInfos[i].accelerationStructureSize, minAlignment));
         m_blasBuffers.push_back(bb.build());
-        bb.restart();
 
         VkAccelerationStructureCreateInfoKHR createInfo = {
             .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
             .buffer = m_blasBuffers.back()->getHandle(),
             .offset = 0,
-            .size = sizeInfos[i].accelerationStructureSize,
+            .size = alignup(sizeInfos[i].accelerationStructureSize, minAlignment),
             .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
         };
-        devicePtr->vkCreateAccelerationStructureKHR(deviceHandle, &createInfo, nullptr, &as);
+        VkResult res = devicePtr->vkCreateAccelerationStructureKHR(deviceHandle, &createInfo, nullptr, &as);
         geometryBuildInfos[i].dstAccelerationStructure = as;
         geometryBuildInfos[i].scratchData = VkDeviceOrHostAddressKHR{
             .deviceAddress = scratchAddresses[i],
         };
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create acceleration structure : " << res << std::endl;
+            return;
+        }
         m_blas.push_back(as);
 
         ppRangeInfos.push_back(rangeInfos[i].data());
