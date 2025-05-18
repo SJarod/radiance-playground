@@ -99,6 +99,7 @@ bool BasePipelineBuilder::createPipelineLayout()
         }
 
         m_product->m_descriptorSetLayouts.push_back(descriptorSetLayout);
+        m_product->m_bindingCounts.push_back(createInfo.bindingCount);
     }
 
     std::vector<VkDescriptorSetLayout> setLayouts = m_product->m_descriptorSetLayouts;
@@ -186,7 +187,7 @@ void PipelineBuilder<PipelineTypeE::GRAPHICS>::addPushConstantRange(VkPushConsta
 }
 
 void PipelineBuilder<PipelineTypeE::GRAPHICS>::setDrawTopology(VkPrimitiveTopology topology,
-                                                              bool bPrimitiveRestartEnable)
+                                                               bool bPrimitiveRestartEnable)
 {
     m_topology = topology;
     m_bPrimitiveRestartEnable = bPrimitiveRestartEnable;

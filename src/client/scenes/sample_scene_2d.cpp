@@ -30,7 +30,7 @@
 #include "sample_scene_2d.hpp"
 
 void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                         RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+                           RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -237,7 +237,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             rsb.setModel(m_screen);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                               const GPUStateI *self, const VkDescriptorSet set,
+                                                               uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;
@@ -343,7 +344,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
                 csb.setWorkGroup(glm::ivec3(rc->getCascadeCount(), 1, 1));
             }
             csb.setDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                       const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                       const GPUStateI *self, const VkDescriptorSet set,
+                                                       uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;
@@ -459,7 +461,8 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                               const GPUStateI *self, const VkDescriptorSet set,
+                                                               uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;

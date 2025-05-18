@@ -49,12 +49,15 @@ class RenderPhase;
  */
 using DescriptorSetUpdatePred =
     std::function<void(const RenderPhase *parentPhase, const VkDescriptorSet &set, uint32_t backBufferIndex)>;
+
+class GPUStateI;
 /**
  * @brief same as above but executed at each frame (between the render pass scope)
  *
  */
-using DescriptorSetUpdatePredPerFrame = std::function<void(const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                           const VkDescriptorSet &set, uint32_t backBufferIndex)>;
+using DescriptorSetUpdatePredPerFrame =
+    std::function<void(const RenderPhase *parentPhase, VkCommandBuffer cmd, const GPUStateI *self,
+                       const VkDescriptorSet &set, uint32_t backBufferIndex)>;
 
 /**
  * @brief state that can be taken into account by any phase to utilize the GPU.

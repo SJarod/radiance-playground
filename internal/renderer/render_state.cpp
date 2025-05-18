@@ -172,15 +172,16 @@ void RenderStateABC::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase
 {
     if (m_instanceDescriptorSetUpdatePredPerFrame)
     {
-        m_instanceDescriptorSetUpdatePredPerFrame(
-            parentPhase, cmd, m_poolInstanceDescriptorSets[pooledFramebufferIndex][backBufferIndex], backBufferIndex);
+        m_instanceDescriptorSetUpdatePredPerFrame(parentPhase, cmd, this,
+                                                  m_poolInstanceDescriptorSets[pooledFramebufferIndex][backBufferIndex],
+                                                  backBufferIndex);
     }
 
     if (m_materialDescriptorSetUpdatePredPerFrame)
     {
         for (const auto &materialSetsPerMesh : m_materialDescriptorSetsPerSubObject)
         {
-            m_materialDescriptorSetUpdatePredPerFrame(parentPhase, cmd, materialSetsPerMesh[backBufferIndex],
+            m_materialDescriptorSetUpdatePredPerFrame(parentPhase, cmd, this, materialSetsPerMesh[backBufferIndex],
                                                       backBufferIndex);
         }
     }
@@ -210,7 +211,7 @@ void ComputeState::updateDescriptorSetsPerFrame(const RenderPhase *parentPhase, 
 {
     if (m_descriptorSetUpdatePredPerFrame)
     {
-        m_descriptorSetUpdatePredPerFrame(parentPhase, cmd, m_descriptorSets[backBufferIndex], backBufferIndex);
+        m_descriptorSetUpdatePredPerFrame(parentPhase, cmd, this, m_descriptorSets[backBufferIndex], backBufferIndex);
     }
 }
 

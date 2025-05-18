@@ -380,7 +380,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         quadRsb.setModel(m_screen);
         quadRsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         quadRsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                               const VkDescriptorSet &set, uint32_t backBufferIndex) {
+                                                               const GPUStateI *self, const VkDescriptorSet &set,
+                                                               uint32_t backBufferIndex) {
             const auto &sampler = window->getSwapChain()->getSampler();
             if (!sampler.has_value())
                 return;
@@ -482,7 +483,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
                 csb.setWorkGroup(glm::ivec3(rc->getCascadeCount(), 1, 1));
             }
             csb.setDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                       const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                       const GPUStateI *self, const VkDescriptorSet set,
+                                                       uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;
@@ -598,7 +600,8 @@ void SampleSceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                               const GPUStateI *self, const VkDescriptorSet set,
+                                                               uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;

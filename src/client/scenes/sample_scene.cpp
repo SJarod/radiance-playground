@@ -435,7 +435,10 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
             mrsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                                const VkDescriptorSet &set, uint32_t backBufferIndex) {
+                                                                const GPUStateI *self, const VkDescriptorSet &set,
+                                                                uint32_t backBufferIndex) {
+                if (self->getPipeline()->getDescriptorSetBindingCountAtIndex(0).value() < 6)
+                    return;
                 auto tlas = rg->m_opaquePhase->getTLAS();
                 VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
@@ -483,8 +486,11 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.setCaptureCount(maxProbeCount);
                 captureMrsb.setCaptureCount(maxProbeCount);
                 captureMrsb.setInstanceDescriptorSetUpdatePredPerFrame(
-                    [=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const VkDescriptorSet &set,
-                        uint32_t backBufferIndex) {
+                    [=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const GPUStateI *self,
+                        const VkDescriptorSet &set, uint32_t backBufferIndex) {
+                        if (self->getPipeline()->getDescriptorSetBindingCountAtIndex(0).value() < 6)
+                            return;
+
                         auto tlas = rg->m_opaqueCapturePhase->getTLAS();
                         VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
@@ -718,7 +724,8 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             rsb.setModel(m_screen);
             rsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             rsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
-                                                               const VkDescriptorSet set, uint32_t backBufferIndex) {
+                                                               const GPUStateI *self, const VkDescriptorSet set,
+                                                               uint32_t backBufferIndex) {
                 const auto &sampler = window->getSwapChain()->getSampler();
                 if (!sampler.has_value())
                     return;

@@ -43,6 +43,11 @@ class Pipeline
     std::weak_ptr<Device> m_device;
 
     std::vector<VkDescriptorSetLayout> m_descriptorSetLayouts;
+    /**
+     * @brief binding count per descriptor set layout
+     *
+     */
+    std::vector<uint32_t> m_bindingCounts;
     VkPipelineLayout m_pipelineLayout;
     VkPipeline m_handle;
 
@@ -82,6 +87,13 @@ class Pipeline
             return std::nullopt;
 
         return m_descriptorSetLayouts[index];
+    }
+    [[nodiscard]] const std::optional<uint32_t> getDescriptorSetBindingCountAtIndex(uint32_t index) const
+    {
+        if (index >= m_bindingCounts.size())
+            return std::nullopt;
+
+        return m_bindingCounts[index];
     }
 };
 
