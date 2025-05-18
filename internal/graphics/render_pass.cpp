@@ -171,6 +171,8 @@ void RenderPassBuilder::addDepthAttachment(VkAttachmentDescription attachment)
     m_subpassDependency[0].srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency[0].dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     m_subpassDependency[0].dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    m_product->m_bHasDepthAttachment = true;
 }
 
 void RenderPassDirector::configureSwapChainRenderPassBuilder(RenderPassBuilder &builder, const SwapChain &swapchain,

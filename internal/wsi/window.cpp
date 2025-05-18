@@ -83,6 +83,12 @@ void WindowGLFW::recreateSwapChain()
     glfwGetWindowSize(m_handle, &width, &height);
     scb.setWidth(width);
     scb.setHeight(height);
+    scb.setSwapchainImageFormat(VkSurfaceFormatKHR{
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    });
+    scb.setSwapchainPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR);
+    scb.setUseImagesAsSamplers(true);
     m_swapchain.reset();
     m_swapchain = scb.build();
 }

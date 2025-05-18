@@ -323,7 +323,12 @@ void RenderPhase::updateSwapchainOnRenderPass(const SwapChain *newSwapchain)
 
     const std::vector<std::vector<VkImageView>> &imageViewPool = {newSwapchain->getImageViews()};
     const std::vector<VkImageView> &depthImageViewPool = {newSwapchain->getDepthImageView()};
-    m_renderPass.value()->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(), true);
+    if (m_renderPass.value()->getHasDepthAttachment())
+        m_renderPass.value()->buildFramebuffers(imageViewPool, depthImageViewPool, newSwapchain->getExtent(),
+                                                m_renderPass.value()->getLayerCount(), true);
+    else
+        m_renderPass.value()->buildFramebuffers(imageViewPool, std::nullopt, newSwapchain->getExtent(),
+                                                m_renderPass.value()->getLayerCount(), true);
 }
 
 ComputePhase::~ComputePhase()

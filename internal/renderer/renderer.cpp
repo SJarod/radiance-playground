@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <vulkan/vulkan.h>
 #include <tracy/Tracy.hpp>
+#include <vulkan/vulkan.h>
 
 #include "engine/probe_grid.hpp"
 
@@ -21,13 +21,17 @@ VkResult Renderer::acquireNextSwapChainImage(uint32_t &nextImageIndex)
 
     auto fences = m_renderGraph->getAllCurrentFences();
     vkWaitForFences(deviceHandle, static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
-    vkResetFences(deviceHandle, static_cast<uint32_t>(fences.size()), fences.data());
 
     auto acquireSemaphore = m_renderGraph->getFirstPhaseCurrentAcquireSemaphore();
     VkResult res = vkAcquireNextImageKHR(deviceHandle, m_swapchain->getHandle(), UINT64_MAX, acquireSemaphore,
                                          VK_NULL_HANDLE, &nextImageIndex);
     if (res != VK_SUCCESS)
+    {
         std::cerr << "Failed to acquire next image : " << res << std::endl;
+        return res;
+    }
+
+    vkResetFences(deviceHandle, static_cast<uint32_t>(fences.size()), fences.data());
 
     return res;
 }
@@ -57,7 +61,8 @@ VkResult Renderer::presentBackBuffer(uint32_t imageIndex)
 }
 
 VkResult Renderer::renderFrame(VkRect2D renderArea, const CameraABC &mainCamera,
-                               const std::vector<std::shared_ptr<Light>> &lights, const std::shared_ptr<ProbeGrid> &probeGrid)
+                               const std::vector<std::shared_ptr<Light>> &lights,
+                               const std::shared_ptr<ProbeGrid> &probeGrid)
 {
     ZoneScoped;
 

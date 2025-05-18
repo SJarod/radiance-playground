@@ -361,7 +361,7 @@ int Application::runLoop()
                 .extent = m_window->getSwapChain()->getExtent(),
             },
             *mainCamera, lights, grid);
-        if (res == VK_ERROR_OUT_OF_DATE_KHR)
+        if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
         {
             m_window->recreateSwapChain();
             m_renderer->setSwapChain(m_window->getSwapChain());

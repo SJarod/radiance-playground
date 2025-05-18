@@ -41,6 +41,13 @@ class RenderPassFramebufferBuilder
         restart();
     }
 
+  public:
+    [[nodiscard]] inline bool hasDepthAttachment() const
+    {
+        return m_depthAttachment.has_value();
+    }
+
+  public:
     void setDevice(std::weak_ptr<Device> device)
     {
         m_device = device;
@@ -112,6 +119,9 @@ class RenderPass
 
     VkRect2D m_minRenderArea;
 
+    bool m_bHasDepthAttachment = false;
+    uint32_t m_layerCount;
+
     RenderPass() = default;
 
   public:
@@ -160,6 +170,16 @@ class RenderPass
     [[nodiscard]] const VkRect2D getMinRenderArea() const
     {
         return m_minRenderArea;
+    }
+
+    [[nodiscard]] inline uint32_t getLayerCount() const
+    {
+        return m_layerCount;
+    }
+
+    [[nodiscard]] inline bool getHasDepthAttachment() const
+    {
+        return m_bHasDepthAttachment || m_pooledFramebufferBuilders[0].hasDepthAttachment();
     }
 };
 
@@ -286,6 +306,7 @@ class RenderPassBuilder
     void setLayerCount(const uint32_t &count)
     {
         m_layers = count;
+        m_product->m_layerCount = count;
     }
     void setMultiviewUsageEnable(const bool enable)
     {
