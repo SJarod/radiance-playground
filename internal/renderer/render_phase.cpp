@@ -863,7 +863,7 @@ void RayTracePhase::generateBottomLevelAS()
 
     BufferBuilder bb;
     bb.setDevice(m_device);
-    bb.setName("as scratch buffer");
+    bb.setName("blas scratch buffer");
     bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     bb.setUsage(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     VkDeviceSize totalScratch{0};
@@ -896,7 +896,7 @@ void RayTracePhase::generateBottomLevelAS()
 
         bb.restart();
         bb.setDevice(m_device);
-        bb.setName("as buffer");
+        bb.setName("blas buffer");
         bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         bb.setUsage(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         bb.setSize(alignup(sizeInfos[i].accelerationStructureSize, minAlignment));
@@ -916,7 +916,7 @@ void RayTracePhase::generateBottomLevelAS()
         };
         if (res != VK_SUCCESS)
         {
-            std::cerr << "Failed to create acceleration structure : " << res << std::endl;
+            std::cerr << "Failed to create Bottom-Level acceleration structure : " << res << std::endl;
             return;
         }
         m_blas.push_back(as);
@@ -962,5 +962,193 @@ void RayTracePhase::generateTopLevelAS()
     // }
     // m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 #else
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
+    // from https://web.engr.oregonstate.edu/~mjb/vulkan/Handouts/AccelerationStructures.2pp.pdf
+
+    std::vector<VkAccelerationStructureInstanceKHR> vasis;
+    std::vector<VkAccelerationStructureBuildSizesInfoKHR> sizeInfos;
+    std::vector<std::vector<VkAccelerationStructureGeometryKHR>> geometries;
+    std::vector<std::vector<VkAccelerationStructureBuildRangeInfoKHR>> rangeInfos;
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> geometryBuildInfos;
+    for (int i = 0; i < m_pooledRenderStates[0].size(); ++i)
+    {
+        if (auto state = std::dynamic_pointer_cast<ModelRenderState>(m_pooledRenderStates[0][i]))
+        {
+            auto meshes = state->getModel()->getMeshes();
+            geometries.push_back({});
+            rangeInfos.push_back({});
+            geometries.back().reserve(meshes.size());
+            rangeInfos.back().reserve(meshes.size());
+            std::vector<uint32_t> pMaxInstanceCount(meshes.size());
+            for (int j = 0; j < meshes.size(); ++j)
+            {
+                AsGeom g = getAsGeometry(meshes[j]);
+                geometries.back().push_back(VkAccelerationStructureGeometryKHR{g.first});
+                rangeInfos.back().push_back(VkAccelerationStructureBuildRangeInfoKHR{
+                    .primitiveCount = 1,
+                    .primitiveOffset = 0,
+                    .firstVertex = 0,
+                    .transformOffset = 0,
+                });
+
+                // each mesh represent one instance (for now)
+                pMaxInstanceCount[j] = 1;
+            }
+
+            VkAccelerationStructureDeviceAddressInfoKHR vasdai = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+                .accelerationStructure = m_blas[i],
+            };
+
+            auto trs = state->getModel()->getTransform().getTransformMatrix();
+            trs = glm::transpose(trs);
+            VkTransformMatrixKHR matrix;
+            memcpy(&matrix, &trs, sizeof(VkTransformMatrixKHR));
+            VkAccelerationStructureInstanceKHR vasi = {
+                .transform = matrix,
+                .mask = 0xff,
+                .instanceShaderBindingTableRecordOffset = 0,
+                .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
+                .accelerationStructureReference =
+                    devicePtr->vkGetAccelerationStructureDeviceAddressKHR(deviceHandle, &vasdai),
+            };
+            vasis.push_back(vasi);
+
+            VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+                .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+                .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+                .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+                .srcAccelerationStructure = VK_NULL_HANDLE,
+                .geometryCount = static_cast<uint32_t>(geometries.back().size()),
+                .pGeometries = geometries.back().data(),
+                .ppGeometries = nullptr,
+                .scratchData =
+                    VkDeviceOrHostAddressKHR{
+                        .deviceAddress = 0,
+                    },
+            };
+            geometryBuildInfos.push_back(buildInfo);
+
+            VkAccelerationStructureGeometryInstancesDataKHR vasgid = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+                .arrayOfPointers = VK_FALSE,
+                .data =
+                    VkDeviceOrHostAddressConstKHR{
+                        .hostAddress = &vasis.back(),
+                    },
+            };
+
+            VkAccelerationStructureBuildSizesInfoKHR sizeInfo = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+            };
+            devicePtr->vkGetAccelerationStructureBuildSizesKHR(deviceHandle,
+                                                               VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+                                                               &buildInfo, pMaxInstanceCount.data(), &sizeInfo);
+            sizeInfos.push_back(sizeInfo);
+
+            VkAccelerationStructureGeometryKHR vasg = {
+                .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+                .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+                .geometry =
+                    VkAccelerationStructureGeometryDataKHR{
+                        .instances = vasgid,
+                    },
+            };
+        }
+        else
+        {
+            assert(false);
+        }
+    }
+
+    VkDeviceSize hintMaxBudget{256'000'000}; // 256 MB
+
+    uint32_t minAlignment =
+        devicePtr->getPhysicalDeviceASProperties()
+            .minAccelerationStructureScratchOffsetAlignment; /*m_rtASProperties.minAccelerationStructureScratchOffsetAlignment*/
+
+    BufferBuilder bb;
+    bb.setDevice(m_device);
+    bb.setName("tlas scratch buffer");
+    bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    bb.setUsage(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    VkDeviceSize totalScratch{0};
+    for (int i = 0; i < sizeInfos.size(); ++i)
+    {
+        VkDeviceSize alignedSize = alignup(sizeInfos[i].buildScratchSize, minAlignment);
+        totalScratch += alignedSize;
+    }
+    bb.setSize(totalScratch);
+    // Allocate the scratch buffers holding the temporary data of the acceleration structure builder
+    // 2) allocating the scratch buffer
+    std::unique_ptr<Buffer> blasScratchBuffer = bb.build();
+    // 3) getting the device address for the scratch buffer
+    std::vector<VkDeviceAddress> scratchAddresses;
+    VkDeviceAddress scratch0 = blasScratchBuffer->getDeviceAddress();
+    VkDeviceAddress address = {};
+    for (int i = 0; i < sizeInfos.size(); ++i)
+    {
+        scratchAddresses.push_back(scratch0 + address);
+        VkDeviceSize alignedSize = alignup(sizeInfos[i].buildScratchSize, minAlignment);
+        address += alignedSize;
+    }
+
+    VkDeviceSize budget = 0;
+    m_tlas.reserve(sizeInfos.size());
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR *> ppRangeInfos;
+    for (int i = 0; i < sizeInfos.size(); ++i)
+    {
+        VkAccelerationStructureKHR tlas;
+
+        bb.restart();
+        bb.setDevice(m_device);
+        bb.setName("tlas buffer");
+        bb.setProperties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        bb.setUsage(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+        bb.setSize(alignup(sizeInfos[i].accelerationStructureSize, minAlignment));
+        m_tlasBuffers.push_back(bb.build());
+
+        VkAccelerationStructureCreateInfoKHR vasci = {
+            .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+            .buffer = m_tlasBuffers.back()->getHandle(),
+            .offset = 0,
+            .size = sizeInfos[i].accelerationStructureSize,
+            .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+        };
+        VkResult res = devicePtr->vkCreateAccelerationStructureKHR(deviceHandle, &vasci, nullptr, &tlas);
+        geometryBuildInfos[i].dstAccelerationStructure = tlas;
+        geometryBuildInfos[i].scratchData = VkDeviceOrHostAddressKHR{
+            .deviceAddress = scratchAddresses[i],
+        };
+        if (res != VK_SUCCESS)
+        {
+            std::cerr << "Failed to create Top-Level acceleration structure : " << res << std::endl;
+            return;
+        }
+        m_tlas.push_back(tlas);
+
+        ppRangeInfos.push_back(rangeInfos[i].data());
+
+        budget += sizeInfos[i].accelerationStructureSize;
+        if (budget >= hintMaxBudget)
+            break;
+    }
+
+    VkCommandBuffer cmd = devicePtr->cmdBeginOneTimeSubmit("Top Level Acceleration Structure build");
+
+    devicePtr->vkCmdBuildAccelerationStructuresKHR(cmd, static_cast<uint32_t>(geometryBuildInfos.size()),
+                                                   geometryBuildInfos.data(), ppRangeInfos.data());
+
+    VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                         VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &barrier, 0, nullptr, 0,
+                         nullptr);
+
+    devicePtr->cmdEndOneTimeSubmit(cmd);
 #endif
 }

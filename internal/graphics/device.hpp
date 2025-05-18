@@ -83,8 +83,9 @@ class Device
 
   public:
     PFN_DECLARE_VK(vkCreateAccelerationStructureKHR);
-    PFN_DECLARE_VK(vkCmdBuildAccelerationStructuresKHR);
     PFN_DECLARE_VK(vkGetAccelerationStructureBuildSizesKHR);
+    PFN_DECLARE_VK(vkGetAccelerationStructureDeviceAddressKHR);
+    PFN_DECLARE_VK(vkCmdBuildAccelerationStructuresKHR);
 
     ~Device();
 

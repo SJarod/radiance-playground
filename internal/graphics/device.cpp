@@ -328,8 +328,9 @@ std::unique_ptr<Device> DeviceBuilder::build()
     VK_INSTANCE_PROC_ADDR_BUILDER(vkSetDebugUtilsObjectNameEXT);
 
     VK_INSTANCE_PROC_ADDR_BUILDER(vkCreateAccelerationStructureKHR);
-    VK_INSTANCE_PROC_ADDR_BUILDER(vkCmdBuildAccelerationStructuresKHR);
     VK_INSTANCE_PROC_ADDR_BUILDER(vkGetAccelerationStructureBuildSizesKHR);
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkGetAccelerationStructureDeviceAddressKHR);
+    VK_INSTANCE_PROC_ADDR_BUILDER(vkCmdBuildAccelerationStructuresKHR);
 
     return std::move(m_product);
 }
