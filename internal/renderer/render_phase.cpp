@@ -736,8 +736,8 @@ auto objectToVkGeometryKHR(const std::shared_ptr<Mesh> &mesh)
     triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT; // vec3 vertex position data.
     triangles.vertexData.deviceAddress = vertexAddress;
     triangles.vertexStride = sizeof(Vertex);
-    // Describe index data (32-bit unsigned int)
-    triangles.indexType = VK_INDEX_TYPE_UINT32;
+    // Describe index data (16-bit unsigned int)
+    triangles.indexType = VK_INDEX_TYPE_UINT16;
     triangles.indexData.deviceAddress = indexAddress;
     // Indicate identity transform by setting transformData to null device pointer.
     // triangles.transformData = {};
