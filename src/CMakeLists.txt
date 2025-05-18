@@ -41,7 +41,7 @@ set(SHADER_SOURCES
 	shaders/radiance_apply_deferred.frag
 
 	shaders/radiance_gather.comp
-	shaders/radiance_gather_voxel.comp
+	shaders/radiance_gather_rt.comp
 	
 	shaders/probe_grid_debug.frag
 	shaders/probe_grid_debug.vert

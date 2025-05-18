@@ -6,10 +6,10 @@
 
 #include "wsi/window.hpp"
 
-#include "irradiance_baked_graph.hpp"
+#include "irradiance_baked_graph_rt.hpp"
 
-void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
-                      uint32_t maxProbeCount)
+void BakedGraphRT::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
+                        uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;
     RenderPassAttachmentDirector rpad;
@@ -48,14 +48,14 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
 
-    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueCaptureRb;
+    RenderPhaseBuilder<RenderTypeE::RAYTRACE> opaqueCaptureRb;
     opaqueCaptureRb.setDevice(device);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
     opaqueCaptureRb.setBufferingType(frameInFlightCount);
     opaqueCaptureRb.setPhaseName("Opaque Capture");
     auto opaqueCapturePhase = opaqueCaptureRb.build();
-    m_opaqueCapturePhase = opaqueCapturePhase.get();
+    m_opaqueCapturePhase = static_cast<RayTracePhase *>(opaqueCapturePhase.get());
 
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
@@ -134,13 +134,13 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto clearDepthAttachment = rpab.buildAndRestart();
     opaqueRpb.addDepthAttachment(*clearDepthAttachment);
 
-    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueRb;
+    RenderPhaseBuilder<RenderTypeE::RAYTRACE> opaqueRb;
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setBufferingType(frameInFlightCount);
-    opaqueRb.setPhaseName("Opaque");
+    opaqueRb.setPhaseName("Opaque RT");
     auto opaquePhase = opaqueRb.build();
-    m_opaquePhase = opaquePhase.get();
+    m_opaquePhase = static_cast<RayTracePhase *>(opaquePhase.get());
 
     RenderPassBuilder probesDebugRpb;
     probesDebugRpb.setDevice(device);

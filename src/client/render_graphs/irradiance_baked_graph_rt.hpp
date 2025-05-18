@@ -5,18 +5,18 @@
 class RenderPhase;
 class Texture;
 
-class BakedGraph final : public RenderGraph
+class BakedGraphRT final : public RenderGraph
 {
   private:
     void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
               uint32_t maxProbeCount) override;
 
   public:
-    RenderPhase *m_opaqueCapturePhase;
+    RayTracePhase *m_opaqueCapturePhase;
     RenderPhase *m_skyboxCapturePhase;
 
     RenderPhase *m_irradianceConvolutionPhase;
-    RenderPhase *m_opaquePhase;
+    RayTracePhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
 
     /**

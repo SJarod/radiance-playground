@@ -22,16 +22,16 @@
 #include "engine/probe_grid.hpp"
 #include "engine/uniform.hpp"
 
-#include "render_graphs/irradiance_baked_graph.hpp"
+#include "render_graphs/irradiance_baked_graph_rt.hpp"
 
 #include "scripts/move_camera.hpp"
 
 #include "wsi/window.hpp"
 
-#include "sample_scene.hpp"
+#include "sample_scene_rt.hpp"
 
-void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                       RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+void SampleSceneRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+                         RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -169,7 +169,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         m_objects.push_back(cubeModelBuilder.build());
     }
 
-    BakedGraph *rg = dynamic_cast<BakedGraph *>(renderGraph);
+    BakedGraphRT *rg = dynamic_cast<BakedGraphRT *>(renderGraph);
     // load objects into render graph
     {
         UniformDescriptorBuilder irradianceConvolutionUdb;
@@ -233,6 +233,16 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
+        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 6,
+            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+#ifdef USE_NV_PRO_CORE
+            .descriptorCount = 1, // number of tlas
+#else
+            .descriptorCount = static_cast<uint32_t>(m_objects.size()), // number of tlas
+#endif
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
 
         UniformDescriptorBuilder phongMaterialUdb;
         phongMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -245,7 +255,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong");
+        phongPb.addFragmentShaderStage("phongrt");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -292,6 +302,12 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
+        phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 6,
+            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .descriptorCount = 1, // number of tlas in this phase (1)
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
 
         UniformDescriptorBuilder phongCaptureMaterialUdb;
         phongCaptureMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -304,7 +320,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongCapturePb;
         phongCapturePb.setDevice(device);
         phongCapturePb.addVertexShaderStage("phong");
-        phongCapturePb.addFragmentShaderStage("phong");
+        phongCapturePb.addFragmentShaderStage("phongrt");
         phongCapturePb.setRenderPass(rg->m_opaqueCapturePhase->getRenderPass());
         phongCapturePb.setExtent(window->getSwapChain()->getExtent());
         phongCapturePb.addPushConstantRange(VkPushConstantRange{
@@ -408,9 +424,40 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+#ifdef USE_NV_PRO_CORE
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1);
+#else
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, m_objects.size());
+#endif
+
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
+            mrsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                                const GPUStateI *self, const VkDescriptorSet &set,
+                                                                uint32_t backBufferIndex) {
+                if (self->getPipeline()->getDescriptorSetBindingCountAtIndex(0).value() < 6)
+                    return;
+                auto tlas = rg->m_opaquePhase->getTLAS();
+                VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                    .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
+                    .pAccelerationStructures = tlas.data(),
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext = &descASInfo,
+                    .dstSet = set,
+                    .dstBinding = 6,
+                    .dstArrayElement = 0,
+                    .descriptorCount = descASInfo.accelerationStructureCount,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                });
+
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
 
             // Check if the mesh is the quad, the sphere or the cube
             if (i != 1 && i != 2 && i != 3)
@@ -425,12 +472,44 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                captureMrsb.addPoolSize(
+                    VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                    1); // number of tlas in the ray tracing phase (there are as many objects as render states
+                        // registered in the phase (one in the occurence of this particular phase))
+
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
                 captureMrsb.setDevice(device);
                 captureMrsb.setModel(m_objects[i]);
                 captureMrsb.setPipeline(phongCapturePipeline);
                 captureMrsb.setEnvironmentMaps(rg->m_irradianceMaps);
                 captureMrsb.setCaptureCount(maxProbeCount);
+                captureMrsb.setCaptureCount(maxProbeCount);
+                captureMrsb.setInstanceDescriptorSetUpdatePredPerFrame(
+                    [=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const GPUStateI *self,
+                        const VkDescriptorSet &set, uint32_t backBufferIndex) {
+                        if (self->getPipeline()->getDescriptorSetBindingCountAtIndex(0).value() < 6)
+                            return;
+
+                        auto tlas = rg->m_opaqueCapturePhase->getTLAS();
+                        VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                            .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
+                            .pAccelerationStructures = tlas.data(),
+                        };
+                        std::vector<VkWriteDescriptorSet> writes;
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .pNext = &descASInfo,
+                            .dstSet = set,
+                            .dstBinding = 6,
+                            .dstArrayElement = 0,
+                            .descriptorCount = descASInfo.accelerationStructureCount,
+                            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                        });
+
+                        vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                    });
 
                 rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
             }
@@ -446,6 +525,12 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
+
+        rg->m_opaqueCapturePhase->generateBottomLevelAS();
+        rg->m_opaqueCapturePhase->generateTopLevelAS();
+
+        rg->m_opaquePhase->generateBottomLevelAS();
+        rg->m_opaquePhase->generateTopLevelAS();
 
         UniformDescriptorBuilder probeGridDebugUdb;
         probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{

@@ -42,11 +42,15 @@
 
 #include "render_graphs/compute_pp_graph.hpp"
 #include "render_graphs/irradiance_baked_graph.hpp"
+#include "render_graphs/irradiance_baked_graph_rt.hpp"
 #include "render_graphs/rc3d_graph.hpp"
+#include "render_graphs/rc3d_graph_rt.hpp"
 
 #include "scenes/sample_scene.hpp"
 #include "scenes/sample_scene_2d.hpp"
 #include "scenes/sample_scene_rc3d.hpp"
+#include "scenes/sample_scene_rc3d_rt.hpp"
+#include "scenes/sample_scene_rt.hpp"
 
 #include "scripts/radiance_cascades.hpp"
 
@@ -120,7 +124,7 @@ Application::Application()
     rb.setSwapChain(m_window->getSwapChain());
     rb.setFrameInFlightCount(bufferingType);
     rb.setRenderGraph(
-        RenderGraphLoader::load<BakedGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        RenderGraphLoader::load<RC3DGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
     m_renderer = rb.build();
 }
 
@@ -270,8 +274,8 @@ void Application::runLoop()
 
     bool show_demo_window = true;
 
-    m_scene = SceneABC::load<SampleScene>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
-                                          bufferingType, maxProbeCount);
+    m_scene = SceneABC::load<SampleSceneRC3D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                              bufferingType, maxProbeCount);
 
     RenderPhase *imguiPhase = nullptr;
     if (BakedGraph *rg = dynamic_cast<BakedGraph *>(m_renderer->getRenderGraph()))

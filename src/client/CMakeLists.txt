@@ -19,17 +19,34 @@ target_sources(${component}
 
     scenes/sample_scene.hpp
     scenes/sample_scene.cpp
+
+    scenes/sample_scene_rt.hpp
+    scenes/sample_scene_rt.cpp
+
     scenes/sample_scene_2d.hpp
     scenes/sample_scene_2d.cpp
+
     scenes/sample_scene_rc3d.hpp
     scenes/sample_scene_rc3d.cpp
 
+    scenes/sample_scene_rc3d_rt.hpp
+    scenes/sample_scene_rc3d_rt.cpp
+
     render_graphs/compute_pp_graph.hpp
     render_graphs/compute_pp_graph.cpp
+
     render_graphs/irradiance_baked_graph.hpp
     render_graphs/irradiance_baked_graph.cpp
+
+    render_graphs/irradiance_baked_graph_rt.hpp
+    render_graphs/irradiance_baked_graph_rt.cpp
+
     render_graphs/rc3d_graph.hpp
     render_graphs/rc3d_graph.cpp
+
+    render_graphs/rc3d_graph_rt.hpp
+    render_graphs/rc3d_graph_rt.cpp
+
 
     time_manager.hpp
 	
