@@ -21,15 +21,15 @@
 #include "engine/camera.hpp"
 #include "engine/uniform.hpp"
 
-#include "render_graphs/compute_pp_graph.hpp"
+#include "render_graphs/radiance_cascades/graph_rc2d.hpp"
 
 #include "wsi/window.hpp"
 
 #include "scripts/radiance_cascades.hpp"
 
-#include "sample_scene_2d.hpp"
+#include "scene_rc2d.hpp"
 
-void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
                            RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
@@ -125,7 +125,7 @@ void SampleSceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> devi
         }
     }
 
-    RC2DGraph *rg = dynamic_cast<RC2DGraph *>(renderGraph);
+    GraphRC2D *rg = dynamic_cast<GraphRC2D *>(renderGraph);
     // load objects into render graph
     {
         // material

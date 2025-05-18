@@ -6,9 +6,9 @@
 
 #include "wsi/window.hpp"
 
-#include "irradiance_baked_graph_rt.hpp"
+#include "graph_g2iprt.hpp"
 
-void BakedGraphRT::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
+void GraphG2IPRT::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
                         uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;

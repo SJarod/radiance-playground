@@ -3,15 +3,19 @@
 #include "renderer/render_graph.hpp"
 
 class RenderPhase;
-class ComputePhase;
+class Texture;
 
-class RC3DGraph final : public RenderGraph
+class GraphG2IP final : public RenderGraph
 {
   private:
     void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
               uint32_t maxProbeCount) override;
 
   public:
+    RenderPhase *m_opaqueCapturePhase;
+    RenderPhase *m_skyboxCapturePhase;
+
+    RenderPhase *m_irradianceConvolutionPhase;
     RenderPhase *m_opaquePhase;
     RenderPhase *m_skyboxPhase;
 
@@ -21,11 +25,12 @@ class RC3DGraph final : public RenderGraph
      *
      */
     RenderPhase *m_finalImageDirect;
-    ComputePhase *m_computePhase;
-    RenderPhase *m_finalImageDirectIndirect;
 
     RenderPhase *m_imguiPhase;
     RenderPhase *m_probesDebugPhase;
+
+    std::vector<std::shared_ptr<Texture>> m_capturedEnvMaps;
+    std::vector<std::shared_ptr<Texture>> m_irradianceMaps;
 
   public:
 };

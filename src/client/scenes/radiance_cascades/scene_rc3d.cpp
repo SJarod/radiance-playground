@@ -22,17 +22,17 @@
 #include "engine/probe_grid.hpp"
 #include "engine/uniform.hpp"
 
-#include "render_graphs/rc3d_graph_rt.hpp"
+#include "render_graphs/radiance_cascades/graph_rc3d.hpp"
 
 #include "scripts/move_camera.hpp"
 #include "scripts/radiance_cascades3d.hpp"
 
 #include "wsi/window.hpp"
 
-#include "sample_scene_rc3d_rt.hpp"
+#include "scene_rc3d.hpp"
 
-void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                             RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+                           RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -112,7 +112,7 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
         m_lights.push_back(light2);
     }
 
-    RC3DGraphRT *rg = dynamic_cast<RC3DGraphRT *>(renderGraph);
+    GraphRC3D *rg = dynamic_cast<GraphRC3D *>(renderGraph);
     // load objects into render graph
     {
 
@@ -148,12 +148,6 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
-        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 6,
-            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
 
         UniformDescriptorBuilder phongMaterialUdb;
         phongMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -166,7 +160,7 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phongrt");
+        phongPb.addFragmentShaderStage("phong");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -204,38 +198,14 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
-
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
 
             mrsb.setPipeline(phongPipeline);
-
-            mrsb.setDescriptorSetUpdatePredPerFrame(
-                ([=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const GPUStateI *self,
-                     const VkDescriptorSet set, uint32_t backBufferIndex) {
-                    auto tlas = rg->m_opaquePhase->getTLAS();
-                    VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
-                        .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
-                        .pAccelerationStructures = tlas.data(),
-                    };
-                    std::vector<VkWriteDescriptorSet> writes;
-                    writes.push_back(VkWriteDescriptorSet{
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .pNext = &descASInfo,
-                        .dstSet = set,
-                        .dstBinding = 6,
-                        .dstArrayElement = 0,
-                        .descriptorCount = descASInfo.accelerationStructureCount,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-                    });
-                    vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
-                }));
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
@@ -460,7 +430,7 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
             PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
-            pb.addComputeShaderStage("radiance_gather_rt");
+            pb.addComputeShaderStage("radiance_gather_voxel");
             UniformDescriptorBuilder udb;
             // rendered image
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -496,12 +466,6 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             });
-            udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-                .binding = 5,
-                .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-            });
             pb.addUniformDescriptorPack(udb.buildAndRestart());
             ComputeStateBuilder csb;
             csb.setDevice(device);
@@ -512,8 +476,6 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
-            csb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
             auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
             if (!s.empty())
             {
@@ -541,22 +503,6 @@ void SampleSceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> de
                     .descriptorCount = 1,
                     .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     .pImageInfo = &imageInfo,
-                });
-
-                auto tlas = rg->m_opaquePhase->getTLAS();
-                VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
-                    .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
-                    .pAccelerationStructures = tlas.data(),
-                };
-                writes.push_back(VkWriteDescriptorSet{
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .pNext = &descASInfo,
-                    .dstSet = set,
-                    .dstBinding = 5,
-                    .dstArrayElement = 0,
-                    .descriptorCount = descASInfo.accelerationStructureCount,
-                    .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                 });
                 vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
             });

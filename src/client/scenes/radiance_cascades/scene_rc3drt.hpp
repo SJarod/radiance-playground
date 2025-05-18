@@ -11,7 +11,7 @@ class Context;
 class ProbeGrid;
 class Model;
 
-class SampleSceneRC3D final : public SceneABC
+class SceneRC3DRT final : public SceneABC
 {
   public:
     std::shared_ptr<ProbeGrid> m_grid0;

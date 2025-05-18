@@ -5,9 +5,9 @@
 
 #include "wsi/window.hpp"
 
-#include "compute_pp_graph.hpp"
+#include "graph_rc2d.hpp"
 
-void RC2DGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
+void GraphRC2D::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
                      uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;

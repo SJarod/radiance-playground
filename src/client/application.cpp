@@ -25,6 +25,8 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 
+#include "engine/camera.hpp"
+
 #include "renderer/light.hpp"
 #include "renderer/mesh.hpp"
 #include "renderer/model.hpp"
@@ -32,27 +34,9 @@
 #include "renderer/render_phase.hpp"
 #include "renderer/render_state.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/scene.hpp"
 #include "renderer/skybox.hpp"
 #include "renderer/texture.hpp"
-
-#include "engine/camera.hpp"
-#include "engine/probe_grid.hpp"
-#include "engine/uniform.hpp"
-#include "engine/vertex.hpp"
-
-#include "render_graphs/compute_pp_graph.hpp"
-#include "render_graphs/irradiance_baked_graph.hpp"
-#include "render_graphs/irradiance_baked_graph_rt.hpp"
-#include "render_graphs/rc3d_graph.hpp"
-#include "render_graphs/rc3d_graph_rt.hpp"
-
-#include "scenes/sample_scene.hpp"
-#include "scenes/sample_scene_2d.hpp"
-#include "scenes/sample_scene_rc3d.hpp"
-#include "scenes/sample_scene_rc3d_rt.hpp"
-#include "scenes/sample_scene_rt.hpp"
-
-#include "scripts/radiance_cascades.hpp"
 
 #include "application.hpp"
 
@@ -118,27 +102,12 @@ Application::Application()
     scb.setSwapchainPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR);
     scb.setUseImagesAsSamplers(true);
     m_window->setSwapChain(scb.build());
-
-    RendererBuilder rb;
-    rb.setDevice(m_discreteDevice);
-    rb.setSwapChain(m_window->getSwapChain());
-    rb.setFrameInFlightCount(bufferingType);
-    rb.setRenderGraph(
-        RenderGraphLoader::load<RC3DGraph>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
-    m_renderer = rb.build();
 }
 
 Application::~Application()
 {
     // ensure all commands have finished
     vkDeviceWaitIdle(m_discreteDevice->getHandle());
-
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    m_renderer.reset();
-    m_scene.reset();
 
     m_window.reset();
 
@@ -185,7 +154,7 @@ void Application::initImgui(RenderPhase *imguiPhase)
     }
 }
 
-void Application::displayImgui()
+int Application::displayImgui()
 {
     ZoneScoped;
 
@@ -196,6 +165,11 @@ void Application::displayImgui()
     m_profiler->Render();
 
     ImGui::Begin("Radiance playground");
+
+    if (ImGui::Button("Next scene"))
+    {
+        return 1;
+    }
 
     ImGui::Text(std::format("Average FPS: {0}", ImGui::GetIO().Framerate).c_str());
 
@@ -266,23 +240,87 @@ void Application::displayImgui()
     }
 
     ImGui::End();
+
+    return 0;
 }
 
-void Application::runLoop()
+#include "render_graphs/global_illumination_with_irradiance_probes/graph_g2ip.hpp"
+#include "render_graphs/global_illumination_with_irradiance_probes/graph_g2iprt.hpp"
+#include "render_graphs/radiance_cascades/graph_rc2d.hpp"
+#include "render_graphs/radiance_cascades/graph_rc3d.hpp"
+#include "render_graphs/radiance_cascades/graph_rc3drt.hpp"
+#include "scenes/global_illumination_with_irradiance_probes/scene_g2ip.hpp"
+#include "scenes/global_illumination_with_irradiance_probes/scene_g2iprt.hpp"
+#include "scenes/radiance_cascades/scene_rc2d.hpp"
+#include "scenes/radiance_cascades/scene_rc3d.hpp"
+#include "scenes/radiance_cascades/scene_rc3drt.hpp"
+
+static int sceneIndex = 1;
+constexpr int sceneCount = 5;
+
+int Application::runLoop()
 {
     m_window->makeContextCurrent();
 
     bool show_demo_window = true;
 
-    m_scene = SceneABC::load<SampleSceneRC3D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+    RendererBuilder rb;
+    rb.setDevice(m_discreteDevice);
+    rb.setSwapChain(m_window->getSwapChain());
+    rb.setFrameInFlightCount(bufferingType);
+
+    switch (sceneIndex)
+    {
+    case 0:
+        rb.setRenderGraph(
+            RenderGraphLoader::load<GraphG2IP>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        m_renderer = rb.build();
+        m_scene = SceneABC::load<SceneG2IP>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                            bufferingType, maxProbeCount);
+        break;
+    case 1:
+        rb.setRenderGraph(
+            RenderGraphLoader::load<GraphG2IPRT>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        m_renderer = rb.build();
+        m_scene = SceneABC::load<SceneG2IPRT>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
                                               bufferingType, maxProbeCount);
+        break;
+    case 2:
+        rb.setRenderGraph(
+            RenderGraphLoader::load<GraphRC2D>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        m_renderer = rb.build();
+        m_scene = SceneABC::load<SceneRC2D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                            bufferingType, maxProbeCount);
+        break;
+    case 3:
+        rb.setRenderGraph(
+            RenderGraphLoader::load<GraphRC3D>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        m_renderer = rb.build();
+        m_scene = SceneABC::load<SceneRC3D>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                            bufferingType, maxProbeCount);
+        break;
+    case 4:
+        rb.setRenderGraph(
+            RenderGraphLoader::load<GraphRC3DRT>(m_discreteDevice, m_window.get(), bufferingType, maxProbeCount));
+        m_renderer = rb.build();
+        m_scene = SceneABC::load<SceneRC3DRT>(m_context, m_discreteDevice, m_window.get(), m_renderer->getRenderGraph(),
+                                              bufferingType, maxProbeCount);
+        break;
+    default:
+        assert(false);
+        break;
+    }
 
     RenderPhase *imguiPhase = nullptr;
-    if (BakedGraph *rg = dynamic_cast<BakedGraph *>(m_renderer->getRenderGraph()))
+    if (GraphG2IP *rg = dynamic_cast<GraphG2IP *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;
-    else if (RC2DGraph *rg = dynamic_cast<RC2DGraph *>(m_renderer->getRenderGraph()))
+    else if (GraphG2IPRT *rg = dynamic_cast<GraphG2IPRT *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;
-    else if (RC3DGraph *rg = dynamic_cast<RC3DGraph *>(m_renderer->getRenderGraph()))
+    else if (GraphRC2D *rg = dynamic_cast<GraphRC2D *>(m_renderer->getRenderGraph()))
+        imguiPhase = rg->m_imguiPhase;
+    else if (GraphRC3D *rg = dynamic_cast<GraphRC3D *>(m_renderer->getRenderGraph()))
+        imguiPhase = rg->m_imguiPhase;
+    else if (GraphRC3DRT *rg = dynamic_cast<GraphRC3DRT *>(m_renderer->getRenderGraph()))
         imguiPhase = rg->m_imguiPhase;
 
     if (imguiPhase)
@@ -290,10 +328,14 @@ void Application::runLoop()
 
     auto &lights = m_scene->getLights();
     std::shared_ptr<ProbeGrid> grid = nullptr;
-    if (SampleScene *scene3d = dynamic_cast<SampleScene *>(m_scene.get()))
-        grid = scene3d->m_grid;
-    else if (SampleSceneRC3D *scene3d = dynamic_cast<SampleSceneRC3D *>(m_scene.get()))
-        grid = scene3d->m_grid0;
+    if (SceneG2IP *sc = dynamic_cast<SceneG2IP *>(m_scene.get()))
+        grid = sc->m_grid;
+    else if (SceneG2IPRT *sc = dynamic_cast<SceneG2IPRT *>(m_scene.get()))
+        grid = sc->m_grid;
+    else if (SceneRC3D *sc = dynamic_cast<SceneRC3D *>(m_scene.get()))
+        grid = sc->m_grid0;
+    else if (SceneRC3DRT *sc = dynamic_cast<SceneRC3DRT *>(m_scene.get()))
+        grid = sc->m_grid0;
 
     CameraABC *mainCamera = m_scene->getMainCamera();
 
@@ -305,7 +347,8 @@ void Application::runLoop()
         m_timeManager.markFrame();
         float deltaTime = m_timeManager.deltaTime();
 
-        displayImgui();
+        if (displayImgui())
+            break;
 
         m_inputManager.UpdateInputStates();
         m_window->pollEvents();
@@ -335,4 +378,14 @@ void Application::runLoop()
 
     // ensure all commands have finished before destroying objects in this scope
     vkDeviceWaitIdle(m_discreteDevice->getHandle());
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    m_renderer.reset();
+    m_scene.reset();
+
+    sceneIndex = (sceneIndex + 1) % sceneCount;
+    return !m_window->shouldClose();
 }

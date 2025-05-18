@@ -5,7 +5,7 @@
 class RenderPhase;
 class Texture;
 
-class BakedGraphRT final : public RenderGraph
+class GraphG2IPRT final : public RenderGraph
 {
   private:
     void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,

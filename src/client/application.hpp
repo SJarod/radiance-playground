@@ -17,7 +17,7 @@ class Texture;
 
 namespace ImGuiUtils
 {
-    class ProfilersWindow;
+class ProfilersWindow;
 }
 
 class Application
@@ -46,7 +46,7 @@ class Application
     int m_breakAfterFrameCount = -1;
 
     void initImgui(RenderPhase *imguiPhase);
-    void displayImgui();
+    int displayImgui();
 
   public:
     Application();
@@ -57,5 +57,5 @@ class Application
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
 
-    void runLoop();
+    int runLoop();
 };

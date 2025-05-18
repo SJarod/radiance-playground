@@ -6,9 +6,9 @@
 
 #include "wsi/window.hpp"
 
-#include "rc3d_graph_rt.hpp"
+#include "graph_rc3drt.hpp"
 
-void RC3DGraphRT::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
+void GraphRC3DRT::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
                        uint32_t maxProbeCount)
 {
     RenderPassAttachmentBuilder rpab;

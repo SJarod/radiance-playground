@@ -17,36 +17,27 @@ target_sources(${component}
     application.cpp
     application.hpp
 
-    scenes/sample_scene.hpp
-    scenes/sample_scene.cpp
+    render_graphs/global_illumination_with_irradiance_probes/graph_g2ip.cpp
+    render_graphs/global_illumination_with_irradiance_probes/graph_g2ip.hpp
+    render_graphs/global_illumination_with_irradiance_probes/graph_g2iprt.cpp
+    render_graphs/global_illumination_with_irradiance_probes/graph_g2iprt.hpp
+    render_graphs/radiance_cascades/graph_rc2d.cpp
+    render_graphs/radiance_cascades/graph_rc2d.hpp
+    render_graphs/radiance_cascades/graph_rc3d.cpp
+    render_graphs/radiance_cascades/graph_rc3d.hpp
+    render_graphs/radiance_cascades/graph_rc3drt.cpp
+    render_graphs/radiance_cascades/graph_rc3drt.hpp
 
-    scenes/sample_scene_rt.hpp
-    scenes/sample_scene_rt.cpp
-
-    scenes/sample_scene_2d.hpp
-    scenes/sample_scene_2d.cpp
-
-    scenes/sample_scene_rc3d.hpp
-    scenes/sample_scene_rc3d.cpp
-
-    scenes/sample_scene_rc3d_rt.hpp
-    scenes/sample_scene_rc3d_rt.cpp
-
-    render_graphs/compute_pp_graph.hpp
-    render_graphs/compute_pp_graph.cpp
-
-    render_graphs/irradiance_baked_graph.hpp
-    render_graphs/irradiance_baked_graph.cpp
-
-    render_graphs/irradiance_baked_graph_rt.hpp
-    render_graphs/irradiance_baked_graph_rt.cpp
-
-    render_graphs/rc3d_graph.hpp
-    render_graphs/rc3d_graph.cpp
-
-    render_graphs/rc3d_graph_rt.hpp
-    render_graphs/rc3d_graph_rt.cpp
-
+    scenes/global_illumination_with_irradiance_probes/scene_g2ip.cpp
+    scenes/global_illumination_with_irradiance_probes/scene_g2ip.hpp
+    scenes/global_illumination_with_irradiance_probes/scene_g2iprt.cpp
+    scenes/global_illumination_with_irradiance_probes/scene_g2iprt.hpp
+    scenes/radiance_cascades/scene_rc2d.cpp
+    scenes/radiance_cascades/scene_rc2d.hpp
+    scenes/radiance_cascades/scene_rc3d.cpp
+    scenes/radiance_cascades/scene_rc3d.hpp
+    scenes/radiance_cascades/scene_rc3drt.cpp
+    scenes/radiance_cascades/scene_rc3drt.hpp
 
     time_manager.hpp
 	

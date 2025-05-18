@@ -19,7 +19,9 @@ void operator delete(void *ptr) noexcept
 int main()
 {
     Application app;
-    app.runLoop();
+    while (app.runLoop())
+    {
+    }
 
     return 0;
 }

@@ -5,14 +5,15 @@
 class RenderPhase;
 class ComputePhase;
 
-class RC2DGraph final : public RenderGraph
+class GraphRC3D final : public RenderGraph
 {
   private:
     void load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t frameInFlightCount,
-                      uint32_t maxProbeCount) override;
+              uint32_t maxProbeCount) override;
 
   public:
     RenderPhase *m_opaquePhase;
+    RenderPhase *m_skyboxPhase;
 
     /**
      * @brief final image with direct lighting
@@ -20,18 +21,11 @@ class RC2DGraph final : public RenderGraph
      *
      */
     RenderPhase *m_finalImageDirect;
-    /**
-     * @brief compute shader for the radiance gathering
-     *
-     */
     ComputePhase *m_computePhase;
-    /**
-     * @brief final image combining direct and indirect lighting
-     *
-     */
     RenderPhase *m_finalImageDirectIndirect;
 
     RenderPhase *m_imguiPhase;
+    RenderPhase *m_probesDebugPhase;
 
   public:
 };

@@ -11,12 +11,10 @@ class Context;
 class ProbeGrid;
 class Model;
 
-class SampleSceneRC3DRT final : public SceneABC
+class SceneG2IPRT final : public SceneABC
 {
   public:
-    std::shared_ptr<ProbeGrid> m_grid0;
-    std::shared_ptr<ProbeGrid> m_grid1;
-    std::shared_ptr<ProbeGrid> m_grid2;
+    std::shared_ptr<ProbeGrid> m_grid;
 
     std::shared_ptr<Model> m_screen;
 

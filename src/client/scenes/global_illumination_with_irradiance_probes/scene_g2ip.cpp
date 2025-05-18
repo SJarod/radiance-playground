@@ -22,15 +22,15 @@
 #include "engine/probe_grid.hpp"
 #include "engine/uniform.hpp"
 
-#include "render_graphs/irradiance_baked_graph.hpp"
+#include "render_graphs/global_illumination_with_irradiance_probes/graph_g2ip.hpp"
 
 #include "scripts/move_camera.hpp"
 
 #include "wsi/window.hpp"
 
-#include "sample_scene.hpp"
+#include "scene_g2ip.hpp"
 
-void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
+void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
                        RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
@@ -169,7 +169,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         m_objects.push_back(cubeModelBuilder.build());
     }
 
-    BakedGraph *rg = dynamic_cast<BakedGraph *>(renderGraph);
+    GraphG2IP *rg = dynamic_cast<GraphG2IP *>(renderGraph);
     // load objects into render graph
     {
         UniformDescriptorBuilder irradianceConvolutionUdb;
