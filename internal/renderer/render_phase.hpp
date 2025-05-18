@@ -295,6 +295,12 @@ class RayTracePhase final : public RenderPhase
                           VkRect2D renderArea, const CameraABC &camera,
                           const std::vector<std::shared_ptr<Light>> &lights,
                           const std::shared_ptr<ProbeGrid> &probeGrid) override;
+
+  public:
+    [[nodiscard]] inline const std::vector<VkAccelerationStructureKHR> &getTLAS() const
+    {
+        return m_tlas;
+    }
 };
 
 class PhaseBuilderABC

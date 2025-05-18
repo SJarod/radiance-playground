@@ -233,6 +233,12 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
+        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 6,
+            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
 
         UniformDescriptorBuilder phongMaterialUdb;
         phongMaterialUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -289,6 +295,12 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 5,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        });
+        phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+            .binding = 6,
+            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
@@ -406,12 +418,33 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
+            mrsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
+                                                                const VkDescriptorSet &set, uint32_t backBufferIndex) {
+                auto tlas = rg->m_opaquePhase->getTLAS();
+                VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                    .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
+                    .pAccelerationStructures = tlas.data(),
+                };
+                std::vector<VkWriteDescriptorSet> writes;
+                writes.push_back(VkWriteDescriptorSet{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext = &descASInfo,
+                    .dstSet = set,
+                    .dstBinding = 6,
+                    .dstArrayElement = 0,
+                    .descriptorCount = static_cast<uint32_t>(tlas.size()),
+                    .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                });
+
+                vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+            });
 
             // Check if the mesh is the quad, the sphere or the cube
             if (i != 1 && i != 2 && i != 3)
@@ -427,11 +460,35 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
                 captureMrsb.setDevice(device);
                 captureMrsb.setModel(m_objects[i]);
                 captureMrsb.setPipeline(phongCapturePipeline);
                 captureMrsb.setEnvironmentMaps(rg->m_irradianceMaps);
                 captureMrsb.setCaptureCount(maxProbeCount);
+                captureMrsb.setCaptureCount(maxProbeCount);
+                captureMrsb.setInstanceDescriptorSetUpdatePredPerFrame(
+                    [=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const VkDescriptorSet &set,
+                        uint32_t backBufferIndex) {
+                        auto tlas = rg->m_opaquePhase->getTLAS();
+                        VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+                            .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
+                            .pAccelerationStructures = tlas.data(),
+                        };
+                        std::vector<VkWriteDescriptorSet> writes;
+                        writes.push_back(VkWriteDescriptorSet{
+                            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                            .pNext = &descASInfo,
+                            .dstSet = set,
+                            .dstBinding = 6,
+                            .dstArrayElement = 0,
+                            .descriptorCount = static_cast<uint32_t>(tlas.size()),
+                            .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                        });
+
+                        vkUpdateDescriptorSets(deviceHandle, writes.size(), writes.data(), 0, nullptr);
+                    });
 
                 rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
             }

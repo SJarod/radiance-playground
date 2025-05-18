@@ -270,12 +270,30 @@ class RenderStateBuilderI
     virtual void setFrameInFlightCount(uint32_t a) = 0;
     virtual void setTexture(std::weak_ptr<Texture> texture) = 0;
 
+    /**
+     * @brief Set the Descriptor Set Update Pred Per Frame object
+     * some objects (render states) don't use this function, use the instance and material version instead
+     *
+     * @param pred
+     */
     virtual void setDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
     virtual void setDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
+    /**
+     * @brief Set the Instance Descriptor Set Update Pred Per Frame object
+     * same function as for the compute state but for "instance" and "material" descriptor sets
+     *
+     * @param pred
+     */
     virtual void setInstanceDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
     virtual void setInstanceDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
+    /**
+     * @brief Set the Material Descriptor Set Update Pred Per Frame object
+     * same function as for the compute state but for "instance" and "material" descriptor sets
+     *
+     * @param pred
+     */
     virtual void setMaterialDescriptorSetUpdatePredPerFrame(DescriptorSetUpdatePredPerFrame pred) = 0;
     virtual void setMaterialDescriptorSetUpdatePred(DescriptorSetUpdatePred pred) = 0;
 
