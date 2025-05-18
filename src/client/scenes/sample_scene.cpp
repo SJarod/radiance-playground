@@ -255,7 +255,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong");
+        phongPb.addFragmentShaderStage("phongrt");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -320,7 +320,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongCapturePb;
         phongCapturePb.setDevice(device);
         phongCapturePb.addVertexShaderStage("phong");
-        phongCapturePb.addFragmentShaderStage("phong");
+        phongCapturePb.addFragmentShaderStage("phongrt");
         phongCapturePb.setRenderPass(rg->m_opaqueCapturePhase->getRenderPass());
         phongCapturePb.setExtent(window->getSwapChain()->getExtent());
         phongCapturePb.addPushConstantRange(VkPushConstantRange{

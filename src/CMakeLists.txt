@@ -25,6 +25,7 @@ set(SHADER_SOURCES
 
 	shaders/phong.vert
 	shaders/phong.frag
+	shaders/phongrt.frag
 
 	shaders/environment_map.vert
 	shaders/environment_map.frag

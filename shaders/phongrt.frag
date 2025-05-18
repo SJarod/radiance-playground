@@ -1,4 +1,7 @@
-#version 450
+#version 460
+
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 #define MAX_PROBE_COUNT 64
 #define DEFAULT_AMBIENT vec3(0.0)
@@ -55,6 +58,8 @@ layout(location = 0) out vec4 oColor;
 
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
 layout(set = 0, binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
+
+layout(set = 0, binding = 6) uniform accelerationStructureEXT topLevelAS;
 
 struct Probe
 {
@@ -125,6 +130,27 @@ void applySinglePointLight(inout LightingResult fragLighting, in PointLight poin
 	const float lightDist = length(fragPosToLightPos);
 	const vec3 lightDir = fragPosToLightPos / lightDist;
 
+	// Ray Query for shadow
+	vec3  origin    = fragPos;
+	vec3  direction = lightDir;  // vector to light
+	float tMin      = 0.01f;
+	float tMax      = lightDist;
+
+	// Initializes a ray query object but does not start traversal
+	rayQueryEXT rayQuery;
+	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+	// Start traversal: return false if traversal is complete
+	while(rayQueryProceedEXT(rayQuery))
+	{
+	}
+
+	// Returns type of committed (true) intersection
+	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	{
+		return;
+	}
+
 	const vec3 lightAttenuationWeights = vec3(1.0, lightDist, lightDist * lightDist);
 
 	// Get attenuation (c + l * d + q * d^2)
@@ -138,6 +164,28 @@ void applySinglePointLight(inout LightingResult fragLighting, in PointLight poin
 void applySingleDirectionalLight(inout LightingResult fragLighting, in DirectionalLight directionalLight, in vec3 normal)
 {
 	vec3 lightDir = normalize(directionalLight.direction);
+
+	// Ray Query for shadow
+	vec3  origin    = fragPos;
+	vec3  direction = lightDir;  // vector to light
+	float tMin      = 0.01f;
+	float tMax      = 999.0f;
+
+	// Initializes a ray query object but does not start traversal
+	rayQueryEXT rayQuery;
+	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+	// Start traversal: return false if traversal is complete
+	while(rayQueryProceedEXT(rayQuery))
+	{
+	}
+
+	// Returns type of committed (true) intersection
+	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	{
+		return;
+	}
+
 	float diff = max(dot(normal, lightDir), 0.0);
 	fragLighting.diffuse += diff * directionalLight.diffuseColor * directionalLight.diffusePower;
 	fragLighting.specular += vec3(0.0);
