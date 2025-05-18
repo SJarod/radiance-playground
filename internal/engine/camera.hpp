@@ -17,9 +17,6 @@ class CameraABC
 
     bool m_bYFlip = true;
 
-    float m_speed = 1.f;
-    float m_sensitivity = 0.8f;
-
   public:
     [[nodiscard]] glm::mat4 getViewMatrix() const;
     [[nodiscard]] virtual glm::mat4 getProjectionMatrix() const = 0;
@@ -27,14 +24,6 @@ class CameraABC
     [[nodiscard]] inline const Transform &getTransform() const
     {
         return m_transform;
-    }
-    [[nodiscard]] inline const float &getSpeed() const
-    {
-        return m_speed;
-    }
-    [[nodiscard]] inline const float &getSensitivity() const
-    {
-        return m_sensitivity;
     }
 
   public:

@@ -47,8 +47,8 @@ void MoveCamera::update(float deltaTime)
     if (glfwGetMouseButton(m_window->getHandle(), GLFW_MOUSE_BUTTON_3) == GLFW_PRESS)
     {
         setFocus(true);
-        float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
-        float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
+        float pitch = (float)deltaMousePos.second * m_sensitivity;
+        float yaw = (float)deltaMousePos.first * m_sensitivity;
         Transform cameraTransform = m_mainCamera->getTransform();
 
         // fps camera rotation
@@ -82,8 +82,8 @@ void MoveCamera::update(float deltaTime)
     else if (InputManager::GetKey(Keycode::LEFT_CONTROL)) // slow-down
         isFastMovementActive = 0.2f;
 
-    float pitch = (float)deltaMousePos.second * m_mainCamera->getSensitivity() * deltaTime;
-    float yaw = (float)deltaMousePos.first * m_mainCamera->getSensitivity() * deltaTime;
+    float pitch = (float)deltaMousePos.second * m_sensitivity;
+    float yaw = (float)deltaMousePos.first * m_sensitivity;
     Transform cameraTransform = m_mainCamera->getTransform();
 
     cameraTransform.rotation =
@@ -98,8 +98,7 @@ void MoveCamera::update(float deltaTime)
     glm::vec3 dir = glm::vec3(xaxisInput, yaxisInput, zaxisInput) * cameraTransform.rotation;
     if (!(xaxisInput == 0.f && zaxisInput == 0.f && yaxisInput == 0.f))
         dir = glm::normalize(dir);
-    cameraTransform.position +=
-        m_mainCamera->getSpeed() * dir * deltaTime * isFastMovementActive * m_cameraSpeedMultiplier;
+    cameraTransform.position += dir * deltaTime * isFastMovementActive * m_cameraSpeedMultiplier;
 
     // place the position stamp at a point forward
     posStamp = cameraTransform.position + glm::vec3(0.f, 0.f, 15.f) * cameraTransform.rotation;

@@ -23,6 +23,8 @@ class MoveCamera : public ScriptableABC
 
     float m_cameraSpeedMultiplier = 1.f;
 
+    float m_sensitivity = 0.005f;
+
     bool m_isFocused = true;
 
     void setFocus(bool newFocus);
