@@ -204,8 +204,12 @@ class Device
     {
         return m_imageCount;
     }
+    [[nodsicard]] const Context *getContext() const
+    {
+        return m_cx.lock().get();
+    }
     [[nodiscard]] const VkInstance getContextInstance() const;
-    
+
   public:
     void addBufferCount(int n)
     {

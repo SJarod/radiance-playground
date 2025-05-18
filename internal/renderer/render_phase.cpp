@@ -660,6 +660,8 @@ RayTracePhase::AsGeom RayTracePhase::getAsGeometry(std::shared_ptr<Mesh> mesh) c
 }
 
 #ifdef USE_NV_PRO_CORE
+#include "graphics/context.hpp"
+
 std::unique_ptr<RenderPhase> RenderPhaseBuilder<RenderTypeE::RAYTRACE>::build()
 {
     m_product = RenderPhaseBuilder<RenderTypeE::RASTER>::build();
@@ -668,6 +670,37 @@ std::unique_ptr<RenderPhase> RenderPhaseBuilder<RenderTypeE::RAYTRACE>::build()
     auto deviceHandle = devicePtr->getHandle();
 
     auto product = static_cast<RayTracePhase *>(m_product.get());
+
+    uint32_t count = devicePtr->getContext()->getInstanceExtensionCount();
+    auto reqExtensions = devicePtr->getContext()->getInstanceExtensions();
+
+    // Requesting Vulkan extensions and layers
+    nvvk::ContextCreateInfo contextInfo;
+    contextInfo.setVersion(1, 3);                       // Using Vulkan 1.2
+    for (uint32_t ext_id = 0; ext_id < count; ext_id++) // Adding required extensions (surface, win32, linux, ..)
+        contextInfo.addInstanceExtension(reqExtensions[ext_id]);
+    contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);             // FPS in titlebar
+    contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, true); // Allow debug names
+    contextInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);           // Enabling ability to present rendering
+
+    // #VKRay: Activate the ray tracing extension
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeature{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
+    contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false,
+                                   &accelFeature); // To build acceleration structures
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
+    contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false,
+                                   &rtPipelineFeature);                             // To use vkCmdTraceRaysKHR
+    contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME); // Required by ray tracing pipeline
+
+    // Creating Vulkan base application
+    product->vkctx.initInstance(contextInfo);
+    // Find all compatible devices
+    auto compatibleDevices = product->vkctx.getCompatibleDevices(contextInfo);
+    assert(!compatibleDevices.empty());
+    // Use a compatible device
+    product->vkctx.initDevice(compatibleDevices[0], contextInfo);
 
     product->m_alloc.init(devicePtr->getContextInstance(), deviceHandle, devicePtr->getPhysicalHandle());
     product->m_rtBuilder.setup(deviceHandle, &product->m_alloc, devicePtr->getGraphicsFamilyIndex().value());

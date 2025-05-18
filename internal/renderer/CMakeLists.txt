@@ -46,6 +46,9 @@ target_link_libraries(${component}
 )
 
 if (RENDERER_OPTION_USE_NV_PRO_CORE)
+_add_project_definitions(${component})
+target_sources(${component} PUBLIC ${COMMON_SOURCE_FILES})
+target_sources(${component} PUBLIC ${PACKAGE_SOURCE_FILES})
 target_link_libraries(${component} PUBLIC ${PLATFORM_LIBRARIES} PUBLIC nvpro_core)
 target_compile_definitions(${component} PUBLIC USE_NV_PRO_CORE)
 endif()

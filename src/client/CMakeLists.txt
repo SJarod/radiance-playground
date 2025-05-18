@@ -46,4 +46,8 @@ target_link_libraries(${component}
 	PUBLIC legitprofiler
 )
 
+if (RENDERER_OPTION_USE_NV_PRO_CORE)
+_add_project_definitions(${component})
+endif()
+
 target_include_directories(${component} PRIVATE "${CMAKE_CURRENT_LIST_DIR}")

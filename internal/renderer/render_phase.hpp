@@ -234,6 +234,7 @@ typedef RenderPhase RasterPhase;
 typedef RenderPhase CubePhase;
 
 #ifdef USE_NV_PRO_CORE
+#include "nvvk/context_vk.hpp"
 #include "nvvk/raytraceKHR_vk.hpp"
 #endif
 
@@ -244,6 +245,8 @@ class RayTracePhase final : public RenderPhase
 
   private:
 #ifdef USE_NV_PRO_CORE
+    nvvk::Context vkctx{};
+
     nvvk::ResourceAllocatorDma m_alloc;
     nvvk::RaytracingBuilderKHR m_rtBuilder;
 #else

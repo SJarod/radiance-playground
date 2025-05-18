@@ -4,8 +4,9 @@
 
 #include "engine/camera.hpp"
 #include "engine/probe_grid.hpp"
+
+#include "light.hpp"
 #include "render_phase.hpp"
-#include "renderer/light.hpp"
 
 #include "render_graph.hpp"
 
