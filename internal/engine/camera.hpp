@@ -22,7 +22,7 @@ class CameraABC
 
   public:
     [[nodiscard]] glm::mat4 getViewMatrix() const;
-    virtual [[nodiscard]] glm::mat4 getProjectionMatrix() const = 0;
+    [[nodiscard]] virtual glm::mat4 getProjectionMatrix() const = 0;
 
     [[nodiscard]] inline const Transform &getTransform() const
     {

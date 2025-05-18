@@ -105,8 +105,8 @@ class GPUStateI
                                       uint32_t pooledFramebufferIndex) = 0;
 
   public:
-    virtual [[nodiscard]] std::shared_ptr<Pipeline> getPipeline() const = 0;
-    virtual [[nodiscard]] VkDescriptorPool getDescriptorPool() const = 0;
+    [[nodiscard]] virtual std::shared_ptr<Pipeline> getPipeline() const = 0;
+    [[nodiscard]] virtual VkDescriptorPool getDescriptorPool() const = 0;
 };
 
 /**

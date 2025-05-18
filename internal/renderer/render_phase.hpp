@@ -44,7 +44,7 @@ template <RenderTypeE TType> class RenderPhaseBuilder;
 class BasePhaseABC
 {
   private:
-    virtual [[nodiscard]] const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
+    [[nodiscard]] virtual const BackBufferT &getCurrentBackBuffer(uint32_t pooledFramebufferIndex) const = 0;
 
   protected:
     std::weak_ptr<Device> m_device;
@@ -71,9 +71,9 @@ class BasePhaseABC
     virtual void swapBackBuffers() = 0;
 
   public:
-    virtual [[nodiscard]] const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
-    virtual [[nodiscard]] const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
-    virtual [[nodiscard]] const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const = 0;
+    [[nodiscard]] virtual const VkSemaphore &getCurrentAcquireSemaphore(uint32_t pooledFramebufferIndex) const = 0;
+    [[nodiscard]] virtual const VkSemaphore &getCurrentRenderSemaphore(uint32_t pooledFramebufferIndex) const = 0;
+    [[nodiscard]] virtual const VkFence &getCurrentFence(uint32_t pooledFramebufferIndex) const = 0;
 };
 
 /**
