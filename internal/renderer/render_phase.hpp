@@ -233,14 +233,24 @@ class RenderPhase : public BasePhaseABC
 typedef RenderPhase RasterPhase;
 typedef RenderPhase CubePhase;
 
+#ifdef USE_NV_PRO_CORE
+#include "nvvk/raytraceKHR_vk.hpp"
+#endif
+
 class RayTracePhase final : public RenderPhase
 {
     friend RenderPhaseBuilder<RenderTypeE::RASTER>;
+    friend RenderPhaseBuilder<RenderTypeE::RAYTRACE>;
 
   private:
+#ifdef USE_NV_PRO_CORE
+    nvvk::ResourceAllocatorDma m_alloc;
+    nvvk::RaytracingBuilderKHR m_rtBuilder;
+#else
     std::vector<VkAccelerationStructureKHR> m_blas;
     std::vector<std::unique_ptr<Buffer>> m_blasBuffers;
     std::vector<VkAccelerationStructureKHR> m_tlas;
+#endif
 
     /**
      * @brief combination of Vulkan structures representing a mesh as a ray traceable geometry
@@ -263,7 +273,16 @@ class RayTracePhase final : public RenderPhase
      */
     void updateDescriptorSets();
 
+    RayTracePhase() = default;
+
   public:
+    ~RayTracePhase();
+
+    RayTracePhase(const RayTracePhase &) = delete;
+    RayTracePhase &operator=(const RayTracePhase &) = delete;
+    RayTracePhase(RayTracePhase &&) = delete;
+    RayTracePhase &operator=(RayTracePhase &&) = delete;
+
     void generateBottomLevelAS();
     void generateTopLevelAS();
 
@@ -360,7 +379,7 @@ template <> class RenderPhaseBuilder<RenderTypeE::RASTER> : public PhaseBuilderA
      *
      * @return std::unique_ptr<RenderPhase>
      */
-    std::unique_ptr<RenderPhase> build();
+    virtual std::unique_ptr<RenderPhase> build();
 };
 template <> class RenderPhaseBuilder<RenderTypeE::RAYTRACE> final : public RenderPhaseBuilder<RenderTypeE::RASTER>
 {
@@ -375,6 +394,10 @@ template <> class RenderPhaseBuilder<RenderTypeE::RAYTRACE> final : public Rende
     {
         restart();
     }
+
+#ifdef USE_NV_PRO_CORE
+    std::unique_ptr<RenderPhase> build() override;
+#endif
 };
 
 class ComputePhaseBuilder;

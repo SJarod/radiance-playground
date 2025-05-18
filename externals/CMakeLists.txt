@@ -15,24 +15,6 @@ if (NOT RENDERER_OPTION_USE_NV_PRO_CORE)
 add_subdirectory(glm)
 target_compile_definitions(glm PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(glm PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
-endif()
-
-set(ASSIMP_BUILD_TESTS OFF)
-set(ASSIMP_NO_EXPORT ON)
-add_subdirectory(assimp)
-
-add_library(stb INTERFACE)
-target_sources(stb INTERFACE
-    stb/stb_image.h
-)
-target_include_directories(stb INTERFACE ./stb/)
-
-add_library(legitprofiler INTERFACE)
-target_sources(legitprofiler INTERFACE
-    LegitProfiler/ProfilerTask.h
-	LegitProfiler/ImGuiProfilerRenderer.h
-)
-target_include_directories(legitprofiler INTERFACE ./LegitProfiler/)
 
 add_library(imgui STATIC)
 target_sources(imgui PUBLIC
@@ -57,6 +39,24 @@ target_link_libraries(imgui PUBLIC
 glfw
 ${Vulkan_LIBRARY}
 )
+endif()
+
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_NO_EXPORT ON)
+add_subdirectory(assimp)
+
+add_library(stb INTERFACE)
+target_sources(stb INTERFACE
+    stb/stb_image.h
+)
+target_include_directories(stb INTERFACE ./stb/)
+
+add_library(legitprofiler INTERFACE)
+target_sources(legitprofiler INTERFACE
+    LegitProfiler/ProfilerTask.h
+	LegitProfiler/ImGuiProfilerRenderer.h
+)
+target_include_directories(legitprofiler INTERFACE ./LegitProfiler/)
 
 add_subdirectory(VulkanMemoryAllocator)
 

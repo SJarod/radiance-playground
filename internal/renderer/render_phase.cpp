@@ -659,13 +659,102 @@ RayTracePhase::AsGeom RayTracePhase::getAsGeometry(std::shared_ptr<Mesh> mesh) c
     return AsGeom(asGeom, offset);
 }
 
+#ifdef USE_NV_PRO_CORE
+std::unique_ptr<RenderPhase> RenderPhaseBuilder<RenderTypeE::RAYTRACE>::build()
+{
+    m_product = RenderPhaseBuilder<RenderTypeE::RASTER>::build();
+
+    auto devicePtr = m_device.lock();
+    auto deviceHandle = devicePtr->getHandle();
+
+    auto product = static_cast<RayTracePhase *>(m_product.get());
+
+    product->m_alloc.init(devicePtr->getContextInstance(), deviceHandle, devicePtr->getPhysicalHandle());
+    product->m_rtBuilder.setup(deviceHandle, &product->m_alloc, devicePtr->getGraphicsFamilyIndex().value());
+
+    return std::move(m_product);
+}
+#endif
+
 void RayTracePhase::updateDescriptorSets()
 {
 }
 
-void RayTracePhase::generateBottomLevelAS()
+RayTracePhase::~RayTracePhase()
 {
 #ifdef USE_NV_PRO_CORE
+    m_rtBuilder.destroy();
+    m_alloc.deinit();
+#endif
+}
+
+#ifdef USE_NV_PRO_CORE
+auto objectToVkGeometryKHR(const std::shared_ptr<Mesh> &mesh)
+{
+    // BLAS builder requires raw device addresses.
+    VkDeviceAddress vertexAddress = mesh->getVertexBuffer()->getDeviceAddress();
+    VkDeviceAddress indexAddress = mesh->getIndexBuffer()->getDeviceAddress();
+
+    uint32_t maxPrimitiveCount = mesh->getPrimitiveCount();
+
+    // Describe buffer as array of VertexObj.
+    VkAccelerationStructureGeometryTrianglesDataKHR triangles{
+        VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
+    triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT; // vec3 vertex position data.
+    triangles.vertexData.deviceAddress = vertexAddress;
+    triangles.vertexStride = sizeof(Vertex);
+    // Describe index data (32-bit unsigned int)
+    triangles.indexType = VK_INDEX_TYPE_UINT32;
+    triangles.indexData.deviceAddress = indexAddress;
+    // Indicate identity transform by setting transformData to null device pointer.
+    // triangles.transformData = {};
+    triangles.maxVertex = mesh->getVertexCount() - 1;
+
+    // Identify the above data as containing opaque triangles.
+    VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
+    asGeom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+    asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    asGeom.geometry.triangles = triangles;
+
+    // The entire array will be used to build the BLAS.
+    VkAccelerationStructureBuildRangeInfoKHR offset;
+    offset.firstVertex = 0;
+    offset.primitiveCount = maxPrimitiveCount;
+    offset.primitiveOffset = 0;
+    offset.transformOffset = 0;
+
+    // Our blas is made from only one geometry, but could be made of many geometries
+    nvvk::RaytracingBuilderKHR::BlasInput input;
+    input.asGeometry.emplace_back(asGeom);
+    input.asBuildOffsetInfo.emplace_back(offset);
+
+    return input;
+}
+#endif
+
+void RayTracePhase::generateBottomLevelAS()
+{
+    // from
+    // https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/vkrt_tutorial.md.html#accelerationstructure/bottom-levelaccelerationstructure/helperdetails:raytracingbuilder::buildblas()
+
+#ifdef USE_NV_PRO_CORE
+    // BLAS - Storing each primitive in a geometry
+    std::vector<nvvk::RaytracingBuilderKHR::BlasInput> allBlas;
+    for (int i = 0; i < m_pooledRenderStates[0].size(); ++i)
+    {
+        if (auto state = std::dynamic_pointer_cast<ModelRenderState>(m_pooledRenderStates[0][i]))
+        {
+            auto meshes = state->getModel()->getMeshes();
+            for (int j = 0; j < meshes.size(); ++j)
+            {
+                auto blas = objectToVkGeometryKHR(meshes[j]);
+
+                // We could add more geometry in each BLAS, but we add only one for now
+                allBlas.emplace_back(blas);
+            }
+        }
+    }
+    m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 #else
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
@@ -673,9 +762,6 @@ void RayTracePhase::generateBottomLevelAS()
     uint32_t minAlignment =
         devicePtr->getPhysicalDeviceASProperties()
             .minAccelerationStructureScratchOffsetAlignment; /*m_rtASProperties.minAccelerationStructureScratchOffsetAlignment*/
-
-    // from
-    // https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/vkrt_tutorial.md.html#accelerationstructure/bottom-levelaccelerationstructure/helperdetails:raytracingbuilder::buildblas()
 
     uint32_t nbBlas{0};
     VkDeviceSize asTotalSize{0};    // Memory size of all allocated BLAS
@@ -814,4 +900,21 @@ void RayTracePhase::generateBottomLevelAS()
 
 void RayTracePhase::generateTopLevelAS()
 {
+#ifdef USE_NV_PRO_CORE
+    // std::vector<VkAccelerationStructureInstanceKHR> tlas;
+    // tlas.reserve(m_instances.size());
+    // for (const HelloVulkan::ObjInstance &inst : m_instances)
+    // {
+    //     VkAccelerationStructureInstanceKHR rayInst{};
+    //     rayInst.transform = nvvk::toTransformMatrixKHR(inst.transform); // Position of the instance
+    //     rayInst.instanceCustomIndex = inst.objIndex;                    // gl_InstanceCustomIndexEXT
+    //     rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(inst.objIndex);
+    //     rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+    //     rayInst.mask = 0xFF;                                //  Only be hit if rayMask & instance.mask != 0
+    //     rayInst.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
+    //     tlas.emplace_back(rayInst);
+    // }
+    // m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+#else
+#endif
 }
