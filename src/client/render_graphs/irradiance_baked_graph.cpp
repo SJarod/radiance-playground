@@ -48,13 +48,14 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     auto opaqueCaptureDepthAttachment = rpab.buildAndRestart();
     opaqueCaptureRpb.addDepthAttachment(*opaqueCaptureDepthAttachment);
 
-    RenderPhaseBuilder<RenderTypeE::RASTER> opaqueCaptureRb;
+    RenderPhaseBuilder<RenderTypeE::RAYTRACE> opaqueCaptureRb;
     opaqueCaptureRb.setDevice(device);
     opaqueCaptureRb.setRenderPass(opaqueCaptureRpb.build());
     opaqueCaptureRb.setCaptureEnable(true);
     opaqueCaptureRb.setBufferingType(frameInFlightCount);
+    opaqueCaptureRb.setPhaseName("Opaque Capture");
     auto opaqueCapturePhase = opaqueCaptureRb.build();
-    m_opaqueCapturePhase = opaqueCapturePhase.get();
+    m_opaqueCapturePhase = static_cast<RayTracePhase *>(opaqueCapturePhase.get());
 
     // Skybox capture
     RenderPassBuilder skyboxCaptureRpb;
@@ -80,6 +81,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     skyboxCaptureRb.setRenderPass(skyboxCaptureRpb.build());
     skyboxCaptureRb.setCaptureEnable(true);
     skyboxCaptureRb.setBufferingType(frameInFlightCount);
+    skyboxCaptureRb.setPhaseName("Skybox capture");
     auto skyboxCapturePhase = skyboxCaptureRb.build();
     m_skyboxCapturePhase = skyboxCapturePhase.get();
 
@@ -111,6 +113,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     irradianceConvolutionRb.setRenderPass(irradianceConvolutionRpb.build());
     irradianceConvolutionRb.setCaptureEnable(true);
     irradianceConvolutionRb.setBufferingType(frameInFlightCount);
+    irradianceConvolutionRb.setPhaseName("Irradiance convolution");
     auto irradianceConvolutionPhase = irradianceConvolutionRb.build();
     m_irradianceConvolutionPhase = irradianceConvolutionPhase.get();
 
@@ -135,6 +138,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     opaqueRb.setDevice(device);
     opaqueRb.setRenderPass(opaqueRpb.build());
     opaqueRb.setBufferingType(frameInFlightCount);
+    opaqueRb.setPhaseName("Opaque RT");
     auto opaquePhase = opaqueRb.build();
     m_opaquePhase = static_cast<RayTracePhase *>(opaquePhase.get());
 
@@ -159,6 +163,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     RenderPhaseBuilder<RenderTypeE::RASTER> probesDebugRb;
     probesDebugRb.setDevice(device);
     probesDebugRb.setRenderPass(probesDebugRpb.build());
+    probesDebugRb.setPhaseName("Probes debug");
     auto probesDebugPhase = probesDebugRb.build();
     m_probesDebugPhase = probesDebugPhase.get();
 
@@ -185,6 +190,7 @@ void BakedGraph::load(std::weak_ptr<Device> device, WindowGLFW *window, uint32_t
     skyboxRb.setDevice(device);
     skyboxRb.setRenderPass(skyboxRpb.build());
     skyboxRb.setBufferingType(frameInFlightCount);
+    skyboxRb.setPhaseName("Skybox");
     auto skyboxPhase = skyboxRb.build();
     m_skyboxPhase = skyboxPhase.get();
 

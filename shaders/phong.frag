@@ -59,7 +59,7 @@ layout(location = 0) out vec4 oColor;
 layout(set = 1, binding = 1) uniform sampler2D texSampler;
 layout(set = 0, binding = 4) uniform samplerCube[MAX_PROBE_COUNT] irradianceMaps;
 
-layout(binding = 6) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 6) uniform accelerationStructureEXT topLevelAS;
 
 struct Probe
 {

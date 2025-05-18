@@ -12,7 +12,7 @@ class BakedGraph final : public RenderGraph
               uint32_t maxProbeCount) override;
 
   public:
-    RenderPhase *m_opaqueCapturePhase;
+    RayTracePhase *m_opaqueCapturePhase;
     RenderPhase *m_skyboxCapturePhase;
 
     RenderPhase *m_irradianceConvolutionPhase;

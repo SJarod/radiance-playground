@@ -236,7 +236,11 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 6,
             .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-            .descriptorCount = 1,
+#ifdef USE_NV_PRO_CORE
+            .descriptorCount = 1, // number of tlas
+#else
+            .descriptorCount = static_cast<uint32_t>(m_objects.size()), // number of tlas
+#endif
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
@@ -301,7 +305,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         phongCaptureInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 6,
             .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-            .descriptorCount = 1,
+            .descriptorCount = 1, // number of tlas in this phase (1)
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
 
@@ -420,8 +424,14 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+#ifdef USE_NV_PRO_CORE
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1);
+#else
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, m_objects.size());
+#endif
+
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
             mrsb.setInstanceDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
@@ -439,7 +449,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                     .dstSet = set,
                     .dstBinding = 6,
                     .dstArrayElement = 0,
-                    .descriptorCount = static_cast<uint32_t>(tlas.size()),
+                    .descriptorCount = descASInfo.accelerationStructureCount,
                     .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                 });
 
@@ -459,8 +469,13 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                captureMrsb.addPoolSize(
+                    VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+                    1); // number of tlas in the ray tracing phase (there are as many objects as render states
+                        // registered in the phase (one in the occurence of this particular phase))
+
                 captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-                captureMrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
                 captureMrsb.setDevice(device);
                 captureMrsb.setModel(m_objects[i]);
                 captureMrsb.setPipeline(phongCapturePipeline);
@@ -470,7 +485,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 captureMrsb.setInstanceDescriptorSetUpdatePredPerFrame(
                     [=](const RenderPhase *parentPhase, VkCommandBuffer cmd, const VkDescriptorSet &set,
                         uint32_t backBufferIndex) {
-                        auto tlas = rg->m_opaquePhase->getTLAS();
+                        auto tlas = rg->m_opaqueCapturePhase->getTLAS();
                         VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
                             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
                             .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
@@ -483,7 +498,7 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                             .dstSet = set,
                             .dstBinding = 6,
                             .dstArrayElement = 0,
-                            .descriptorCount = static_cast<uint32_t>(tlas.size()),
+                            .descriptorCount = descASInfo.accelerationStructureCount,
                             .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
                         });
 
@@ -504,6 +519,10 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
+
+        rg->m_opaqueCapturePhase->generateBottomLevelAS();
+        rg->m_opaqueCapturePhase->generateTopLevelAS();
+
         rg->m_opaquePhase->generateBottomLevelAS();
         rg->m_opaquePhase->generateTopLevelAS();
 
@@ -569,8 +588,9 @@ void SampleScene::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         ProbeGridRenderStateBuilder prsb;
         prsb.setFrameInFlightCount(frameInFlightCount);
+        prsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        prsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         prsb.setDevice(device);
         prsb.setPipeline(probeGridDebugPipeline);
         prsb.setProbeGrid(m_grid);
