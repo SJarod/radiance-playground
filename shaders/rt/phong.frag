@@ -3,7 +3,6 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
 
-#define MAX_PROBE_COUNT 64
 #define DEFAULT_AMBIENT vec3(0.0)
 
 #ifndef DEFAULT_AMBIENT

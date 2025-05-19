@@ -191,7 +191,7 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         PipelineBuilder<PipelineTypeE::GRAPHICS> irradianceConvolutionPb;
         irradianceConvolutionPb.setDevice(device);
         irradianceConvolutionPb.addVertexShaderStage("skybox");
-        irradianceConvolutionPb.addFragmentShaderStage("irradiance_convolution");
+        irradianceConvolutionPb.addFragmentShaderStage("g2ip/irradiance_convolution");
         irradianceConvolutionPb.setRenderPass(rg->m_irradianceConvolutionPhase->getRenderPass());
         irradianceConvolutionPb.setExtent(window->getSwapChain()->getExtent());
 
@@ -244,8 +244,8 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
-        phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong");
+        phongPb.addVertexShaderStage("simple");
+        phongPb.addFragmentShaderStage("g2ip/phong");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -303,8 +303,8 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongCapturePb;
         phongCapturePb.setDevice(device);
-        phongCapturePb.addVertexShaderStage("phong");
-        phongCapturePb.addFragmentShaderStage("phong");
+        phongCapturePb.addVertexShaderStage("simple");
+        phongCapturePb.addFragmentShaderStage("g2ip/phong");
         phongCapturePb.setRenderPass(rg->m_opaqueCapturePhase->getRenderPass());
         phongCapturePb.setExtent(window->getSwapChain()->getExtent());
         phongCapturePb.addPushConstantRange(VkPushConstantRange{
@@ -336,8 +336,8 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> environmentMapPb;
         environmentMapPb.setDevice(device);
-        environmentMapPb.addVertexShaderStage("environment_map");
-        environmentMapPb.addFragmentShaderStage("environment_map");
+        environmentMapPb.addVertexShaderStage("g2ip/nvironment_map");
+        environmentMapPb.addFragmentShaderStage("g2ip/environment_map");
         environmentMapPb.setRenderPass(rg->m_skyboxPhase->getRenderPass());
         environmentMapPb.setExtent(window->getSwapChain()->getExtent());
         environmentMapPb.addPushConstantRange(VkPushConstantRange{
@@ -368,8 +368,8 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> environmentMapCapturePb;
         environmentMapCapturePb.setDevice(device);
-        environmentMapCapturePb.addVertexShaderStage("environment_map");
-        environmentMapCapturePb.addFragmentShaderStage("environment_map");
+        environmentMapCapturePb.addVertexShaderStage("g2ip/environment_map");
+        environmentMapCapturePb.addFragmentShaderStage("g2ip/environment_map");
         environmentMapCapturePb.setRenderPass(rg->m_skyboxCapturePhase->getRenderPass());
         environmentMapCapturePb.setExtent(window->getSwapChain()->getExtent());
         environmentMapCapturePb.addPushConstantRange(VkPushConstantRange{
@@ -668,8 +668,8 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
-            pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("final_image_direct");
+            pb.addVertexShaderStage("pp/screen");
+            pb.addFragmentShaderStage("pp/final_image");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);

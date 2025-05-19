@@ -1,6 +1,5 @@
 #version 450
 
-#define MAX_PROBE_COUNT 64
 #define DEFAULT_AMBIENT vec3(0.0)
 
 #ifndef DEFAULT_AMBIENT

@@ -178,8 +178,8 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
-        phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong_simple_rt");
+        phongPb.addVertexShaderStage("simple");
+        phongPb.addFragmentShaderStage("deferred/unlit");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -278,7 +278,7 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
         probeGridDebugPb.setDevice(device);
         probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
-        probeGridDebugPb.addFragmentShaderStage("white");
+        probeGridDebugPb.addFragmentShaderStage("forward/white");
         probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
         probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
         probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
@@ -475,7 +475,7 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
-            pb.addComputeShaderStage("radiance_gather_rt");
+            pb.addComputeShaderStage("rc/radiance_gather_3drt");
             UniformDescriptorBuilder udb;
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
                 .binding = 1,
@@ -823,8 +823,8 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());
-            pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("radiance_apply_deferred");
+            pb.addVertexShaderStage("pp/screen");
+            pb.addFragmentShaderStage("deferred/radiance_apply");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);

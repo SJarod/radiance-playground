@@ -159,8 +159,8 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
-        phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phong");
+        phongPb.addVertexShaderStage("simple");
+        phongPb.addFragmentShaderStage("deferred/unlit");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -233,7 +233,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
         probeGridDebugPb.setDevice(device);
         probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
-        probeGridDebugPb.addFragmentShaderStage("white");
+        probeGridDebugPb.addFragmentShaderStage("forward/white");
         probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
         probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
         probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
@@ -407,8 +407,8 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         postProcessPd.configureColorDepthRasterizerBuilder(postProcessPb);
         postProcessPb.setDevice(device);
         postProcessPb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
-        postProcessPb.addVertexShaderStage("screen");
-        postProcessPb.addFragmentShaderStage("final_image_direct");
+        postProcessPb.addVertexShaderStage("pp/screen");
+        postProcessPb.addFragmentShaderStage("pp/final_image");
         postProcessPb.setExtent(window->getSwapChain()->getExtent());
         postProcessPb.setDepthTestEnable(VK_FALSE);
         postProcessPb.setDepthWriteEnable(VK_FALSE);
@@ -430,7 +430,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
-            pb.addComputeShaderStage("radiance_gather_voxel");
+            pb.addComputeShaderStage("rc/radiance_gather_3drt");
             UniformDescriptorBuilder udb;
             // rendered image
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -717,8 +717,8 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());
-            pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("radiance_apply_deferred");
+            pb.addVertexShaderStage("pp/screen");
+            pb.addFragmentShaderStage("deferred/radiance_apply");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);

@@ -171,8 +171,8 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
-        phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("unlit");
+        phongPb.addVertexShaderStage("simple");
+        phongPb.addFragmentShaderStage("forward/unlit");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -266,8 +266,8 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirect->getRenderPass());
-            pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("final_image_direct");
+            pb.addVertexShaderStage("pp/screen");
+            pb.addFragmentShaderStage("pp/final_image");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);
@@ -291,7 +291,7 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             PipelineDirector<PipelineTypeE::COMPUTE> pd;
             pd.configureComputeBuilder(pb);
             pb.setDevice(device);
-            pb.addComputeShaderStage("radiance_gather");
+            pb.addComputeShaderStage("rc/radiance_gather_2d");
             UniformDescriptorBuilder udb;
             // rendered image
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -578,8 +578,8 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             pd.configureColorDepthRasterizerBuilder(pb);
             pb.setDevice(device);
             pb.setRenderPass(rg->m_finalImageDirectIndirect->getRenderPass());
-            pb.addVertexShaderStage("screen");
-            pb.addFragmentShaderStage("final_image_direct_indirect");
+            pb.addVertexShaderStage("pp/screen");
+            pb.addFragmentShaderStage("pp/radiance_apply");
             pb.setExtent(window->getSwapChain()->getExtent());
             pb.setDepthTestEnable(VK_FALSE);
             pb.setDepthWriteEnable(VK_FALSE);
