@@ -577,23 +577,30 @@ void RayTracePhase::recordBackBuffer(uint32_t imageIndex, uint32_t singleFrameRe
     VkRenderPassBeginInfo renderPassBeginInfo;
     if (m_renderPass.has_value())
     {
+        auto &rp = m_renderPass.value();
         VkClearValue clearColor = {
             .color = {0.05f, 0.05f, 0.05f, 0.f},
         };
         VkClearValue clearDepth = {
             .depthStencil = {1.f, 0},
         };
-        std::array<VkClearValue, 2> clearValues = {clearColor, clearDepth};
+        std::vector<VkClearValue> clearValues(rp->getColorAttachmentCount() + (int)rp->getHasDepthAttachment());
+        for (int i = 0; i < clearValues.size(); ++i)
+        {
+            clearValues[i] = clearColor;
+        }
+        if (rp->getHasDepthAttachment())
+            clearValues.back() = clearDepth;
 
-        renderArea.extent.width = std::min(renderArea.extent.width - renderArea.offset.x,
-                                           m_renderPass.value()->getMinRenderArea().extent.width);
-        renderArea.extent.height = std::min(renderArea.extent.height - renderArea.offset.y,
-                                            m_renderPass.value()->getMinRenderArea().extent.height);
+        renderArea.extent.width =
+            std::min(renderArea.extent.width - renderArea.offset.x, rp->getMinRenderArea().extent.width);
+        renderArea.extent.height =
+            std::min(renderArea.extent.height - renderArea.offset.y, rp->getMinRenderArea().extent.height);
 
         VkRenderPassBeginInfo renderPassBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = m_renderPass.value()->getHandle(),
-            .framebuffer = m_renderPass.value()->getFramebuffer(pooledFramebufferIndex, imageIndex),
+            .renderPass = rp->getHandle(),
+            .framebuffer = rp->getFramebuffer(pooledFramebufferIndex, imageIndex),
             .renderArea = renderArea,
             .clearValueCount = static_cast<uint32_t>(clearValues.size()),
             .pClearValues = clearValues.data(),
