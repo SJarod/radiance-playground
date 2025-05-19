@@ -127,10 +127,10 @@ void PipelineBuilder<PipelineTypeE::GRAPHICS>::restart()
     m_dynamicStates.clear();
 }
 
-void PipelineBuilder<PipelineTypeE::GRAPHICS>::addVertexShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addVertexShaderStage(const char *shaderRelativePath, const char *entryPoint)
 {
     std::vector<char> shader;
-    if (!read_binary_file("shaders/" + std::string(shaderName) + ".vert.spv", shader))
+    if (!read_binary_file("shaders/" + std::string(shaderRelativePath) + ".vert.spv", shader))
         return;
 
     m_modules.emplace_back(create_shader_module(m_device.lock()->getHandle(), shader));
@@ -143,10 +143,10 @@ void PipelineBuilder<PipelineTypeE::GRAPHICS>::addVertexShaderStage(const char *
     });
 }
 
-void PipelineBuilder<PipelineTypeE::GRAPHICS>::addFragmentShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::GRAPHICS>::addFragmentShaderStage(const char *shaderRelativePath, const char *entryPoint)
 {
     std::vector<char> shader;
-    if (!read_binary_file("shaders/" + std::string(shaderName) + ".frag.spv", shader))
+    if (!read_binary_file("shaders/" + std::string(shaderRelativePath) + ".frag.spv", shader))
         return;
 
     m_modules.emplace_back(create_shader_module(m_device.lock()->getHandle(), shader));
@@ -159,12 +159,12 @@ void PipelineBuilder<PipelineTypeE::GRAPHICS>::addFragmentShaderStage(const char
     });
 }
 
-void PipelineBuilder<PipelineTypeE::COMPUTE>::addComputeShaderStage(const char *shaderName, const char *entryPoint)
+void PipelineBuilder<PipelineTypeE::COMPUTE>::addComputeShaderStage(const char *shaderRelativePath, const char *entryPoint)
 {
     assert(m_shaderStageCreateInfos.empty());
 
     std::vector<char> shader;
-    if (!read_binary_file("shaders/" + std::string(shaderName) + ".comp.spv", shader))
+    if (!read_binary_file("shaders/" + std::string(shaderRelativePath) + ".comp.spv", shader))
         return;
 
     m_modules.emplace_back(create_shader_module(m_device.lock()->getHandle(), shader));
@@ -292,6 +292,7 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineTypeE::GRAPHICS>::build()
     };
 
     // color blending
+    uint32_t ccount = m_renderPass->getColorAttachmentCount();
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {
         .blendEnable = VK_TRUE,
         .srcColorBlendFactor = m_srcColorBlendFactor,
@@ -302,13 +303,13 @@ std::unique_ptr<Pipeline> PipelineBuilder<PipelineTypeE::GRAPHICS>::build()
         .alphaBlendOp = m_alphaBlendOp,
         .colorWriteMask = m_colorWriteMask,
     };
-
+    std::vector<VkPipelineColorBlendAttachmentState> blendStates(ccount, colorBlendAttachment);
     VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = m_logicOpEnable,
         .logicOp = m_logicOp,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
+        .attachmentCount = static_cast<uint32_t>(blendStates.size()),
+        .pAttachments = blendStates.data(),
         .blendConstants =
             {
                 m_blendConstants[0],

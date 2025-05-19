@@ -75,6 +75,8 @@ std::unique_ptr<RenderPass> RenderPassBuilder::build()
 
     const VkDevice &deviceHandle = m_device.lock()->getHandle();
 
+    m_product->m_colorAttachmentCount = static_cast<uint32_t>(m_colorAttachmentReferences.size());
+
     m_subpass.colorAttachmentCount = static_cast<uint32_t>(m_colorAttachmentReferences.size());
     m_subpass.pColorAttachments = m_colorAttachmentReferences.data();
     m_subpass.pDepthStencilAttachment =

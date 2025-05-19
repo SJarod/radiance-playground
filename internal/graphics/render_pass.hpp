@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -122,6 +123,8 @@ class RenderPass
     bool m_bHasDepthAttachment = false;
     uint32_t m_layerCount;
 
+    uint32_t m_colorAttachmentCount = 0;
+
     RenderPass() = default;
 
   public:
@@ -140,6 +143,12 @@ class RenderPass
     [[nodiscard]] const VkRenderPass &getHandle() const
     {
         return m_handle;
+    }
+
+    [[nodiscard]] uint32_t getColorAttachmentCount() const
+    {
+        assert(m_colorAttachmentCount > 0);
+        return m_colorAttachmentCount;
     }
 
     [[nodiscard]] VkFramebuffer getFramebuffer(uint32_t poolIndex, uint32_t imageIndex) const

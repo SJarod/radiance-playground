@@ -216,8 +216,20 @@ template <> class PipelineBuilder<PipelineTypeE::GRAPHICS> : public BasePipeline
         restart();
     }
 
-    void addVertexShaderStage(const char *shaderName, const char *entryPoint = "main");
-    void addFragmentShaderStage(const char *shaderName, const char *entryPoint = "main");
+    /**
+     * @brief load a vertex shader (*.vert.spv)
+     * 
+     * @param shaderRelativePath does not require the extension
+     * @param entryPoint 
+     */
+    void addVertexShaderStage(const char *shaderRelativePath, const char *entryPoint = "main");
+    /**
+     * @brief load a fragment shader (*.frag.spv)
+     * 
+     * @param shaderRelativePath does not require the extension
+     * @param entryPoint 
+     */
+    void addFragmentShaderStage(const char *shaderRelativePath, const char *entryPoint = "main");
     void addDynamicState(VkDynamicState state);
     void setDrawTopology(VkPrimitiveTopology topology, bool bPrimitiveRestartEnable = false);
     void setExtent(VkExtent2D extent);
@@ -381,7 +393,13 @@ template <> class PipelineBuilder<PipelineTypeE::COMPUTE> : public BasePipelineB
         restart();
     }
 
-    void addComputeShaderStage(const char *shaderName, const char *entryPoint = "main");
+    /**
+     * @brief load a compute shader (*.comp.spv)
+     * 
+     * @param shaderRelativePath does not require the extension
+     * @param entryPoint 
+     */
+    void addComputeShaderStage(const char *shaderRelativePath, const char *entryPoint = "main");
 
     std::unique_ptr<Pipeline> build();
 };
