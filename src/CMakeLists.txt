@@ -24,8 +24,10 @@ set(SHADER_SOURCES
 	shaders/white.frag
 
 	shaders/phong.vert
+	shaders/phong_simple.frag
 	shaders/phong.frag
 	shaders/phongrt.frag
+	shaders/phong_simple_rt.frag
 
 	shaders/environment_map.vert
 	shaders/environment_map.frag
