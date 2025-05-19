@@ -386,6 +386,7 @@ int Application::runLoop()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    m_window->recreateSwapChain();
     m_renderer.reset();
     m_scene.reset();
 
