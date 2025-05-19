@@ -45,7 +45,7 @@ target_link_libraries(${component}
     PRIVATE Tracy::TracyClient
 )
 
-if (RENDERER_OPTION_USE_NV_PRO_CORE)
+if (OPTION_USE_NV_PRO_CORE)
 _add_project_definitions(${component})
 target_sources(${component} PUBLIC ${COMMON_SOURCE_FILES})
 target_sources(${component} PUBLIC ${PACKAGE_SOURCE_FILES})

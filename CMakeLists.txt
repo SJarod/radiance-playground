@@ -11,11 +11,11 @@ set(PROJECT_NAME radiance_playground)
 # initiating project given its name
 project(${PROJECT_NAME})
 
-set(RENDERER_OPTION_USE_NV_PRO_CORE ON)
+option(OPTION_USE_NV_PRO_CORE "Use nvpro_core library instead of a custom Acceleration Structure implementation" ON)
 
 add_subdirectory(externals)
 
-if (RENDERER_OPTION_USE_NV_PRO_CORE)
+if (OPTION_USE_NV_PRO_CORE)
 #--------------------------------------------------------------------------------------------------
 # look for nvpro_core 1) as a sub-folder 2) at some other locations
 # this cannot be put anywhere else since we still didn't find setup.cmake yet

@@ -11,7 +11,7 @@ foreach (_variableName ${_variableNames})
     message(STATUS "${_variableName}=${${_variableName}}")
 endforeach()
 
-if (NOT RENDERER_OPTION_USE_NV_PRO_CORE)
+if (NOT OPTION_USE_NV_PRO_CORE)
 add_subdirectory(glm)
 target_compile_definitions(glm PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(glm PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
