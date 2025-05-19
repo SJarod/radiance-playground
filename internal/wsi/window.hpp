@@ -57,6 +57,14 @@ class WindowGLFW : public WindowI
     void recreateSwapChain();
 
   public:
+    [[nodiscard]] inline int getWidth() const
+    {
+        return m_width;
+    }
+    [[nodiscard]] inline int getHeight() const
+    {
+        return m_height;
+    }
     [[nodiscard]] inline GLFWwindow *getHandle() const
     {
         return m_handle;

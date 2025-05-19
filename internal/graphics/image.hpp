@@ -62,6 +62,14 @@ class Image
     VkImageView createImageViewCube();
 
   public:
+    [[nodiscard]] inline uint32_t getWidth() const
+    {
+        return m_width;
+    }
+    [[nodiscard]] inline uint32_t getHeight() const
+    {
+        return m_height;
+    }
     [[nodiscard]] VkImageAspectFlags getAspectFlags() const
     {
         return m_aspectFlags;
