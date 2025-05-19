@@ -2,16 +2,15 @@
 
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+#extension GL_EXT_ray_tracing_position_fetch : enable
 
 #define M_PI 3.1415926535897932384626433832795
-
-layout(binding = 0) uniform sampler2D baseImage;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT topLevelAS;
 
 struct probe
 {
-	vec2 position;
+	vec3 position;
 };
 
 struct cascade_desc
@@ -24,11 +23,6 @@ struct cascade_desc
     // interval length
     float dw;
 };
-
-vec2 get_direction_from_angle(float w)
-{
-	return normalize(vec2(cos(w), sin(w)));
-}
 
 layout (std140, binding = 1) uniform parameters {
     int maxCascadeCount;
@@ -45,7 +39,7 @@ layout (std430, binding = 2) readonly buffer CascadeDescUBO {
 } cdubo;
 
 // cascade probes position buffer
-layout (std140, binding = 3) readonly buffer CascadeUBO {
+layout (std430, binding = 3) readonly buffer CascadeUBO {
     probe[] positions;
 } cubo;
 
@@ -54,9 +48,122 @@ layout (std140, binding = 4) buffer RadianceIntervalUBO {
     vec4[] intervals;
 } riubo;
 
+struct PointLight
+{
+	vec3 diffuseColor;
+	float diffusePower;
+	vec3 specularColor;
+	float specularPower;
+	vec3 position;
+	float pad0[1];
+	vec3 attenuation;
+	float pad1[1];
+};
+
+layout(std430, set = 0, binding = 6) readonly buffer PointLightsData
+{
+	int pointLightCount;
+	PointLight pointLights[];
+};
+
+struct DirectionalLight
+{
+	vec3 diffuseColor;
+	float diffusePower;
+	vec3 specularColor;
+	float specularPower;
+	vec3 direction;
+	float pad0[1];
+};
+
+layout(std430, set = 0, binding = 7) readonly buffer DirectionalLightsData
+{
+	int directionalLightCount;
+	DirectionalLight directionalLights[];
+};
+
+layout(push_constant, std430) uniform pc
+{
+    vec3 viewPos;
+};
+
+struct LightingResult
+{
+	vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+void applySinglePointLight(inout LightingResult fragLighting, in PointLight pointLight, in vec3 p, in vec3 normal)
+{
+	const vec3 fragPosToLightPos = pointLight.position - p;
+	const float lightDist = length(fragPosToLightPos);
+	const vec3 lightDir = fragPosToLightPos / lightDist;
+
+	// Ray Query for shadow
+	vec3  origin    = p;
+	vec3  direction = lightDir;  // vector to light
+	float tMin      = 0.01f;
+	float tMax      = lightDist;
+
+	// Initializes a ray query object but does not start traversal
+	rayQueryEXT rayQuery;
+	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+	// Start traversal: return false if traversal is complete
+	while(rayQueryProceedEXT(rayQuery))
+	{
+	}
+
+	// Returns type of committed (true) intersection
+	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	{
+		return;
+	}
+
+	const vec3 lightAttenuationWeights = vec3(1.0, lightDist, lightDist * lightDist);
+
+	// Get attenuation (c + l * d + q * d^2)
+	const float diffuseAttenuation = dot(pointLight.attenuation, lightAttenuationWeights);
+
+	float diffuseIntensity = max(dot(normal, lightDir), 0.0);
+	fragLighting.diffuse += diffuseIntensity * pointLight.diffuseColor * pointLight.diffusePower / diffuseAttenuation;
+	fragLighting.specular += vec3(0.0);
+}
+
+void applySingleDirectionalLight(inout LightingResult fragLighting, in DirectionalLight directionalLight, in vec3 p, in vec3 normal)
+{
+	vec3 lightDir = normalize(directionalLight.direction);
+
+	// Ray Query for shadow
+	vec3  origin    = p;
+	vec3  direction = lightDir;  // vector to light
+	float tMin      = 0.01f;
+	float tMax      = 999.0f;
+
+	// Initializes a ray query object but does not start traversal
+	rayQueryEXT rayQuery;
+	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+	// Start traversal: return false if traversal is complete
+	while(rayQueryProceedEXT(rayQuery))
+	{
+	}
+
+	// Returns type of committed (true) intersection
+	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	{
+		return;
+	}
+
+	float diff = max(dot(normal, lightDir), 0.0);
+	fragLighting.diffuse += diff * directionalLight.diffuseColor * directionalLight.diffusePower;
+	fragLighting.specular += vec3(0.0);
+}
+
 // raycasting to detect incoming radiance to a point p (and detect transparency)
 // R(p, w)
-vec4 raycasting_function(vec2 p, vec2 dir, float len)
+vec4 raycasting_function(vec3 p, vec3 dir, float len)
 {
     // taken from https://www.shadertoy.com/view/mtlBzX
     int n = int(gl_WorkGroupID.x);
@@ -65,38 +172,42 @@ vec4 raycasting_function(vec2 p, vec2 dir, float len)
     float tMax = t1 * float(1 << 2 * n);
     tMax = tMax - tMin;
 
-    float stepSize = len / float(paramsubo.maxRayIterationCount);
-    vec2 sampledStep = p;
+    // Ray Query for shadow
+    vec3  origin    = p;
+    vec3  direction = dir;
 
-	vec4 incomingRadiance = vec4(0.0);
-	for (int i = 0; i < paramsubo.maxRayIterationCount + 1; ++i)
-	{
-		// incoming radiance (direct lighting)
-		// in flatland, the incoming radiance is the color of the render texture
-		// in 3D it would be the lighting value of the hit surface
-		// the raycasting function may use a quadtree or octree to
-		// process through the ray in a scene independent manner
-		vec4 directLighting = texture(baseImage, sampledStep);
-		// directLighting.a == 1.0 : opaque (raycast hit)
-		// directLighting.a == 0.0 : transparent (raycast miss)
-        float hit = step(0.5, directLighting.a);
-        
-		incomingRadiance = directLighting * hit;
-        // radiance.a == 1.0 : transparent (transparency value)
-        // radiance.a == 0.0 : opaque
-        incomingRadiance.a = 1.0 - hit;
-        
-        sampledStep += dir * stepSize * (1.0 - hit); // only move step if hit failed
+    // Initializes a ray query object but does not start traversal
+    rayQueryEXT rayQuery;
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+    
+    // Start traversal: return false if traversal is complete
+    while(rayQueryProceedEXT(rayQuery))
+    {
+    }
 
-        if (hit == 1.0)
-            break;
-	}
+    vec4 incomingRadiance = vec4(0.0);
+    // Returns type of committed (true) intersection
+    if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+    {
+        vec3 pos[3];
+        rayQueryGetIntersectionTriangleVertexPositionsEXT(rayQuery, true, pos);
+    
+        vec3 normal = cross(pos[1] - pos[0], pos[2] - pos[0]);
+        vec3 p = (pos[0] + pos[1] + pos[2]) / 3.0;
+    
+        LightingResult result;
+        for (int i = 0; i < pointLightCount; i++)
+        {
+            applySinglePointLight(result, pointLights[i], p, normal);
+        }
+    
+        for (int i = 0; i < directionalLightCount; i++)
+        {
+            applySingleDirectionalLight(result, directionalLights[i], p, normal);
+        }
+        incomingRadiance = vec4(result.diffuse + result.specular, 1.0);
+    }
     return incomingRadiance;
-}
-
-vec4 probe_encode_radiance(inout probe p, in int intervalIndex, in int intervalCount, in float intervalLength, in float intervalOffset)
-{
-    return vec4(1.0);
 }
 
 // the cascades are managed by the dispatch (work group)
@@ -151,17 +262,30 @@ void main()
         probe p;
 	    p.position = cubo.positions[probeIndex].position;
 
-        for (int j = 0; j < intervalCount; ++j)
+        // index of interval is offsetted by the number of intervals before hand
+        // the number of intervals per probes in the previous cascades
+        // the strides are intervalCount length
+        int intervalProbeIndex = intervalIndexOffset + ii * intervalCount;
+
+        for (int j = 0; j < int(sqrt(intervalCount)); j++)
         {
-            // index of interval is offsetted by the number of intervals before hand
-            // the number of intervals per probes in the previous cascades
-            // the strides are intervalCount length
-            int intervalProbeIndex = intervalIndexOffset + ii * intervalCount;
-        
-	        vec4 radianceInterval = probe_encode_radiance(p, j, intervalCount, intervalLength, intervalOffset);
-        
-            int intervalIndex = intervalProbeIndex + j;
-            riubo.intervals[intervalIndex] = radianceInterval;
+            float phi = M_PI * float(j + 1) / float(sqrt(intervalCount));
+            for (int k = 0; k < int(sqrt(intervalCount))/2; k++)
+            {
+                float theta = 2.0 * M_PI * float(k) / float(int(sqrt(intervalCount))/2);
+                float x = sin(phi) * cos(theta);
+                float y = cos(phi);
+                float z = sin(phi) * sin(theta);
+
+                vec3 dir = vec3(x, y, z);
+                // radiance interval
+                vec4 interval = raycasting_function(p.position + dir * intervalOffset, dir, intervalLength);
+
+                int intervalIndex = intervalProbeIndex + k;
+                riubo.intervals[intervalIndex] = interval;
+            }
         }
+    
+        
     }
 }

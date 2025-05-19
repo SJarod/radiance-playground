@@ -139,6 +139,7 @@ class BasePipelineBuilder
     {
         m_uniformDescriptorPacks.push_back(desc);
     }
+    void addPushConstantRange(VkPushConstantRange pushConstantRange);
     // TODO : move to PipelineBuilder<PipelineTypeE::GRAPHICS>
     void setRenderPass(const RenderPass *a)
     {
@@ -218,7 +219,6 @@ template <> class PipelineBuilder<PipelineTypeE::GRAPHICS> : public BasePipeline
     void addVertexShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addFragmentShaderStage(const char *shaderName, const char *entryPoint = "main");
     void addDynamicState(VkDynamicState state);
-    void addPushConstantRange(VkPushConstantRange pushConstantRange);
     void setDrawTopology(VkPrimitiveTopology topology, bool bPrimitiveRestartEnable = false);
     void setExtent(VkExtent2D extent);
     void setDepthClampEnable(VkBool32 a)

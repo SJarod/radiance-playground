@@ -5,6 +5,7 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 
+#include "graphics/buffer.hpp"
 #include "graphics/context.hpp"
 #include "graphics/device.hpp"
 #include "graphics/pipeline.hpp"
@@ -115,6 +116,30 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
     GraphRC3DRT *rg = dynamic_cast<GraphRC3DRT *>(renderGraph);
     // load objects into render graph
     {
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::PointLightContainer));
+            bb.setDevice(device);
+            bb.setName("compute shader Point Light Container Uniform Buffer");
+            m_pointLightSSBO = bb.build();
+
+            m_pointLightSSBOMapped.resize(frameInFlightCount);
+            m_pointLightSSBO->mapMemory(m_pointLightSSBOMapped.data());
+        }
+        {
+            BufferBuilder bb;
+            BufferDirector bd;
+            bd.configureStorageBufferBuilder(bb);
+            bb.setSize(sizeof(RenderStateABC::DirectionalLightContainer));
+            bb.setDevice(device);
+            bb.setName("compute shader Directional Light Container Uniform Buffer");
+            m_dirLightSSBO = bb.build();
+
+            m_dirLightSSBOMapped.resize(frameInFlightCount);
+            m_dirLightSSBO->mapMemory(m_dirLightSSBOMapped.data());
+        }
 
         // material
         UniformDescriptorBuilder phongInstanceUdb;
@@ -137,18 +162,6 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         });
         phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 4,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = maxProbeCount,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 5,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        phongInstanceUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
             .binding = 6,
             .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
             .descriptorCount = 1,
@@ -166,7 +179,7 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("phong");
-        phongPb.addFragmentShaderStage("phongrt");
+        phongPb.addFragmentShaderStage("phong_simple_rt");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -204,14 +217,13 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
             mrsb.setDevice(device);
             mrsb.setModel(m_objects[i]);
+            mrsb.setProbeDescriptorEnable(false);
 
             mrsb.setPipeline(phongPipeline);
 
@@ -239,6 +251,9 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
+
+        rg->m_opaquePhase->generateBottomLevelAS();
+        rg->m_opaquePhase->generateTopLevelAS();
 
         UniformDescriptorBuilder probeGridDebugUdb;
         probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
@@ -462,13 +477,6 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             pb.setDevice(device);
             pb.addComputeShaderStage("radiance_gather_rt");
             UniformDescriptorBuilder udb;
-            // rendered image
-            udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-                .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 1,
-                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-            });
             udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
                 .binding = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -502,18 +510,40 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                 .descriptorCount = 1,
                 .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             });
+            udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 6,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+            });
+            udb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 7,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+            });
             pb.addUniformDescriptorPack(udb.buildAndRestart());
+            pb.addPushConstantRange(VkPushConstantRange{
+                .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+                .offset = 0,
+                .size = 16,
+            });
             ComputeStateBuilder csb;
             csb.setDevice(device);
             csb.setFrameInFlightCount(frameInFlightCount);
-            csb.setPipeline(pb.build());
-            csb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            std::shared_ptr<Pipeline> computePipeline = pb.build();
+            csb.setPipeline(computePipeline);
+
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
             csb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+            csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+            csb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
             auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
             if (!s.empty())
             {
@@ -523,25 +553,14 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             csb.setDescriptorSetUpdatePredPerFrame([=](const RenderPhase *parentPhase, VkCommandBuffer cmd,
                                                        const GPUStateI *self, const VkDescriptorSet set,
                                                        uint32_t backBufferIndex) {
-                const auto &sampler = window->getSwapChain()->getSampler();
-                if (!sampler.has_value())
-                    return;
+                const Transform &cameraTransform = getMainCamera()->getTransform();
+                float data[3] = {cameraTransform.position.x, cameraTransform.position.y, cameraTransform.position.z};
 
-                VkDescriptorImageInfo imageInfo = {
-                    .sampler = *sampler.value(),
-                    .imageView = rg->m_finalImageDirect->getMostRecentRenderedImage().second,
-                    .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                };
-                std::vector<VkWriteDescriptorSet> writes;
-                writes.push_back(VkWriteDescriptorSet{
-                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                    .dstSet = set,
-                    .dstBinding = 0,
-                    .dstArrayElement = 0,
-                    .descriptorCount = 1,
-                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    .pImageInfo = &imageInfo,
-                });
+                uint32_t offset = 0;
+                uint32_t size = 16;
+
+                vkCmdPushConstants(cmd, computePipeline->getPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, offset, size,
+                                   data);
 
                 auto tlas = rg->m_opaquePhase->getTLAS();
                 VkWriteDescriptorSetAccelerationStructureKHR descASInfo = {
@@ -549,6 +568,7 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                     .accelerationStructureCount = static_cast<uint32_t>(tlas.size()),
                     .pAccelerationStructures = tlas.data(),
                 };
+                std::vector<VkWriteDescriptorSet> writes;
                 writes.push_back(VkWriteDescriptorSet{
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .pNext = &descASInfo,
@@ -626,6 +646,38 @@ void SceneRC3DRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
                                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                 .dstSet = set,
                                 .dstBinding = 4,
+                                .dstArrayElement = 0,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &bufferInfo,
+                            });
+                        }
+                        {
+                            VkDescriptorBufferInfo bufferInfo = {
+                                .buffer = m_pointLightSSBO->getHandle(),
+                                .offset = 0,
+                                .range = m_pointLightSSBO->getSize(),
+                            };
+                            writes.push_back(VkWriteDescriptorSet{
+                                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = set,
+                                .dstBinding = 6,
+                                .dstArrayElement = 0,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &bufferInfo,
+                            });
+                        }
+                        {
+                            VkDescriptorBufferInfo bufferInfo = {
+                                .buffer = m_dirLightSSBO->getHandle(),
+                                .offset = 0,
+                                .range = m_dirLightSSBO->getSize(),
+                            };
+                            writes.push_back(VkWriteDescriptorSet{
+                                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = set,
+                                .dstBinding = 7,
                                 .dstArrayElement = 0,
                                 .descriptorCount = 1,
                                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,

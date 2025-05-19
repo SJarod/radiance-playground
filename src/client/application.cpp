@@ -83,6 +83,7 @@ Application::Application()
         db.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
         db.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         db.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        db.addDeviceExtension(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
         m_devices.emplace_back(db.build());
         if (m_devices.back()->isDiscrete())
         {
@@ -255,7 +256,7 @@ int Application::displayImgui()
 #include "scenes/radiance_cascades/scene_rc3d.hpp"
 #include "scenes/radiance_cascades/scene_rc3drt.hpp"
 
-static int sceneIndex = 1;
+static int sceneIndex = 4;
 constexpr int sceneCount = 5;
 
 int Application::runLoop()

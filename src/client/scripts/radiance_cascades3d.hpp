@@ -61,7 +61,6 @@ class RadianceCascades3D : public ScriptableABC
     struct probe
     {
         glm::vec3 position;
-        float pad;
     };
 
     struct cascade_desc

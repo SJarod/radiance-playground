@@ -118,7 +118,7 @@ class GPUStateI
  */
 class RenderStateABC : public GPUStateI
 {
-  protected:
+  public:
     struct ProbeContainer
     {
         struct Probe
@@ -177,6 +177,7 @@ class RenderStateABC : public GPUStateI
         glm::mat4 proj;
     };
 
+  protected:
     std::weak_ptr<Device> m_device;
 
     std::shared_ptr<Pipeline> m_pipeline;

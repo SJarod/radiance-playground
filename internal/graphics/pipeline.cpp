@@ -181,7 +181,7 @@ void PipelineBuilder<PipelineTypeE::GRAPHICS>::addDynamicState(VkDynamicState st
     m_dynamicStates.emplace_back(state);
 }
 
-void PipelineBuilder<PipelineTypeE::GRAPHICS>::addPushConstantRange(VkPushConstantRange pushConstantRange)
+void BasePipelineBuilder::addPushConstantRange(VkPushConstantRange pushConstantRange)
 {
     m_pushConstantRanges.push_back(pushConstantRange);
 }
