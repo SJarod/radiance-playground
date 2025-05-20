@@ -158,6 +158,8 @@ std::unique_ptr<Texture> CubemapBuilder::buildAndRestart()
             size_t cursor = 0u;
             for (int i = 0; i < filepath.size(); i++)
             {
+                stbi_set_flip_vertically_on_load(false);
+
                 const char *currentFilepath = filepath[i].c_str();
                 int texWidth, texHeight, texChannels;
                 stbi_uc *textureData = stbi_load(currentFilepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
