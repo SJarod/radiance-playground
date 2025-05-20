@@ -68,7 +68,22 @@ class ContextBuilder
         restart();
     }
 
-    void addLayer(const char *layer)
+    void addLayerIfAvailable(const char *layer)
+    {
+        uint32_t count;
+        vkEnumerateInstanceLayerProperties(&count, nullptr);
+        std::vector<VkLayerProperties> props(count);
+        vkEnumerateInstanceLayerProperties(&count, props.data());
+        for (int i = 0; i < count; ++i)
+        {
+            if (std::strcmp(props[i].layerName, layer))
+            {
+                addLayerForce(layer);
+                return;
+            }
+        }
+    }
+    void addLayerForce(const char *layer)
     {
         m_layers.push_back(layer);
         m_product->m_layers.push_back(layer);

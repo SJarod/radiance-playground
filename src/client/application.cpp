@@ -55,10 +55,10 @@ Application::Application()
     glfwSetKeyCallback(m_window->getHandle(), InputManager::KeyCallback);
     ContextBuilder cb;
 #ifndef NDEBUG
-    cb.addLayer("VK_LAYER_KHRONOS_validation");
+    cb.addLayerForce("VK_LAYER_KHRONOS_validation");
 #endif
-    cb.addLayer("VK_LAYER_LUNARG_monitor");
-    cb.addLayer("VK_LAYER_KHRONOS_synchronization2");
+    cb.addLayerIfAvailable("VK_LAYER_LUNARG_monitor");
+    cb.addLayerIfAvailable("VK_LAYER_KHRONOS_synchronization2");
     cb.addInstanceExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     cb.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     auto requireExtensions = m_window->getRequiredExtensions();
@@ -256,7 +256,7 @@ int Application::displayImgui()
 #include "scenes/radiance_cascades/scene_rc3d.hpp"
 #include "scenes/radiance_cascades/scene_rc3drt.hpp"
 
-static int sceneIndex = 4;
+static int sceneIndex = 0;
 constexpr int sceneCount = 5;
 
 int Application::runLoop()
@@ -339,6 +339,8 @@ int Application::runLoop()
         grid = sc->m_grid0;
 
     CameraABC *mainCamera = m_scene->getMainCamera();
+
+    vkDeviceWaitIdle(m_discreteDevice->getHandle());
 
     m_scene->beginSimulation();
     while (!m_window->shouldClose())
