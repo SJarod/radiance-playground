@@ -24,6 +24,7 @@
 
 #include "render_graphs/global_illumination_with_irradiance_probes/graph_g2iprt.hpp"
 
+#include "scripts/debug_camera.hpp"
 #include "scripts/move_camera.hpp"
 
 #include "wsi/window.hpp"
@@ -31,7 +32,7 @@
 #include "scene_g2iprt.hpp"
 
 void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                         RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+                       RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -48,6 +49,13 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         };
         moveCameraScript->init(&userData);
         m_scripts.emplace_back(std::move(moveCameraScript));
+
+        auto debugCameraScript = std::make_unique<DebugCamera>();
+        auto debugCameraData = DebugCamera::UserDataT{
+            .camera = *m_mainCamera,
+        };
+        debugCameraScript->init(&debugCameraData);
+        m_scripts.emplace_back(std::move(debugCameraScript));
 
         TextureDirector td;
 
@@ -77,8 +85,8 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         m_objects.push_back(loadedModel);
         std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
-        light->position = glm::vec3(-4.0, 1.0, 0.0);
-        light->attenuation = glm::vec3(0.0, 0.2, 0.0);
+        light->position = glm::vec3(-25.0, 1.0, 0.0);
+        light->attenuation = glm::vec3(0.0, 0.0, 0.5);
         light->diffuseColor = glm::vec3(1.0, 0.0, 0.0);
         light->diffusePower = 5.0;
         light->specularColor = glm::vec3(1.0);
@@ -87,7 +95,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         std::shared_ptr<PointLight> light1 = std::make_shared<PointLight>();
         light1->position = glm::vec3(25.0, 1.0, 3.0);
-        light1->attenuation = glm::vec3(0.0, 0.2, 0.0);
+        light1->attenuation = glm::vec3(0.0, 0.0, 0.5);
         light1->diffuseColor = glm::vec3(0.0, 0.0, 1.0);
         light1->diffusePower = 5.0;
         light1->specularColor = glm::vec3(1.0);
@@ -95,12 +103,21 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         m_lights.push_back(light1);
 
         std::shared_ptr<DirectionalLight> light2 = std::make_shared<DirectionalLight>();
-        light2->direction = glm::vec3(1.0, 1.0, 1.0);
+        light2->direction = glm::vec3(2.0, 6.0, 1.0);
         light2->diffuseColor = glm::vec3(1.0, 1.0, 1.0);
         light2->diffusePower = 1.0;
         light2->specularColor = glm::vec3(1.0);
         light2->specularPower = 1.0;
         m_lights.push_back(light2);
+
+        std::shared_ptr<PointLight> light3 = std::make_shared<PointLight>();
+        light3->position = glm::vec3(0.0, 6.0, 0.0);
+        light3->attenuation = glm::vec3(0.0, 0.0, 0.5);
+        light3->diffuseColor = glm::vec3(0.0, 1.0, 0.5);
+        light3->diffusePower = 8.5;
+        light3->specularColor = glm::vec3(1.0);
+        light3->specularPower = 1.0;
+        m_lights.push_back(light3);
 
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
@@ -140,7 +157,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         modelBuilder2.setMesh(mesh2);
         modelBuilder2.setName("Planes");
 
-        m_objects.push_back(modelBuilder2.build());
+        // m_objects.push_back(modelBuilder2.build());
 
         MeshBuilder sphereMb;
         md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
@@ -154,7 +171,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         Transform sphereTransform = sphereModel->getTransform();
         sphereTransform.position = glm::vec3(1.f, 1.f, 0.f);
         sphereModel->setTransform(sphereTransform);
-        m_objects.push_back(sphereModel);
+        // m_objects.push_back(sphereModel);
 
         MeshBuilder cubeMb;
         md.createAssimpMeshBuilder(cubeMb);
@@ -166,7 +183,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         cubeModelBuilder.setMesh(cubeMesh);
         cubeModelBuilder.setName("Cube");
 
-        m_objects.push_back(cubeModelBuilder.build());
+        // m_objects.push_back(cubeModelBuilder.build());
     }
 
     GraphG2IPRT *rg = dynamic_cast<GraphG2IPRT *>(renderGraph);
@@ -572,7 +589,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         // probes
         ProbeGridBuilder gridBuilder;
-        const glm::vec3 extent = glm::vec3(60.f, 10.f, 20.f);
+        const glm::vec3 extent = glm::vec3(60.f, 20.f, 20.f);
         const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, 0.f, extent.z * -0.5f);
         gridBuilder.setXAxisProbeCount(4u);
         gridBuilder.setYAxisProbeCount(4u);

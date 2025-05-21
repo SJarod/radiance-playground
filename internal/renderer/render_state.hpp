@@ -151,7 +151,7 @@ class RenderStateABC : public GPUStateI
         };
 
         int pointLightCount;
-        alignas(16) PointLight pointLights[2];
+        alignas(16) PointLight pointLights[8];
     };
 
     struct DirectionalLightContainer
