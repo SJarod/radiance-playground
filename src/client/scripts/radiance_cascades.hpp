@@ -27,7 +27,7 @@ class RadianceCascades : public ScriptableABC
     const int m_maxProbeCount = 16 * 16;
     // q = discrete value count will be doubled every cascade
     // number of radiance intervals for the probes from first cascade
-    const int m_minDiscreteValueCount = 32;
+    const int m_minDiscreteValueCount = 8;
     // dw = radiance interval length will be doubled every cascade
     // taken from https://www.shadertoy.com/view/mtlBzX
     const float m_minRadianceintervalLength =

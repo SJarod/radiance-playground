@@ -141,17 +141,25 @@ int[4] get_surrounding_probe_indices_from_uv(vec2 uv, int cascadeIndex)
 vec4 radiance_apply(in vec2 uv)
 {
     // all intervals squashed together
-	vec4 totalRadiance = vec4(0.0);
-    
+    vec4 totalRadiance = vec4(0.0);
+
     int lastCascadeIndex = paramsubo.maxCascadeCount - 1;
     cascade_desc lastDesc = cdubo.descs[lastCascadeIndex];
-    
+
+    vec4 collapsed0 = vec4(0.0);
+    vec4 collapsed1 = vec4(0.0);
+    vec4 collapsed2 = vec4(0.0);
+    vec4 collapsed3 = vec4(0.0);
+
     // max number of interval
     // iterating on the intervals from probes of the last cascade
     for (int i = 0; i < lastDesc.q; ++i)
     {
-        float transparency = 1.0;
-        vec4 mergedRadiance = vec4(0.0);
+        // collapsed intervals
+        vec4 interval0 = vec4(vec3(0.0), 1.0);
+        vec4 interval1 = vec4(vec3(0.0), 1.0);
+        vec4 interval2 = vec4(vec3(0.0), 1.0);
+        vec4 interval3 = vec4(vec3(0.0), 1.0);
 
         // number of cascades
         // merging intervals from different cascade
@@ -159,39 +167,51 @@ vec4 radiance_apply(in vec2 uv)
         {
             // computing the right interval index in function of
             // the wanted final interval and the cascade index
-            int intervalIndex = i / (1 << (paramsubo.maxCascadeCount- 1 - j));
+            int qdiff = lastDesc.q / cdubo.descs[j].q;
+            int intervalIndex = i / qdiff;
 
             int[4] probeIndices = get_surrounding_probe_indices_from_uv(uv, j);
-            cascade_desc desc = cdubo.descs[j];
             
-            probe p0, p1, p2, p3;
-            p0.position = retrieve_probe_position(j, probeIndices[0]);
-            p1.position = retrieve_probe_position(j, probeIndices[1]);
-            p2.position = retrieve_probe_position(j, probeIndices[2]);
-            p3.position = retrieve_probe_position(j, probeIndices[3]);
+            vec4 r0 = retrieve_radiance_interval(j, probeIndices[0], intervalIndex);
+            vec4 r1 = retrieve_radiance_interval(j, probeIndices[1], intervalIndex);
+            vec4 r2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex);
+            vec4 r3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex);
 
-            // range of position between probes
-            float xrange = p2.position.x - p0.position.x;
-            float yrange = p1.position.y - p0.position.y;
-            // linear interpolation between the probes (two values in 2D)
-            // (three values in 3D)
-            float lerpx = (uv.x - p0.position.x) / xrange;
-            float lerpy = (uv.y - p0.position.y) / yrange;
-
-            vec4 interval0 = retrieve_radiance_interval(j, probeIndices[0], intervalIndex);
-            vec4 interval1 = retrieve_radiance_interval(j, probeIndices[1], intervalIndex);
-            vec4 interval2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex);
-            vec4 interval3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex);
-            
-            vec4 bilerped = bilerp(interval0, interval1, interval2, interval3, vec2(lerpy, lerpx));
-            mergedRadiance += bilerped * transparency;
-            
-            // save current transparency for next cascade
-            transparency *= bilerped.a;
+            interval0 += vec4(interval0.a * r0.rgb, r0.a);
+            interval1 += vec4(interval1.a * r1.rgb, r1.a);
+            interval2 += vec4(interval2.a * r2.rgb, r2.a);
+            interval3 += vec4(interval3.a * r3.rgb, r3.a);
         }
-        totalRadiance += mergedRadiance;
+
+        collapsed0 += interval0;
+        collapsed1 += interval1;
+        collapsed2 += interval2;
+        collapsed3 += interval3;
     }
-	return totalRadiance / float(lastDesc.q) * paramsubo.lightIntensity;
+    collapsed0 = (collapsed0 / float(lastDesc.q)) * paramsubo.lightIntensity;
+    collapsed1 = (collapsed1 / float(lastDesc.q)) * paramsubo.lightIntensity;
+    collapsed2 = (collapsed2 / float(lastDesc.q)) * paramsubo.lightIntensity;
+    collapsed3 = (collapsed3 / float(lastDesc.q)) * paramsubo.lightIntensity;
+
+    int[4] probeIndices = get_surrounding_probe_indices_from_uv(uv, 0);
+    
+    probe p0, p1, p2, p3;
+    p0.position = retrieve_probe_position(0, probeIndices[0]);
+    p1.position = retrieve_probe_position(0, probeIndices[1]);
+    p2.position = retrieve_probe_position(0, probeIndices[2]);
+    p3.position = retrieve_probe_position(0, probeIndices[3]);
+
+    // range of position between probes
+    float xrange = p2.position.x - p0.position.x;
+    float yrange = p1.position.y - p0.position.y;
+    // linear interpolation between the probes (two values in 2D)
+    // (three values in 3D)
+    float lerpx = (uv.x - p0.position.x) / xrange;
+    float lerpy = (uv.y - p0.position.y) / yrange;
+
+    //return vec4(p3.position, 0.0, 1.0);
+    return bilerp(collapsed0, collapsed1, collapsed2, collapsed3, vec2(lerpy, lerpx));
+    //return bilerp(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0), vec4(1.0, 0.0, 1.0, 0.0), vec2(lerpy, lerpx));
 }
 
 /// PROBE VISUALIZATION
