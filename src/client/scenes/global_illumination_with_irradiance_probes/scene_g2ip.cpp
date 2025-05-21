@@ -336,7 +336,7 @@ void SceneG2IP::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
 
         PipelineBuilder<PipelineTypeE::GRAPHICS> environmentMapPb;
         environmentMapPb.setDevice(device);
-        environmentMapPb.addVertexShaderStage("g2ip/nvironment_map");
+        environmentMapPb.addVertexShaderStage("g2ip/environment_map");
         environmentMapPb.addFragmentShaderStage("g2ip/environment_map");
         environmentMapPb.setRenderPass(rg->m_skyboxPhase->getRenderPass());
         environmentMapPb.setExtent(window->getSwapChain()->getExtent());
