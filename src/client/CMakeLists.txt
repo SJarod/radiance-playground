@@ -5,6 +5,8 @@ add_library(${component} STATIC "")
 target_sources(${component}
     PRIVATE
 
+    scripts/debug_camera.hpp
+    scripts/debug_camera.cpp
     scripts/move_camera.hpp
     scripts/move_camera.cpp
     scripts/probes.hpp
