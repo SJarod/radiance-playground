@@ -42,20 +42,52 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         m_cameras.emplace_back(std::make_unique<PerspectiveCamera>());
         m_mainCamera = m_cameras[m_cameras.size() - 1].get();
 
-        auto moveCameraScript = std::make_unique<MoveCamera>();
-        auto userData = MoveCamera::UserDataT{
-            .window = *window,
-            .camera = *m_mainCamera,
-        };
-        moveCameraScript->init(&userData);
-        m_scripts.emplace_back(std::move(moveCameraScript));
+        {
+            MeshDirector md;
+            MeshBuilder sphereMb;
+            md.createSphereMeshBuilder(sphereMb, 1.f, 50, 50);
+            sphereMb.setDevice(device);
+            std::shared_ptr<Mesh> sphereMesh = sphereMb.buildAndRestart();
+            const std::vector<unsigned char> imagePixels = {
+                255,
+                255,
+                255,
+                255,
+            };
+            TextureBuilder tb;
+            TextureDirector td;
+            td.configureSRGBTextureBuilder(tb);
+            tb.setDevice(device);
+            tb.setImageData(imagePixels);
+            tb.setWidth(1);
+            tb.setHeight(1);
+            tb.setName("Square texture 4 color");
+            sphereMesh->setTexture(tb.buildAndRestart());
+            ModelBuilder sphereModelBuilder;
+            sphereModelBuilder.setMesh(sphereMesh);
+            sphereModelBuilder.setName("Sphere");
+            std::shared_ptr<Model> sphereModel = sphereModelBuilder.build();
+            Transform sphereTransform = sphereModel->getTransform();
+            sphereTransform.position = glm::vec3(1.f, 1.f, 0.f);
+            sphereModel->setTransform(sphereTransform);
+            m_objects.push_back(sphereModel);
 
-        auto debugCameraScript = std::make_unique<DebugCamera>();
-        auto debugCameraData = DebugCamera::UserDataT{
-            .camera = *m_mainCamera,
-        };
-        debugCameraScript->init(&debugCameraData);
-        m_scripts.emplace_back(std::move(debugCameraScript));
+            auto moveCameraScript = std::make_unique<MoveCamera>();
+            auto userData = MoveCamera::UserDataT{
+                .window = *window,
+                .camera = *m_mainCamera,
+            };
+            moveCameraScript->init(&userData);
+            m_scripts.emplace_back(std::move(moveCameraScript));
+
+            auto debugCameraScript = std::make_unique<DebugCamera>();
+            auto debugCameraData = DebugCamera::UserDataT{
+                .camera = *m_mainCamera,
+                .sphere = sphereModel,
+            };
+            debugCameraScript->init(&debugCameraData);
+            m_scripts.emplace_back(std::move(debugCameraScript));
+        }
 
         TextureDirector td;
 
@@ -76,48 +108,51 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         ModelBuilder modelBuilder;
         modelBuilder.setDevice(device);
-        modelBuilder.setModelFilename("assets/Sponza-master/sponza.glb");
+        modelBuilder.setModelFilename("assets/cornell/cornell.gltf");
         modelBuilder.setName("Sponza");
         std::shared_ptr<Model> loadedModel = modelBuilder.build();
         Transform loadedModelTransform;
-        loadedModelTransform.scale = glm::vec3(0.025f);
+        loadedModelTransform.position = glm::vec3(0.f, 10.f, -12.f);
+        loadedModelTransform.rotation = glm::radians(glm::vec3(90.f, 0.f, 0.f));
+        loadedModelTransform.scale = glm::vec3(0.25f);
+
         loadedModel->setTransform(loadedModelTransform);
 
         m_objects.push_back(loadedModel);
         std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
-        light->position = glm::vec3(-25.0, 1.0, 0.0);
-        light->attenuation = glm::vec3(0.0, 0.0, 0.5);
-        light->diffuseColor = glm::vec3(1.0, 0.0, 0.0);
-        light->diffusePower = 5.0;
+        light->position = glm::vec3(0.f, 17.0, 0.0);
+        light->attenuation = glm::vec3(0.0, 1.0, 0.0);
+        light->diffuseColor = glm::vec3(1.0);
+        light->diffusePower = 9.0;
         light->specularColor = glm::vec3(1.0);
         light->specularPower = 1.0;
         m_lights.push_back(light);
 
         std::shared_ptr<PointLight> light1 = std::make_shared<PointLight>();
-        light1->position = glm::vec3(25.0, 1.0, 3.0);
-        light1->attenuation = glm::vec3(0.0, 0.0, 0.5);
-        light1->diffuseColor = glm::vec3(0.0, 0.0, 1.0);
-        light1->diffusePower = 5.0;
+        light1->position = glm::vec3(10.0, 8.0, 9.0);
+        light1->attenuation = glm::vec3(0.0, 1.0, 0.0);
+        light1->diffuseColor = glm::vec3(1.0);
+        light1->diffusePower = 1.0;
         light1->specularColor = glm::vec3(1.0);
         light1->specularPower = 1.0;
-        m_lights.push_back(light1);
+        // m_lights.push_back(light1);
 
         std::shared_ptr<DirectionalLight> light2 = std::make_shared<DirectionalLight>();
         light2->direction = glm::vec3(2.0, 6.0, 1.0);
-        light2->diffuseColor = glm::vec3(1.0, 1.0, 1.0);
+        light2->diffuseColor = glm::vec3(0.f);
         light2->diffusePower = 1.0;
         light2->specularColor = glm::vec3(1.0);
         light2->specularPower = 1.0;
         m_lights.push_back(light2);
 
         std::shared_ptr<PointLight> light3 = std::make_shared<PointLight>();
-        light3->position = glm::vec3(0.0, 6.0, 0.0);
-        light3->attenuation = glm::vec3(0.0, 0.0, 0.5);
-        light3->diffuseColor = glm::vec3(0.0, 1.0, 0.5);
-        light3->diffusePower = 8.5;
+        light3->position = glm::vec3(-2.f, 6.0, 0.0);
+        light3->attenuation = glm::vec3(0.0, 1.0, 0.f);
+        light3->diffuseColor = glm::vec3(1.0);
+        light3->diffusePower = 1.0;
         light3->specularColor = glm::vec3(1.0);
         light3->specularPower = 1.0;
-        m_lights.push_back(light3);
+        // m_lights.push_back(light3);
 
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f, 1.f}, {1.f, 0.f}},
@@ -141,15 +176,18 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         std::shared_ptr<Mesh> mesh2 = mb.buildAndRestart();
 
         const std::vector<unsigned char> imagePixels = {
-            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
+            255,
+            255,
+            255,
+            255,
         };
 
         TextureBuilder tb;
         td.configureSRGBTextureBuilder(tb);
         tb.setDevice(device);
         tb.setImageData(imagePixels);
-        tb.setWidth(2);
-        tb.setHeight(2);
+        tb.setWidth(1);
+        tb.setHeight(1);
         tb.setName("Square texture 4 color");
         mesh2->setTexture(tb.buildAndRestart());
 
@@ -172,18 +210,6 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         sphereTransform.position = glm::vec3(1.f, 1.f, 0.f);
         sphereModel->setTransform(sphereTransform);
         // m_objects.push_back(sphereModel);
-
-        MeshBuilder cubeMb;
-        md.createAssimpMeshBuilder(cubeMb);
-        cubeMb.setDevice(device);
-        cubeMb.setModelFilename("assets/cube.obj");
-        std::shared_ptr<Mesh> cubeMesh = cubeMb.buildAndRestart();
-
-        ModelBuilder cubeModelBuilder;
-        cubeModelBuilder.setMesh(cubeMesh);
-        cubeModelBuilder.setName("Cube");
-
-        // m_objects.push_back(cubeModelBuilder.build());
     }
 
     GraphG2IPRT *rg = dynamic_cast<GraphG2IPRT *>(renderGraph);
@@ -418,8 +444,8 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
         TextureDirector td;
         TextureBuilder tb;
         td.configureSRGBTextureBuilder(tb);
-        tb.setWidth(2);
-        tb.setHeight(2);
+        tb.setWidth(1);
+        tb.setHeight(1);
         tb.setImageData(defaultDiffusePixels);
         tb.setDevice(device);
         tb.setImageData(defaultDiffusePixels);
@@ -442,7 +468,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 #ifdef USE_NV_PRO_CORE
-            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1);
+            mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, m_objects.size());
 #else
             mrsb.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, m_objects.size());
 #endif
@@ -477,7 +503,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
             });
 
             // Check if the mesh is the quad, the sphere or the cube
-            if (i != 1 && i != 2 && i != 3)
+            if (true)
             {
                 mrsb.setEnvironmentMaps(rg->m_irradianceMaps);
                 mrsb.setPipeline(phongPipeline);
@@ -530,15 +556,6 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
                 rg->m_opaqueCapturePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(captureMrsb.build()));
             }
-            else
-            {
-                mrsb.setTextureDescriptorEnable(false);
-                mrsb.setProbeDescriptorEnable(false);
-                mrsb.setLightDescriptorEnable(false);
-                mrsb.setPipeline(environmentMapPipeline);
-
-                mrsb.setEnvironmentMaps(rg->m_irradianceMaps);
-            }
 
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
@@ -589,7 +606,7 @@ void SceneG2IPRT::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, 
 
         // probes
         ProbeGridBuilder gridBuilder;
-        const glm::vec3 extent = glm::vec3(60.f, 20.f, 20.f);
+        const glm::vec3 extent = glm::vec3(20.f, 20.f, 20.f);
         const glm::vec3 cornerPosition = glm::vec3(extent.x * -0.5f, 0.f, extent.z * -0.5f);
         gridBuilder.setXAxisProbeCount(4u);
         gridBuilder.setYAxisProbeCount(4u);

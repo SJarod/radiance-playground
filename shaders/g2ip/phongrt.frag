@@ -236,7 +236,7 @@ void applyImageBasedIrradiance(inout LightingResult fragLighting, in vec3 normal
 	vec3 interpIrradiance = trilerpClamped(irradiance000, irradiance100, irradiance010, irradiance110,
 										   irradiance001, irradiance101, irradiance011, irradiance111, t);
 
-	fragLighting.diffuse += interpIrradiance;
+	fragLighting.ambient = interpIrradiance * 2.0;
 	//fragLighting.diffuse += clamp(interpIrradiance, 0.0, 1.0);
 	fragLighting.specular += vec3(0.0);
 }

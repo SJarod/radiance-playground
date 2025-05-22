@@ -1,6 +1,9 @@
+#include <chrono>
 #include <iostream>
 
 #include "engine/camera.hpp"
+
+#include "renderer/model.hpp"
 
 #include "input_manager.hpp"
 
@@ -13,6 +16,7 @@ static float tt = 0.f;
 void DebugCamera::init(void *userData)
 {
     m_mainCamera = &((UserDataT *)userData)->camera;
+    m_sphere = ((UserDataT *)userData)->sphere;
 }
 void DebugCamera::begin()
 {
@@ -157,4 +161,23 @@ void DebugCamera::update(float deltaTime)
     {
         tt = 0.f;
     }
+
+    if (InputManager::GetKeyUp(Keycode::F2))
+    {
+        Transform t;
+        t.position = glm::vec3(-0.062298, -10.194022, -46.967270);
+        t.position = glm::vec3(0.f, -9.5f, -45.0);
+        t.rotation = glm::quat(glm::vec3(0.f));
+        t.scale = glm::vec3(1.f);
+        m_mainCamera->setTransform(t);
+    }
+
+    const std::chrono::duration<double> now = std::chrono::steady_clock::now().time_since_epoch();
+    double a = now.count();
+
+    Transform t;
+    t.position = glm::vec3(std::sin(a * 0.75f) * 8.5f, 16.0, 1.0);
+    t.rotation = m_sphere->getTransform().rotation;
+    t.scale = glm::vec3(3.5f);
+    m_sphere->setTransform(t);
 }
