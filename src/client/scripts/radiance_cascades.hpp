@@ -11,6 +11,7 @@
 #include "engine/scriptable.hpp"
 
 class Device;
+class Model;
 
 class RadianceCascades : public ScriptableABC
 {
@@ -20,6 +21,10 @@ class RadianceCascades : public ScriptableABC
         std::weak_ptr<Device> device;
         uint32_t frameInFlightCount;
     };
+    std::shared_ptr<Model> redCube;
+    std::shared_ptr<Model> greenCube;
+    std::shared_ptr<Model> blueCube;
+    std::shared_ptr<Model> blackCube;
 
   private:
     const int m_maxCascadeCount = 3;
@@ -27,7 +32,7 @@ class RadianceCascades : public ScriptableABC
     const int m_maxProbeCount = 16 * 16;
     // q = discrete value count will be doubled every cascade
     // number of radiance intervals for the probes from first cascade
-    const int m_minDiscreteValueCount = 8;
+    const int m_minDiscreteValueCount = 16;
     // dw = radiance interval length will be doubled every cascade
     // taken from https://www.shadertoy.com/view/mtlBzX
     const float m_minRadianceintervalLength =

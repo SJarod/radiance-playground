@@ -30,7 +30,7 @@
 #include "scene_rc2d.hpp"
 
 void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                           RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+                     RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -45,14 +45,6 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             .scale = {1.f, 1.f, 1.f},
         });
         m_mainCamera->setNear(-1000.f);
-
-        auto radianceCascadesScript = std::make_unique<RadianceCascades>();
-        RadianceCascades::init_data init{
-            .device = device,
-            .frameInFlightCount = frameInFlightCount,
-        };
-        radianceCascadesScript->init(&init);
-        m_scripts.push_back(std::move(radianceCascadesScript));
 
         std::shared_ptr<PointLight> light = std::make_shared<PointLight>();
         light->position = glm::vec3(0.0, 0.25, 0.1);
@@ -72,58 +64,114 @@ void SceneRC2D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             0, 1, 2, 2, 3, 0,
         };
         MeshBuilder mb;
-        mb.setDevice(device);
-        mb.setVertices(vertices);
-        mb.setIndices(indices);
-        mb.setName("Square mesh");
-        std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
-
-        const std::vector<unsigned char> imagePixels = {
-            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 0, 255, 255,
-        };
         TextureBuilder tb;
         TextureDirector td;
-        td.configureSRGBTextureBuilder(tb);
-        tb.setDevice(device);
-        tb.setImageData(imagePixels);
-        tb.setWidth(2);
-        tb.setHeight(2);
-        tb.setName("Square texture 4 color");
-        mesh->setTexture(tb.buildAndRestart());
-
         {
+            mb.setDevice(device);
+            mb.setVertices(vertices);
+            mb.setIndices(indices);
+            mb.setName("RED");
+            std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
+            td.configureSRGBTextureBuilder(tb);
+            tb.setDevice(device);
+            tb.setImageData(std::vector<unsigned char>{199, 0, 76});
+            tb.setWidth(1);
+            tb.setHeight(1);
+            mesh->setTexture(tb.buildAndRestart());
             ModelBuilder modelBuilder;
-            modelBuilder.setName("Square");
+            modelBuilder.setName("RED square");
             modelBuilder.setMesh(mesh);
+            Transform t;
+            t.position = glm::vec3(-0.7, 0.0, 0.0);
+            t.scale = glm::vec3(0.4);
+            std::shared_ptr<Model> model = modelBuilder.build();
+            model->setTransform(t);
 
-            m_objects.push_back(modelBuilder.build());
-        }
-        {
-            ModelBuilder modelBuilder;
-            modelBuilder.setName("Square2");
-            modelBuilder.setMesh(mesh);
-
-            m_objects.push_back(modelBuilder.build());
+            m_objects.push_back(model);
         }
         {
             mb.setDevice(device);
             mb.setVertices(vertices);
             mb.setIndices(indices);
-            mb.setName("Wall mesh");
-            std::shared_ptr<Mesh> wallMesh = mb.buildAndRestart();
+            mb.setName("GREEN");
+            std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
+            td.configureSRGBTextureBuilder(tb);
+            tb.setDevice(device);
+            tb.setImageData(std::vector<unsigned char>{76, 199, 0});
+            tb.setWidth(1);
+            tb.setHeight(1);
+            mesh->setTexture(tb.buildAndRestart());
+            ModelBuilder modelBuilder;
+            modelBuilder.setName("GREEN square");
+            modelBuilder.setMesh(mesh);
+            Transform t;
+            t.position = glm::vec3(0.0, 0.5, 0.0);
+            t.scale = glm::vec3(0.4);
+            std::shared_ptr<Model> model = modelBuilder.build();
+            model->setTransform(t);
+
+            m_objects.push_back(model);
+        }
+        {
+            mb.setDevice(device);
+            mb.setVertices(vertices);
+            mb.setIndices(indices);
+            mb.setName("BLUE");
+            std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
+            td.configureSRGBTextureBuilder(tb);
+            tb.setDevice(device);
+            tb.setImageData(std::vector<unsigned char>{0, 76, 199});
+            tb.setWidth(1);
+            tb.setHeight(1);
+            mesh->setTexture(tb.buildAndRestart());
+            ModelBuilder modelBuilder;
+            modelBuilder.setName("BLUE square");
+            modelBuilder.setMesh(mesh);
+            Transform t;
+            t.position = glm::vec3(0.7, 0.0, 0.0);
+            t.scale = glm::vec3(0.4);
+            std::shared_ptr<Model> model = modelBuilder.build();
+            model->setTransform(t);
+
+            m_objects.push_back(model);
+        }
+
+        {
+            mb.setDevice(device);
+            mb.setVertices(vertices);
+            mb.setIndices(indices);
+            mb.setName("BLACK");
+            std::shared_ptr<Mesh> mesh = mb.buildAndRestart();
             td.configureSRGBTextureBuilder(tb);
             tb.setDevice(device);
             tb.setImageData(std::vector<unsigned char>{0, 0, 0});
             tb.setWidth(1);
             tb.setHeight(1);
-            wallMesh->setTexture(tb.buildAndRestart());
+            mesh->setTexture(tb.buildAndRestart());
             ModelBuilder modelBuilder;
-            modelBuilder.setName("Wall");
-            modelBuilder.setMesh(wallMesh);
+            modelBuilder.setName("Black square");
+            modelBuilder.setMesh(mesh);
+            Transform t;
+            t.position = glm::vec3(0.0, -0.2, 0.0);
+            t.scale = glm::vec3(0.25);
+            std::shared_ptr<Model> model = modelBuilder.build();
+            model->setTransform(t);
 
-            m_objects.push_back(modelBuilder.build());
+            m_objects.push_back(model);
         }
     }
+
+    auto radianceCascadesScript = std::make_unique<RadianceCascades>();
+    RadianceCascades::init_data init{
+        .device = device,
+        .frameInFlightCount = frameInFlightCount,
+    };
+    radianceCascadesScript->init(&init);
+    radianceCascadesScript->redCube = *(m_objects.end() - 4);
+    radianceCascadesScript->greenCube = *(m_objects.end() - 3);
+    radianceCascadesScript->blueCube = *(m_objects.end() - 2);
+    radianceCascadesScript->blackCube = *(m_objects.end() - 1);
+    m_scripts.push_back(std::move(radianceCascadesScript));
 
     GraphRC2D *rg = dynamic_cast<GraphRC2D *>(renderGraph);
     // load objects into render graph

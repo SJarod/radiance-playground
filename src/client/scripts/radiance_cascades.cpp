@@ -1,6 +1,11 @@
+#include <chrono>
 #include <iostream>
 
 #include "graphics/device.hpp"
+
+#include "renderer/model.hpp"
+
+#include "input_manager.hpp"
 
 #include "radiance_cascades.hpp"
 
@@ -179,6 +184,49 @@ void RadianceCascades::begin()
 {
     std::cout << "Radiance Cascades Begin" << std::endl;
 }
+
+static double start = 0.f;
 void RadianceCascades::update(float deltaTime)
 {
+    if (InputManager::GetKey(Keycode::NUM_1))
+    {
+        const std::chrono::duration<double> now = std::chrono::steady_clock::now().time_since_epoch();
+        double a = now.count() - start;
+
+        {
+            Transform t;
+            t.position = glm::vec3(std::sin(a) * 0.7, 0.5, 0.0);
+            t.scale = glm::vec3(std::abs(std::sin(a) * 0.2) + 0.1);
+            redCube->setTransform(t);
+        }
+        {
+            Transform t;
+            t.position = glm::vec3(-0.9, 0.5, 0.0);
+            // t.rotation = glm::quat(glm::vec3(0.0, 0.0, a));
+            t.scale = glm::vec3(0.4, 0.75, 0.4);
+            greenCube->setTransform(t);
+        }
+        {
+            Transform t;
+            // t.position = glm::vec3(-0.5, -0.2, 0.0);
+            t.position = glm::vec3(-0.9, -0.5, 0.0);
+            // t.rotation = glm::quat(glm::vec3(0.0, 0.0, a * 2));
+            // t.scale = glm::vec3(0.4);
+            t.scale = glm::vec3(0.4, 0.75, 0.4);
+            blueCube->setTransform(t);
+        }
+        {
+            Transform t;
+            t.position = glm::vec3(0.3, std::cos(a * 0.5) * 0.9, 0.0);
+            // t.scale = glm::vec3(std::abs(std::cos(a) * 0.2) + 0.1);
+            t.scale = glm::vec3(0.3);
+            blackCube->setTransform(t);
+        }
+    }
+    else
+    {
+        const std::chrono::duration<double> now = std::chrono::steady_clock::now().time_since_epoch();
+        double a = now.count();
+        start = a;
+    }
 }
