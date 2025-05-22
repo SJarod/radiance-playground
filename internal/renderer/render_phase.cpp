@@ -809,6 +809,10 @@ void RayTracePhase::generateBottomLevelAS()
                 allBlas.emplace_back(blas);
             }
         }
+        else
+        {
+            assert(false);
+        }
     }
     m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 #else
@@ -971,6 +975,7 @@ void RayTracePhase::generateTopLevelAS()
 {
 #ifdef USE_NV_PRO_CORE
     std::vector<VkAccelerationStructureInstanceKHR> tlas;
+    int offset = 0;
     for (int i = 0; i < m_pooledRenderStates[0].size(); ++i)
     {
         if (auto state = std::dynamic_pointer_cast<ModelRenderState>(m_pooledRenderStates[0][i]))
@@ -978,16 +983,22 @@ void RayTracePhase::generateTopLevelAS()
             auto meshes = state->getModel()->getMeshes();
             for (int j = 0; j < meshes.size(); ++j)
             {
+                int blasIndex = j + offset;
                 VkAccelerationStructureInstanceKHR rayInst{};
                 rayInst.transform = nvvk::toTransformMatrixKHR(
                     state->getModel()->getTransform().getTransformMatrix()); // Position of the instance
-                rayInst.instanceCustomIndex = i;                             // gl_InstanceCustomIndexEXT
-                rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(j);
+                rayInst.instanceCustomIndex = blasIndex;                     // gl_InstanceCustomIndexEXT
+                rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(blasIndex);
                 rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
                 rayInst.mask = 0xFF;                                //  Only be hit if rayMask & instance.mask != 0
                 rayInst.instanceShaderBindingTableRecordOffset = 0; // We will use the same hit group for all objects
                 tlas.emplace_back(rayInst);
             }
+            offset += meshes.size();
+        }
+        else
+        {
+            assert(false);
         }
     }
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
