@@ -80,6 +80,11 @@ void DebugCamera::begin()
     stamps.back().rotation = glm::quat(glm::vec3(-2.203079, -1.133249, 2.250952));
     stamps.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
 
+    stamps.push_back({});
+    stamps.back().position = glm::vec3(-4.196016, -12.673707, -2.684465);
+    stamps.back().rotation = glm::quat(glm::vec3(0.199549, -1.155930, -0.183007));
+    stamps.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
     stamps2.push_back({});
     stamps2.back().position = glm::vec3(-35.699215, -45.304783, -0.069762);
     stamps2.back().rotation = glm::quat(glm::vec3(-0.213547, -0.343759, 0.073212));
