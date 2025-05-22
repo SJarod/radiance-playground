@@ -8,6 +8,9 @@
 
 static std::vector<Transform> stamps;
 static std::vector<Transform> stamps2;
+static std::vector<Transform> stamps3;
+static std::vector<Transform> stamps4;
+
 static float tt = 0.f;
 
 void DebugCamera::init(void *userData)
@@ -111,6 +114,36 @@ void DebugCamera::begin()
     stamps2.back().position = glm::vec3(-30.764833, -15.735815, 11.658937);
     stamps2.back().rotation = glm::quat(glm::vec3(3.075465, -0.991933, -3.086156));
     stamps2.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps2.push_back({});
+    stamps2.back().position = glm::vec3(-24.965277, -13.710605, -3.041364);
+    stamps2.back().rotation = glm::quat(glm::vec3(-0.338287, -1.219158, 0.319314));
+    stamps2.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps2.push_back({});
+    stamps2.back().position = glm::vec3(-19.951284, -15.775241, 1.115989);
+    stamps2.back().rotation = glm::quat(glm::vec3(1.689324, -1.424796, -1.690587));
+    stamps2.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps3.push_back({});
+    stamps3.back().position = glm::vec3(42.756588, -3.768014, -1.984225);
+    stamps3.back().rotation = glm::quat(glm::vec3(0.030006, 0.019991, 0.000600));
+    stamps3.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps3.push_back({});
+    stamps3.back().position = glm::vec3(-38.990902, -3.768014, -3.619353);
+    stamps3.back().rotation = glm::quat(glm::vec3(0.030006, 0.019991, 0.000600));
+    stamps3.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps4.push_back({});
+    stamps4.back().position = glm::vec3(43.834946, -16.280853, -14.014578);
+    stamps4.back().rotation = glm::quat(glm::vec3(0.135005, -0.008110, -0.001102));
+    stamps4.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
+
+    stamps4.push_back({});
+    stamps4.back().position = glm::vec3(-39.300217, -16.280853, -13.334142);
+    stamps4.back().rotation = glm::quat(glm::vec3(0.135005, -0.008110, -0.001102));
+    stamps4.back().scale = glm::vec3(1.000000, 1.000000, 1.000000);
 }
 
 void DebugCamera::update(float deltaTime)
@@ -150,6 +183,34 @@ void DebugCamera::update(float deltaTime)
         Transform t;
         t.position = glm::mix(stamps2[i].position, stamps2[ii].position, tt * stamps2.size() - i);
         t.rotation = glm::slerp(stamps2[i].rotation, stamps2[ii].rotation, tt * stamps2.size() - i);
+        t.scale = glm::vec3(1.000000, 1.000000, 1.000000);
+        m_mainCamera->setTransform(t);
+    }
+    else if (InputManager::GetKey(Keycode::NUM_3))
+    {
+        tt += deltaTime * 0.01f;
+        tt = std::min(tt, 1.f);
+
+        int i = (int)((float)stamps3.size() * tt);
+        int ii = std::min(i + 1, (int)stamps3.size() - 1);
+
+        Transform t;
+        t.position = glm::mix(stamps3[i].position, stamps3[ii].position, tt * stamps3.size() - i);
+        t.rotation = glm::slerp(stamps3[i].rotation, stamps3[ii].rotation, tt * stamps3.size() - i);
+        t.scale = glm::vec3(1.000000, 1.000000, 1.000000);
+        m_mainCamera->setTransform(t);
+    }
+    else if (InputManager::GetKey(Keycode::NUM_4))
+    {
+        tt += deltaTime * 0.01f;
+        tt = std::min(tt, 1.f);
+
+        int i = (int)((float)stamps4.size() * tt);
+        int ii = std::min(i + 1, (int)stamps4.size() - 1);
+
+        Transform t;
+        t.position = glm::mix(stamps4[i].position, stamps4[ii].position, tt * stamps4.size() - i);
+        t.rotation = glm::slerp(stamps4[i].rotation, stamps4[ii].rotation, tt * stamps4.size() - i);
         t.scale = glm::vec3(1.000000, 1.000000, 1.000000);
         m_mainCamera->setTransform(t);
     }
