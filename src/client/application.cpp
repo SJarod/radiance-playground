@@ -256,7 +256,7 @@ int Application::displayImgui()
 #include "scenes/radiance_cascades/scene_rc3d.hpp"
 #include "scenes/radiance_cascades/scene_rc3drt.hpp"
 
-static int sceneIndex = 0;
+static int sceneIndex = 1;
 constexpr int sceneCount = 5;
 
 int Application::runLoop()

@@ -32,7 +32,7 @@
 #include "scene_rc3d.hpp"
 
 void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, WindowGLFW *window,
-                           RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
+                     RenderGraph *renderGraph, uint32_t frameInFlightCount, uint32_t maxProbeCount)
 {
     auto devicePtr = device.lock();
     VkDevice deviceHandle = devicePtr->getHandle();
@@ -160,7 +160,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         PipelineBuilder<PipelineTypeE::GRAPHICS> phongPb;
         phongPb.setDevice(device);
         phongPb.addVertexShaderStage("simple");
-        phongPb.addFragmentShaderStage("deferred/unlit");
+        phongPb.addFragmentShaderStage("forward/phong");
         phongPb.setRenderPass(rg->m_opaquePhase->getRenderPass());
         phongPb.setExtent(window->getSwapChain()->getExtent());
         phongPb.addPushConstantRange(VkPushConstantRange{
@@ -210,44 +210,127 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
             rg->m_opaquePhase->registerRenderStateToAllPool(RENDER_STATE_PTR(mrsb.build()));
         }
 
-        UniformDescriptorBuilder probeGridDebugUdb;
-        probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        });
-        probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 4,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = maxProbeCount,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
-        probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
-            .binding = 5,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        });
+        std::shared_ptr<Pipeline> probeGridDebugPipeline0 = nullptr;
+        std::shared_ptr<Pipeline> probeGridDebugPipeline1 = nullptr;
+        std::shared_ptr<Pipeline> probeGridDebugPipeline2 = nullptr;
 
-        PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
-        probeGridDebugPb.setDevice(device);
-        probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
-        probeGridDebugPb.addFragmentShaderStage("forward/white");
-        probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
-        probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
-        probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = 0,
-            .size = 16,
-        });
+        {
+            UniformDescriptorBuilder probeGridDebugUdb;
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 4,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = maxProbeCount,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 5,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
+            probeGridDebugPb.setDevice(device);
+            probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
+            probeGridDebugPb.addFragmentShaderStage("forward/red");
+            probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
+            probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
+            probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = 16,
+            });
 
-        PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
-        probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
-        // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
-        probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
+            PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
+            probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
+            // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
+            probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
 
-        std::shared_ptr<Pipeline> probeGridDebugPipeline = probeGridDebugPb.build();
+            probeGridDebugPipeline0 = probeGridDebugPb.build();
+        }
+        {
+            UniformDescriptorBuilder probeGridDebugUdb;
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 4,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = maxProbeCount,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 5,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
+            probeGridDebugPb.setDevice(device);
+            probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
+            probeGridDebugPb.addFragmentShaderStage("forward/green");
+            probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
+            probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
+            probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = 16,
+            });
+
+            PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
+            probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
+            // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
+            probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
+
+            probeGridDebugPipeline1 = probeGridDebugPb.build();
+        }
+        {
+            UniformDescriptorBuilder probeGridDebugUdb;
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 0,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 4,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .descriptorCount = maxProbeCount,
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            probeGridDebugUdb.addSetLayoutBinding(VkDescriptorSetLayoutBinding{
+                .binding = 5,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            });
+            PipelineBuilder<PipelineTypeE::GRAPHICS> probeGridDebugPb;
+            probeGridDebugPb.setDevice(device);
+            probeGridDebugPb.addVertexShaderStage("probe_grid_debug");
+            probeGridDebugPb.addFragmentShaderStage("forward/blue");
+            probeGridDebugPb.setRenderPass(rg->m_probesDebugPhase->getRenderPass());
+            probeGridDebugPb.setExtent(window->getSwapChain()->getExtent());
+            probeGridDebugPb.addPushConstantRange(VkPushConstantRange{
+                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset = 0,
+                .size = 16,
+            });
+
+            PipelineDirector<PipelineTypeE::GRAPHICS> probeGridDebugPd;
+            probeGridDebugPd.configureColorDepthRasterizerBuilder(probeGridDebugPb);
+            // probeGridDebugPb.setPolygonMode(VK_POLYGON_MODE_LINE);
+            probeGridDebugPb.addUniformDescriptorPack(probeGridDebugUdb.buildAndRestart());
+
+            probeGridDebugPipeline2 = probeGridDebugPb.build();
+        }
 
         // probes
         auto s = getReadOnlyInstancedComponents<RadianceCascades3D>();
@@ -277,7 +360,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         prsb0.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb0.setDevice(device);
-        prsb0.setPipeline(probeGridDebugPipeline);
+        prsb0.setPipeline(probeGridDebugPipeline0);
         prsb0.setProbeGrid(m_grid0);
         prsb0.setMesh(cubeMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb0.build()));
@@ -286,7 +369,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         prsb1.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb1.setDevice(device);
-        prsb1.setPipeline(probeGridDebugPipeline);
+        prsb1.setPipeline(probeGridDebugPipeline1);
         prsb1.setProbeGrid(m_grid1);
         prsb1.setMesh(sphereMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb1.build()));
@@ -295,7 +378,7 @@ void SceneRC3D::load(std::weak_ptr<Context> cx, std::weak_ptr<Device> device, Wi
         prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         prsb2.addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxProbeCount);
         prsb2.setDevice(device);
-        prsb2.setPipeline(probeGridDebugPipeline);
+        prsb2.setPipeline(probeGridDebugPipeline2);
         prsb2.setProbeGrid(m_grid2);
         prsb2.setMesh(cubeMesh);
         rg->m_probesDebugPhase->registerRenderStateToAllPool(RENDER_STATE_PTR(prsb2.build()));

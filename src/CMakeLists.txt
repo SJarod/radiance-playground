@@ -26,6 +26,9 @@ set(SHADER_SOURCES
 	shaders/forward/unlit.frag
 	shaders/forward/unlit.vert
 	shaders/forward/white.frag
+	shaders/forward/red.frag
+	shaders/forward/green.frag
+	shaders/forward/blue.frag
 
 	shaders/g2ip/environment_map.frag
 	shaders/g2ip/environment_map.vert

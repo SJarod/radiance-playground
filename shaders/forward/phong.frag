@@ -149,7 +149,8 @@ void main()
 		applySingleDirectionalLight(fragLighting, directionalLights[i], normal);
 	}
 
-	vec3 color = texture(texSampler, fragUV).rgb;
+	vec3 color = vec3(1.0);texture(texSampler, fragUV).rgb;
+	fragLighting.ambient = vec3(0.1);
 	color *= fragLighting.ambient + fragLighting.diffuse + fragLighting.specular;
 
 #ifdef DEBUG_IRRADIANCE_MAP

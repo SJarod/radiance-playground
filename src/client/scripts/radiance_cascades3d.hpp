@@ -22,7 +22,7 @@ class RadianceCascades3D : public ScriptableABC
     };
 
   private:
-    const glm::vec3 m_range = glm::vec3(10.f);
+    const glm::vec3 m_range = glm::vec3(20.f);
     const int m_maxCascadeCount = 3;
     /**
      * @brief probe count per dimension
