@@ -203,6 +203,7 @@ void RenderPhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride, uin
     {
         std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
         assert(false);
+        abort();
     }
 }
 
@@ -419,8 +420,9 @@ void ComputePhase::submitBackBuffer(const VkSemaphore *waitSemaphoreOverride) co
     VkResult res = vkQueueSubmit(m_device.lock()->getGraphicsQueue(), 1, &submitInfo, getCurrentFence());
     if (res != VK_SUCCESS)
     {
-        std::cerr << "Failed to submit draw command buffer : " << res << std::endl;
+        std::cerr << "Failed to submit dispatch (compute) command buffer : " << res << std::endl;
         assert(false);
+        abort();
     }
 }
 

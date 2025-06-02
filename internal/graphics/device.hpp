@@ -268,10 +268,27 @@ class DeviceBuilder
         m_cx = context;
     }
 
-    void addDeviceExtension(const char *extension)
+    void addDeviceExtensionForce(const char *extension)
     {
         m_deviceExtensions.push_back(extension);
         m_product->m_deviceExtensions.push_back(extension);
+    }
+    void addDeviceExtensionIfAvailable(const char *extension)
+    {
+        assert(m_product->m_physicalHandle);
+
+        uint32_t count;
+        vkEnumerateDeviceExtensionProperties(m_product->m_physicalHandle, nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> props(count);
+        vkEnumerateDeviceExtensionProperties(m_product->m_physicalHandle, nullptr, &count, props.data());
+        for (int i = 0; i < count; ++i)
+        {
+            if (std::strcmp(props[i].extensionName, extension))
+            {
+                addDeviceExtensionForce(extension);
+                return;
+            }
+        }
     }
 
     void setPhysicalDevice(VkPhysicalDevice a);

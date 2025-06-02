@@ -145,6 +145,10 @@ void Device::cmdEndOneTimeSubmit(VkCommandBuffer commandBuffer) const
     if (res != VK_SUCCESS)
         std::cerr << "Wait for transient command buffer failed : " << res << std::endl;
 
+    assert(res == VK_SUCCESS);
+    if (res != VK_SUCCESS)
+        abort();
+
     vkFreeCommandBuffers(m_handle, m_commandPoolTransient, 1, &commandBuffer);
 }
 
@@ -198,7 +202,7 @@ void DeviceBuilder::setPhysicalDevice(VkPhysicalDevice a)
 
 #ifndef NDEBUG
     if (m_product->m_rtvalidationFeatures.rayTracingValidation)
-        addDeviceExtension(VK_NV_RAY_TRACING_VALIDATION_EXTENSION_NAME);
+        addDeviceExtensionIfAvailable(VK_NV_RAY_TRACING_VALIDATION_EXTENSION_NAME);
 #endif
 
     vkGetPhysicalDeviceProperties(a, &m_product->m_props);

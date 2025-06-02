@@ -78,13 +78,15 @@ Application::Application()
         db.setContext(m_context);
         db.setPhysicalDevice(physicalDevice);
         db.setSurface(m_window->getSurface());
-        db.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        db.addDeviceExtension(VK_KHR_MULTIVIEW_EXTENSION_NAME);
-        db.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-        db.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-        db.addDeviceExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-        db.addDeviceExtension(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        db.addDeviceExtensionIfAvailable(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
         m_devices.emplace_back(db.build());
+        if (!m_devices.back())
+            continue;
         if (m_devices.back()->isDiscrete())
         {
             m_discreteDevice = m_devices.back();
