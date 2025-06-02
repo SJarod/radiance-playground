@@ -53,7 +53,7 @@ class Device
     };
 
     // logical device
-    VkDevice m_handle;
+    VkDevice m_handle = nullptr;
 
     std::optional<uint32_t> m_graphicsFamilyIndex;
     std::optional<uint32_t> m_presentFamilyIndex;

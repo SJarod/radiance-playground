@@ -14,6 +14,9 @@
 
 Device::~Device()
 {
+    if (!m_handle)
+        return;
+
     std::cout << "Destroying device : " << getDeviceName() << std::endl;
 
     // ensure all the resources have been freed
