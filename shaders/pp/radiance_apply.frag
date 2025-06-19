@@ -209,6 +209,8 @@ vec4 radiance_apply(in vec2 uv)
     float lerpx = (uv.x - p0.position.x) / xrange;
     float lerpy = (uv.y - p0.position.y) / yrange;
 
+    // TODO : fix the usage of bilerp and order with transparency function (2D)
+
     //return vec4(p3.position, 0.0, 1.0);
     return bilerp(collapsed0, collapsed1, collapsed2, collapsed3, vec2(lerpy, lerpx));
     //return bilerp(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0), vec4(1.0, 0.0, 1.0, 0.0), vec2(lerpy, lerpx));

@@ -91,6 +91,8 @@ vec4 radiance_apply(in vec2 uv)
             vec4 interval2 = retrieve_radiance_interval(j, probeIndices[2], intervalIndex, desc.q);
             vec4 interval3 = retrieve_radiance_interval(j, probeIndices[3], intervalIndex, desc.q);
             
+            // TODO : fix the usage of bilerp and order with transparency function (test with the post process shader and apply the changes on shadertoy)
+
             vec4 bilerped = bilerp(interval0, interval1, interval2, interval3, vec2(lerpy, lerpx));
             mergedRadiance += bilerped * transparency;
             

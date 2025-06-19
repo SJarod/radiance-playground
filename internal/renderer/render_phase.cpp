@@ -1005,6 +1005,8 @@ void RayTracePhase::generateTopLevelAS()
     }
     m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 #else
+    // TODO : fix the custom implementation of the top level acceleration structures
+    
     auto devicePtr = m_device.lock();
     auto deviceHandle = devicePtr->getHandle();
 

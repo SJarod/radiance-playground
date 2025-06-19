@@ -328,6 +328,7 @@ void TextureDirector::configureSRGBTextureBuilder(TextureBuilder &builder)
 {
     builder.setFormat(VK_FORMAT_R8G8B8A8_SRGB);
     builder.setTiling(VK_IMAGE_TILING_OPTIMAL);
+    // TODO : linear ?
     builder.setSamplerFilter(VK_FILTER_NEAREST);
 }
 

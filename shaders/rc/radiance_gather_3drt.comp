@@ -185,6 +185,8 @@ vec4 raycasting_function(vec3 p, vec3 dir, float len)
     {
     }
 
+    // TODO : fix this ray query radiance gathering algorithm
+
     vec4 incomingRadiance = vec4(0.0);
     // Returns type of committed (true) intersection
     if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)

@@ -190,4 +190,5 @@ void RadianceCascades3D::begin()
 }
 void RadianceCascades3D::update(float deltaTime)
 {
+    // TODO : make the probes of the cascades follow the view frustum
 }
